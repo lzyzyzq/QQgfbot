@@ -2,6 +2,23 @@
 
 ## 2026-09-01
 
+### 4.2.59b：Python 多功能菜单插件「测试」v0.1 + 面板 py 全链路 + 群内终端更新串联
+- **新增 Python 插件「测试」v0.1**（`plugins/测试.py`，单文件 .py）：多功能菜单，全部基于 QQ 官方开放平台 API——
+  - 🎤 唱歌：网易云搜歌，先发歌词再以富媒体语音条播放（`uploadGroupVoice` + `sendGroupVoiceMessage`）
+  - 🔇 禁言：`禁言 <QQ号或openid> <分钟>` / `解禁` / `全群禁言 开|关` / `禁言状态`（官方 mute API，仅超主）
+  - 📢 广播：`广播 <内容>` 当前群公告+消息；`全体广播 <内容>` 全部群广播（仅超主）
+  - 🎮 娱乐：掷骰子 / 石头剪刀布 / 猜数字 / 今日运势 / 讲笑话
+  - 🔧 实用：天气（wttr.in）/ 二维码图片 / 安全计算器 / 北京时间 / 随机数
+  - 🎵 解析抖音视频：分享口令→短链展开→第三方解析接口→无水印播放链接+封面图
+  - 🔄 更新引导：发送「更新 / 重启」提示群内终端命令更新方式
+  - 外显文字统一采用 `[外显文字](mqqapi://aio/%69nlinecmd?command=指令&enter=false&reply=false)` 链接格式
+- **面板 py 全链路**：插件上传支持 .py；插件管理列表显示 PY 标签；代码编辑读取/保存/热重载 py；menu-editor.html 卡片布局编辑器放行 .py 插件（`/api/menu-config/plugins` 不再过滤 py，可在插件下拉选中「测试.py」编辑菜单布局）
+- **Python 运行时引擎扩展**：`python-runtime.ts` 新增 extras 桥，py 插件可 `call()` 调用 `listGroups` / `openidByQq` / `nicknameToOpenid` / `isSuper` / `getVariable` 等引擎能力
+- **群内终端更新串联**：`更新系统.php` 支持群里直接发送
+  `cd /var/www/php && wget -O patch-4.2.59.zip <补丁URL> && unzip -o patch-4.2.59.zip && pm2 restart qqbot`
+  （或 `wget -O full.zip <全量URL> ...`），自动下载→`unzip -t` 校验→`unzip -o` 解压→`pm2 restart qqbot`，全程群内反馈；与面板「部署终端」同根目录、同重启方式打通；严格校验目录/zip 名/URL 协议防命令注入，仅超级主人
+
+
 ### 4.2.59：本机重启 + 全群状态广播 + PHP 即时发送 + 定时任务图片发送
 - **重启改本机 pm2**：面板「重启机器人/重启服务器」与服务器重启不再走 SSH `100.68.196.95`，改为本机执行 `cd /var/www/php && pm2 restart qqbot`；`restartFn` 返回执行结果，前端展示成功/失败，成功后轮询 `/api/health` 自动刷新
 - **新增「重启控制」插件**：超主群内发「重启机器人/重启服务器」→ 10 秒倒计时 → 本机重启；启动后 `onEnable` 自动向全部群广播运行状态（文字 + 状态图）；重启命令失败渲染错误图；权限仅超级主人

@@ -31,6 +31,57 @@ if ($群 === '') exit(0);
 
 $at = "<@!" . $用户 . ">";
 
+// ========== 终端命令直接更新（与面板部署终端串联） ==========
+// 群里直接发送（仅超级主人，URL 为补丁/全量包下载地址）：
+//   cd /var/www/php && wget -O patch-4.2.59.zip <补丁URL> && unzip -o patch-4.2.59.zip && pm2 restart qqbot
+//   cd /var/www/php && wget -O full.zip <全量URL> && unzip -o full.zip && pm2 restart qqbot
+// 识别成功后自动执行：下载 → unzip -t 校验 → unzip -o 解压 → pm2 restart qqbot，全程群内反馈。
+$终端更新 = 解析终端更新命令($消息);
+if ($终端更新 !== null) {
+  if (!是否超主($用户)) {
+    文字($at . "\n「终端更新」仅超级主人可使用。如需升级请联系管理员。");
+    exit(0);
+  }
+  $zip = $终端更新['zip'];
+  $url = $终端更新['url'];
+  $kind = stripos($zip, 'patch') !== false ? '补丁包' : '全量包';
+  $root = 更新根目录();
+  文字($at . "\n⏳ 已识别终端更新命令，正在下载" . $kind . "（" . $zip . "）…");
+  $zipPath = 更新数据目录() . '/' . $zip;
+  if (!下载文件($url, $zipPath)) {
+    文字($at . "\n❌ 下载失败，请检查下载地址是否可访问。");
+    exit(0);
+  }
+  if (!function_exists('exec')) {
+    文字($at . "\n❌ 服务器未启用 PHP exec，无法自动解压/重启。\n请手动执行：\ncd " . $root . " && unzip -o " . $zipPath . " && pm2 restart qqbot");
+    @unlink($zipPath);
+    exit(0);
+  }
+  exec('cd ' . escapeshellarg($root) . ' && unzip -t ' . escapeshellarg($zipPath) . ' 2>&1', $tOut, $tCode);
+  if ($tCode !== 0) {
+    文字($at . "\n❌ 压缩包校验失败（服务器未安装 unzip 或文件损坏）。");
+    @unlink($zipPath);
+    exit(0);
+  }
+  exec('cd ' . escapeshellarg($root) . ' && unzip -o ' . escapeshellarg($zipPath) . ' 2>&1', $uOut, $uCode);
+  if ($uCode !== 0) {
+    文字($at . "\n❌ 解压失败：\n" . implode("\n", array_slice($uOut, 0, 5)));
+    @unlink($zipPath);
+    exit(0);
+  }
+  @unlink($zipPath);
+  $ver = '';
+  if (preg_match('/(\d+(?:\.\d+){1,3})/', $zip, $vm)) $ver = $vm[1];
+  if ($ver !== '') {
+    记录当前版本($ver);
+    更新记录('追加', array('type' => $kind, 'version' => $ver, 'time' => 当前时间(), 'content' => '群内终端命令更新：' . $zip));
+  }
+  文字($at . "\n✅ 更新完成！已升级到 v" . ($ver !== '' ? $ver : $版本) . "（" . $kind . "）。\n\n3 秒后自动重启机器人…");
+  Markdown("　" . 外显('返回更新', '返回更新') . '　' . 外显('返回菜单', '菜单'));
+  延迟重启机器人(3);
+  exit(0);
+}
+
 // ========== 命令命中判断 ==========
 $命令命中 = false;
 if ($消息 === '更新' || $消息 === '更新菜单' || $消息 === '返回更新') $命令命中 = true;
@@ -190,4 +241,23 @@ if (前缀($消息, '删除更新记录')) {
   if (更新记录('删除', null, $序号)) 文字($at . "\n✅ 已删除更新记录第 " . ($序号 + 1) . " 条。");
   else 文字($at . "\n❌ 序号无效（共 " . count(更新记录('读取')) . " 条记录）。");
   exit(0);
+}
+
+// ========== 终端更新命令解析 ==========
+// 识别群内直接发送的更新命令：cd <更新根目录> && wget -O <zip> <url> && unzip -o <zip> && pm2 restart qqbot
+// 严格校验目录/文件名/进程名与 URL 协议，防止任意命令注入；不匹配返回 null 走常规指令流程。
+function 解析终端更新命令($msg) {
+  $msg = trim((string)$msg);
+  // 去掉引号（wget -O "patch.zip" "url" / 'patch.zip' 'url'）
+  $msg = preg_replace('/"([^"]+)"/', '$1', $msg);
+  $msg = preg_replace("/'([^']+)'/", '$1', $msg);
+  if (!preg_match('/^cd\s+(\S+)\s*&&\s*wget\s+(?:-O\s+)?(\S+)\s+(\S+)\s*&&\s*unzip\s+(?:-o\s+)?(\S+)\s*&&\s*pm2\s+restart\s+(\S+)$/i', $msg, $m)) return null;
+  $dir = $m[1]; $zip = $m[2]; $url = $m[3]; $unz = $m[4]; $proc = $m[5];
+  $root = 更新根目录();
+  if (rtrim($dir, '/') !== rtrim($root, '/')) return null;
+  if ($zip !== $unz) return null;
+  if ($proc !== 'qqbot') return null;
+  if (!preg_match('/^[\w.\-]+\.zip$/i', $zip)) return null;
+  if (!preg_match('/^https?:\/\//i', $url)) return null;
+  return array('zip' => $zip, 'url' => $url);
 }

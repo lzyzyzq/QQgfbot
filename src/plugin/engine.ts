@@ -605,6 +605,36 @@ export class PluginEngine {
     const ctx = this.createPluginContext(id);
     const runtime = new PythonRuntime(entryPath, this.botApi, (line) => {
       logger.info(`[py:${row.name}] ${line}`);
+    }, 'python3', {
+      listGroups: () => {
+        try {
+          const db = getDb();
+          return (db.prepare("SELECT id FROM groups WHERE id IS NOT NULL AND id != '' ORDER BY last_active DESC").all() as any[])
+            .map((r: any) => String(r.id));
+        } catch { return []; }
+      },
+      openidByQq: (qq: string) => {
+        try {
+          const resolved = ctx.engine.resolveOpenidByQq(String(qq || '').trim());
+          return resolved || null;
+        } catch { return null; }
+      },
+      nicknameToOpenid: (groupId: string, nickname: string) => {
+        try {
+          return ctx.engine.getGroupMemberOpenidByNickname(String(groupId || ''), String(nickname || '').trim());
+        } catch { return null; }
+      },
+      isSuper: (openid: string) => {
+        try {
+          const superId = ctx.storage.get('super_master_id');
+          if (!superId) return false;
+          const ids = JSON.parse(superId) as string[];
+          return Array.isArray(ids) && ids.includes(String(openid));
+        } catch { return false; }
+      },
+      getVariable: (name: string) => {
+        try { return ctx.engine.getVariable(String(name || '')); } catch { return null; }
+      },
     });
 
     const dispatch = (ev: string) => (data: any) => runtime.dispatch({ ...data, type: ev });

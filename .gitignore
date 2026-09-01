@@ -22,3 +22,6 @@ backup_plugins_*/
 plugins/.tmp/
 .tmp-update-*
 _tmp_shot.webp
+
+plugins/__pycache__/
+__pycache__/

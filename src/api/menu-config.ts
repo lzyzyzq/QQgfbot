@@ -450,7 +450,8 @@ router.get('/menu-config/plugins', (_req, res) => {
       .filter((r: any) => {
         const n = String(r.name || '');
         if (!n) return false;
-        if (/\.(py|txt|json|java|mjs|md|log|html?)$/i.test(n)) return false;
+        // .py 单文件插件（如 测试.py）也支持卡片/菜单编辑；纯资源文件（txt/json/java/mjs/md/log/html）不进入卡片编辑器
+        if (/\.(txt|json|java|mjs|md|log|html?)$/i.test(n)) return false;
         return true;
       })
       .map((r: any) => {

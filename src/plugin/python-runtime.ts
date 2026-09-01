@@ -17,6 +17,20 @@ export interface PyReplyPayload {
   botId?: string;
 }
 
+/** Python 插件可额外调用的引擎能力（通过 call(method, args) 以 JSON 参数/返回值调用） */
+export interface PyEngineExtras {
+  /** 全部群 OpenID 列表（groups 表） */
+  listGroups?: () => string[];
+  /** QQ 号 → 绑定的 OpenID（无绑定返回 null） */
+  openidByQq?: (qq: string) => string | null;
+  /** 群内按昵称查成员 OpenID（无匹配返回 null） */
+  nicknameToOpenid?: (groupId: string, nickname: string) => string | null;
+  /** 指定 OpenID 是否为超级主人 */
+  isSuper?: (openid: string) => boolean;
+  /** 读全局用户自定义变量（config plugin.vars） */
+  getVariable?: (name: string) => string | null;
+}
+
 export class PythonRuntime {
   private proc: ChildProcess | null = null;
   private buf = '';
@@ -29,7 +43,8 @@ export class PythonRuntime {
     private entry: string,
     private botApi: any,
     private onLog: (line: string) => void,
-    private pythonBin = 'python3'
+    private pythonBin = 'python3',
+    private extras?: PyEngineExtras
   ) {}
 
   async start(): Promise<void> {
@@ -159,8 +174,13 @@ export class PythonRuntime {
     let error: string | null = null;
     try {
       const fn = this.botApi && (this.botApi as any)[method];
-      if (typeof fn !== 'function') throw new Error(`BotAPI 无方法 ${method}`);
-      data = await fn.apply(this.botApi, args);
+      if (typeof fn === 'function') {
+        data = await fn.apply(this.botApi, args);
+      } else if (this.extras && typeof (this.extras as any)[method] === 'function') {
+        data = await (this.extras as any)[method](...args);
+      } else {
+        throw new Error(`BotAPI 无方法 ${method}`);
+      }
     } catch (e: any) {
       error = e.message || String(e);
     }
