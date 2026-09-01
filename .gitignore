@@ -19,5 +19,6 @@ ksweb-nginx.conf
 backup_plugins_*/
 .monkeycode-tmp-files/
 .tmp/
+plugins/.tmp/
 .tmp-update-*
 _tmp_shot.webp
