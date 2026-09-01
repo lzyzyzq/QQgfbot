@@ -158,12 +158,13 @@ function releaseInstanceLock(): void {
 
 // 本机服务器重启：面板「重启机器人」「重启服务器」在本机执行 pm2 restart qqbot
 // 当前部署环境即 armbian 服务器（/var/www/php，pm2 管理），与终端同一台机器，不再 SSH 远程。
+// 部署终端：cd /var/www/php 根目录后执行 pm2 restart qqbot（spawn 用 sh -c 显式带上 cd）
 function localRestart(): Promise<{ ok: boolean; out: string; err: string }> {
   return new Promise((resolve) => {
     const cwd = '/var/www/php';
     let child: ReturnType<typeof spawn>;
     try {
-      child = spawn('pm2', ['restart', 'qqbot'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+      child = spawn('sh', ['-c', 'cd /var/www/php && pm2 restart qqbot'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (e: any) {
       serverLogger.error(`Local restart spawn failed: ${e && e.message ? e.message : e}`);
       resolve({ ok: false, out: '', err: 'pm2 启动失败（请确认已安装 pm2）' });

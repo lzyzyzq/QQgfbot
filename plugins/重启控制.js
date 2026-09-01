@@ -136,8 +136,9 @@ module.exports = {
     }
     var child = null;
     try {
+      // 部署终端：cd /var/www/php 根目录后执行 pm2 restart qqbot
       var spawn = require('child_process').spawn;
-      child = spawn('pm2', ['restart', 'qqbot'], { cwd: '/var/www/php' });
+      child = spawn('sh', ['-c', 'cd /var/www/php && pm2 restart qqbot'], { cwd: '/var/www/php' });
     } catch (e) {
       await self.sendFail(ctx, groupId, 'pm2 启动失败：' + (e && e.message || e));
       return;
