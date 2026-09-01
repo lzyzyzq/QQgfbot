@@ -162,6 +162,78 @@ def build_menu():
     return '\n'.join(lines)
 
 
+def collect_menu_items(cfg):
+    """递归收集 menu-editor 布局配置中的全部菜单项（label + 指令/链接），用于渲染外显按钮行"""
+    items = []
+    def walk(o):
+        if isinstance(o, dict):
+            lbl = o.get('label')
+            if isinstance(lbl, str) and ('value' in o or 'cmd' in o or 'url' in o):
+                v = o.get('value') or o.get('cmd') or o.get('url') or ''
+                if isinstance(v, str) and v:
+                    items.append((lbl, v))
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(cfg)
+    # 去重（保持顺序）
+    seen = set()
+    out = []
+    for it in items:
+        k = (it[0], it[1])
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(it)
+    return out
+
+
+def layout_menu(cfg, botId):
+    """按 menu-editor.html 保存的布局配置渲染主菜单（外显按钮行）"""
+    items = collect_menu_items(cfg)
+    if not items:
+        return None
+    lines = []
+    lines.append('【测试 · 多功能菜单】v0.1（布局版）')
+    lines.append('━━━━━━━━━━━━━━━━')
+    lines.append('以下菜单项来自后台「插件卡片 · 后台编辑器」')
+    lines.append('可在管理面板编辑布局后发送「测试」刷新')
+    lines.append('━━━━━━━━━━━━━━━━')
+    row = []
+    for i, (lbl, v) in enumerate(items):
+        t = v if (v.startswith('http://') or v.startswith('https://')) else v
+        if v.startswith('http://') or v.startswith('https://'):
+            row.append('[%s](%s)' % (lbl, v))
+        else:
+            row.append(inline(lbl, v))
+        if (i + 1) % 3 == 0:
+            lines.append('　'.join(row))
+            row = []
+    if row:
+        lines.append('　'.join(row))
+    lines.append('')
+    lines.append('发送「主菜单」返回')
+    return '\n'.join(lines)
+
+
+def maybe_menu(data):
+    """主菜单：优先使用 menu-editor 布局配置，否则内置菜单"""
+    botId = data.get('botId') or ''
+    cfg = None
+    try:
+        cfg = call('getMenuConfig', botId)
+    except Exception:
+        cfg = None
+    if isinstance(cfg, dict):
+        laid = layout_menu(cfg, botId)
+        if laid:
+            reply(data, laid)
+            return
+    reply(data, build_menu())
+
+
 def build_fun_menu():
     lines = []
     lines.append('【娱乐中心】')
@@ -647,7 +719,7 @@ def on_message(data):
         douyin_cmd(data, content)
         return
     if content in ('测试', '测试菜单', '菜单', '主菜单', '帮助'):
-        reply(data, build_menu())
+        maybe_menu(data)
         return
     if content == '娱乐':
         fun_cmd(data, content)

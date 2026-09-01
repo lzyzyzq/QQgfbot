@@ -221,13 +221,15 @@ function defaultConfigFor(name: string): any {
 function findPluginIdFor(name: string): string {
   try {
     const db = getDb();
-    // 优先 file-{name} 文件插件 id（与引擎自动发现一致），避免被历史 uuid code 记录抢占导致配置读写错位
-    const row = db.prepare('SELECT id FROM plugins WHERE id = ? LIMIT 1').get(`file-${name}`) as any;
-    if (row && row.id) return String(row.id);
+    // .py 单文件插件 name 带扩展名（如 测试.py），但引擎注册 id 为 file-测试（去扩展名），两种都尝试
+    const bare = String(name).replace(/\.py$/i, '');
+    const candidates = [`file-${name}`, `file-${bare}`];
+    for (const cid of candidates) {
+      const row = db.prepare('SELECT id FROM plugins WHERE id = ? LIMIT 1').get(cid) as any;
+      if (row && row.id) return String(row.id);
+    }
     const row2 = db.prepare('SELECT id FROM plugins WHERE name = ? LIMIT 1').get(name) as any;
     if (row2 && row2.id) return String(row2.id);
-    const row3 = db.prepare('SELECT id FROM plugins WHERE id LIKE ? LIMIT 1').get(`file-${name}`) as any;
-    if (row3 && row3.id) return String(row3.id);
   } catch {}
   return 'file-' + name;
 }

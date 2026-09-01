@@ -635,6 +635,19 @@ export class PluginEngine {
       getVariable: (name: string) => {
         try { return ctx.engine.getVariable(String(name || '')); } catch { return null; }
       },
+      getMenuConfig: (appid: string) => {
+        try {
+          const db = getDb();
+          const row = db.prepare('SELECT value FROM config WHERE key = ?').get(`plugin.${id}.config`) as any;
+          if (!row || !row.value) return null;
+          const all = JSON.parse(row.value);
+          if (all && typeof all === 'object' && appid) {
+            const hit = all[appid] || all[String(appid || '').toUpperCase()] || null;
+            return hit || null;
+          }
+          return null;
+        } catch { return null; }
+      },
     });
 
     const dispatch = (ev: string) => (data: any) => runtime.dispatch({ ...data, type: ev });

@@ -29,6 +29,8 @@ export interface PyEngineExtras {
   isSuper?: (openid: string) => boolean;
   /** 读全局用户自定义变量（config plugin.vars） */
   getVariable?: (name: string) => string | null;
+  /** 读本插件在 menu-editor.html 中按 appid 保存的卡片/菜单布局配置（未配置返回 null） */
+  getMenuConfig?: (appid: string) => any;
 }
 
 export class PythonRuntime {

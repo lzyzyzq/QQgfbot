@@ -12,8 +12,8 @@
   - 🎵 解析抖音视频：分享口令→短链展开→第三方解析接口→无水印播放链接+封面图
   - 🔄 更新引导：发送「更新 / 重启」提示群内终端命令更新方式
   - 外显文字统一采用 `[外显文字](mqqapi://aio/%69nlinecmd?command=指令&enter=false&reply=false)` 链接格式
-- **面板 py 全链路**：插件上传支持 .py；插件管理列表显示 PY 标签；代码编辑读取/保存/热重载 py；menu-editor.html 卡片布局编辑器放行 .py 插件（`/api/menu-config/plugins` 不再过滤 py，可在插件下拉选中「测试.py」编辑菜单布局）
-- **Python 运行时引擎扩展**：`python-runtime.ts` 新增 extras 桥，py 插件可 `call()` 调用 `listGroups` / `openidByQq` / `nicknameToOpenid` / `isSuper` / `getVariable` 等引擎能力
+- **面板 py 全链路**：插件上传支持 .py；插件管理列表显示 PY 标签；代码编辑读取/保存/热重载 py；menu-editor.html 卡片布局编辑器放行 .py 插件（`/api/menu-config/plugins` 不再过滤 py），可在插件下拉选中「测试.py」编辑菜单布局；配置 key 兼容 .py 插件 id（`file-测试`）；「测试」主菜单优先渲染后台布局配置（外显按钮行），未配置时用内置菜单
+- **Python 运行时引擎扩展**：`python-runtime.ts` 新增 extras 桥，py 插件可 `call()` 调用 `listGroups` / `openidByQq` / `nicknameToOpenid` / `isSuper` / `getVariable` / `getMenuConfig` 等引擎能力
 - **群内终端更新串联**：`更新系统.php` 支持群里直接发送
   `cd /var/www/php && wget -O patch-4.2.59.zip <补丁URL> && unzip -o patch-4.2.59.zip && pm2 restart qqbot`
   （或 `wget -O full.zip <全量URL> ...`），自动下载→`unzip -t` 校验→`unzip -o` 解压→`pm2 restart qqbot`，全程群内反馈；与面板「部署终端」同根目录、同重启方式打通；严格校验目录/zip 名/URL 协议防命令注入，仅超级主人
