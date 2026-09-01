@@ -1,0 +1,29 @@
+{
+  "name": "napcat-plugin-bot",
+  "plugin": "智能机器人",
+  "version": "3.1.0",
+  "type": "module",
+  "main": "index.mjs",
+  "description": "多功能群机器人 v3.1.0：群开关（按群配置哪些开启/哪些关闭）、主人/授权管理（对接面板授权码 API）、统一菜单（文字/按钮/图片）、娱乐中心、签到、群管理、定时推送、关键词回复、点歌、天气、频道管理等 NapCat 扩展接口",
+  "author": "空空爱追剧",
+  "contact": {
+    "qq": "511742399"
+  },
+  "napcat": {
+    "tags": [
+      "工具",
+      "娱乐",
+      "管理"
+    ],
+    "minVersion": "4.14.0",
+    "homepage": ""
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.0"
+  }
+}

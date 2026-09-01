@@ -1,0 +1,18 @@
+{
+  "name": "menu",
+  "title": "分类菜单插件",
+  "version": "1.0.0",
+  "author": "system",
+  "description": "收到 menu / 菜单 指令时，按「管理 / 娱乐 / 实用功能」分类展示已启用指令",
+  "entry": "Main.php",
+  "config": {
+    "triggers": ["menu", "菜单"],
+    "match_mode": "exact",
+    "categories": ["管理", "娱乐", "实用"],
+    "platform_api": "",
+    "local_api": "",
+    "api_token": "",
+    "show_only_enabled": true,
+    "output": "auto"
+  }
+}

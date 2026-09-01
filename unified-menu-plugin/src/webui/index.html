@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>统一菜单插件配置</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f1115; color: #e6e6e6; margin: 0; padding: 20px; }
+  h2 { color: #4da3ff; }
+  .card { background: #1a1e26; border: 1px solid #2a2f3a; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .card h3 { margin-top: 0; color: #ffb84d; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { border: 1px solid #2a2f3a; padding: 6px 10px; text-align: left; font-size: 13px; }
+  code { background: #252b36; padding: 2px 6px; border-radius: 4px; color: #7ee2a8; }
+  .note { color: #8a93a3; font-size: 12px; }
+  .green { color: #7ee2a8; }
+  .blue { color: #4da3ff; }
+</style>
+</head>
+<body>
+<h2>统一菜单插件（v1.0.0）</h2>
+
+<div class="card">
+  <h3>菜单模式</h3>
+  <p>文字链接模式（text_link）已移除。全局模式仅两种：<span class="blue">文字模式（text）</span>与<span class="blue">图片模式（image）</span>。</p>
+  <p>文字模式下菜单项渲染为 <span class="blue">「功能名↗」蓝色字体</span>、不带按钮边框，点击行为与按钮一致；无面板域名或 markdown 权限时自动降级为「（发送「功能名」）」纯文本。</p>
+  <p class="note">切换方式：群里发 <code>切换全局模式</code>（需超管）。</p>
+</div>
+
+<div class="card">
+  <h3>三级菜单结构</h3>
+  <table>
+    <tr><th>主菜单</th><th>子菜单</th><th>子子菜单 / 功能</th></tr>
+    <tr><td>🎮 娱乐功能</td><td>随机运势 / 掷骰子 / 猜拳 / 幸运大转盘 / 小游戏 / 点歌</td><td>小游戏 → 猜数字、老虎机</td></tr>
+    <tr><td>🛠 实用功能</td><td>个人信息 / 群信息 / 签到 / 天气 / 频道列表</td><td>-</td></tr>
+    <tr><td>🔐 授权功能</td><td>激活码</td><td>-</td></tr>
+    <tr><td>⚙️ 系统功能</td><td>版本 / 运行时间 / 状态</td><td>-</td></tr>
+    <tr><td>🔧 设置功能</td><td>报时 / 欢迎提示 / 全局模式</td><td>-</td></tr>
+    <tr><td>👥 群管系统</td><td>禁言 / 解禁 / 踢人</td><td>-</td></tr>
+    <tr><td>📢 频道管理</td><td>板块列表 / 成员列表 / 身份组</td><td>-</td></tr>
+    <tr><td>📚 词典学习</td><td>添加词条 / 词条列表 / 删除词条</td><td>-</td></tr>
+    <tr><td>🤖 AI 对话</td><td colspan="2">发送「AI 问题」；密钥用户自备（AI配置 Key=xxx）</td></tr>
+    <tr><td>📅 签到</td><td colspan="2">发送「签到」</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3>多机器人隔离与去重</h3>
+  <p>每个机器人（AppID）独立维护已启用模块（<code>setModules</code>）；默认全部启用，配置后仅回复本机器人已开启的菜单与功能。同一消息 5 秒去重，避免 Webhook 与 WebSocket 重复回复。</p>
+</div>
+
+<div class="card">
+  <h3>QQ 自定义菜单与指令面板</h3>
+  <p>群内指令（需超管）：</p>
+  <p><code>/菜单面板 查询</code> <code>/菜单面板 修改 &lt;JSON&gt;</code> <code>/菜单面板 列表</code> <code>/菜单面板 创建 &lt;JSON&gt;</code> <code>/菜单面板 详情 &lt;panel_id&gt;</code> <code>/菜单面板 修改面板 &lt;panel_id&gt; &lt;JSON&gt;</code> <code>/菜单面板 删除 &lt;panel_id&gt;</code> <code>/菜单面板 关联 &lt;panel_id&gt; &lt;JSON&gt;</code></p>
+</div>
+
+<div class="card">
+  <h3>入群欢迎</h3>
+  <p>新成员入群自动发送 <span class="green">「本群发送菜单有惊喜」</span>；开关：<code>欢迎提示 开/关</code>（需超管）。</p>
+</div>
+
+<div class="card">
+  <h3>报时</h3>
+  <p>整点报时支持文字/图片模式：<code>报时 开/关</code>、<code>报时 图片/文字</code>（需超管）。</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>文字按钮菜单测试</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background: #f2f3f5; color: #333; }
+  header { background: linear-gradient(135deg,#1e3a8a,#2563eb); color: #fff; padding: 14px 16px; font-size: 17px; font-weight: 600; text-align: center; position: sticky; top: 0; z-index: 10; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 12px 12px 90px; }
+  .mode-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .mode-btn { flex: 1; padding: 8px 0; border: 1px solid #d9d9d9; background: #fff; border-radius: 8px; font-size: 13px; cursor: pointer; color: #555; }
+  .mode-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .tip { font-size: 12px; color: #999; margin-bottom: 8px; text-align: center; }
+  #chat { display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 88%; padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: #95ec69; border-top-right-radius: 2px; }
+  .msg.bot { align-self: flex-start; background: #fff; border-top-left-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .msg.typing { align-self: flex-start; background: #fff; color: #999; font-size: 13px; }
+  .msg .nick { display: block; font-size: 11px; color: #999; margin-bottom: 4px; }
+  .divider { text-align: center; color: #bbb; font-size: 11px; margin: 6px 0; }
+  .menu-line { display: flex; flex-wrap: wrap; gap: 6px 0; }
+  .tbtn { color: #2563eb; cursor: pointer; user-select: none; padding: 2px 2px; border-radius: 4px; display: inline-block; }
+  .tbtn:hover { background: #eff6ff; }
+  .tbtn::after { content: " ↗"; font-size: 12px; }
+  .sep { display: inline-block; width: 14px; }
+  .img-demo { background: linear-gradient(135deg,#0f172a,#1e3a8a); color: #fff; border-radius: 10px; padding: 14px; font-size: 13px; text-align: center; }
+  .img-demo .badge { display: inline-block; border: 1px solid rgba(255,255,255,.4); border-radius: 10px; padding: 1px 8px; font-size: 10px; margin-left: 6px; vertical-align: middle; }
+  footer { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e5e5; padding: 10px 16px; font-size: 11px; color: #aaa; text-align: center; }
+</style>
+</head>
+<body>
+<header>文字按钮菜单测试</header>
+<div class="wrap">
+  <div class="mode-bar">
+    <button class="mode-btn" data-mode="text">纯文字</button>
+    <button class="mode-btn active" data-mode="text_link">文字链接</button>
+    <button class="mode-btn" data-mode="image">图片菜单</button>
+  </div>
+  <div class="tip">点击下方蓝色文字按钮测试触发效果（模拟：指令触发中 → 机器人自动回复对应菜单）</div>
+  <div id="chat"></div>
+</div>
+<footer>QQ机器人平台 · 菜单测试页（纯前端模拟，不调用真实接口）</footer>
+
+<script>
+var MODE = 'text_link';
+
+var MENUS = {
+  '主菜单': {
+    title: '主菜单',
+    items: [
+      { label: '娱乐', desc: '运势/骰子/笑话/小游戏', action: '娱乐功能' },
+      { label: '实用', desc: '打卡/备注/天气/昵称', action: '实用功能' },
+      { label: '授权', desc: '激活码获取与激活', action: '授权功能' },
+      { label: '系统', desc: '版本/更新日志/运行时间', action: '系统功能' },
+      { label: '设置', desc: '定时关机/整点提醒', action: '设置功能' },
+      { label: 'DIC', desc: '词典回复/底部广告', action: 'DIC设置' },
+      { label: '群管', desc: '禁言/解禁/踢人', action: '群管系统' },
+      { label: '系统菜单', desc: '开机/关机/主人管理', action: '系统菜单' },
+      { label: '帮助', desc: '使用帮助', action: '帮助' },
+      { label: '群信息', desc: '群活跃统计看板', action: '群信息' },
+      { label: '频道管理', desc: '频道列表/权限', action: '频道管理' },
+      { label: '唱歌', desc: '点歌搜索/在线试听', action: '唱歌' },
+      { label: '赞助', desc: '赞助与广告位', action: 'url' },
+      { label: '拉我进群', desc: '拉机器人进群', action: '拉我进群' },
+      { label: '反馈', desc: '提交建议/问题', action: '反馈' },
+      { label: '作者', desc: '反馈与商务合作', action: '作者' },
+      { label: '登录', desc: '面板登录管理', action: 'panel' }
+    ]
+  },
+  '娱乐功能': { title: '娱乐功能', items: [
+    { label: '今日运势', desc: '随机运势', action: '今日运势' },
+    { label: '掷骰子', desc: '随机点数', action: '掷骰子' },
+    { label: '讲笑话', desc: '随机笑话', action: '讲笑话' },
+    { label: '猜数字', desc: '1-100 猜数字', action: '猜数字' },
+    { label: '主菜单', desc: '返回主菜单', action: '主菜单' }
+  ]},
+  '实用功能': { title: '实用功能', items: [
+    { label: '打卡', desc: '每日打卡', action: '打卡' },
+    { label: '每日备注', desc: '记录备注', action: '每日备注' },
+    { label: '查询天气', desc: '天气查询', action: '查询天气' },
+    { label: '设置昵称', desc: '修改群昵称', action: '设置昵称' },
+    { label: '主菜单', desc: '返回主菜单', action: '主菜单' }
+  ]},
+  '授权功能': { title: '授权功能', items: [
+    { label: '获取激活码', desc: '生成激活码', action: '获取激活码' },
+    { label: '激活授权码', desc: '激活使用', action: '激活授权码' },
+    { label: '主菜单', desc: '返回主菜单', action: '主菜单' }
+  ]},
+  '系统功能': { title: '系统功能', items: [
+    { label: '版本', desc: '当前版本', action: '版本' },
+    { label: '更新日志', desc: '最近更新', action: '更新日志' },
+    { label: '运行时间', desc: '运行时长', action: '运行时间' },
+    { label: '主菜单', desc: '返回主菜单', action: '主菜单' }
+  ]},
+  '设置功能': { title: '设置功能', items: [
+    { label: '定时关机', desc: '设置定时', action: '定时关机' },
+    { label: '整点提醒', desc: '开关报时', action: '整点提醒' },
+    { label: '主菜单', desc: '返回主菜单', action: '主菜单' }
+  ]},
+  'DIC设置': { title: 'DIC设置', items: [
+    { label: '开启dic', desc: '启用词典回复', action: '开启dic回复' },
+    { label: '写入dic', desc: '上传词典', action: '写入dic' },
+    { label: '关闭dic', desc: '停用词典回复', action: '关闭dic回复' },
+    { label: '底部广告', desc: '自定义广告', action: '设置底部广告' },
+    { label: '主菜单', desc: '返回主菜单', action: '主菜单' }
+  ]},
+  '群管系统': { title: '群管系统', items: [
+    { label: '开启全禁', desc: '全员禁言', action: '开启群全禁' },
+    { label: '关闭全禁', desc: '解除全员禁言', action: '关闭群全禁' },
+    { label: '禁言', desc: '禁言成员', action: '禁言' },
+    { label: '解禁', desc: '解除禁言', action: '解禁' },
+    { label: '踢人', desc: '移出成员', action: '踢人' },
+    { label: '主菜单', desc: '返回主菜单', action: '主菜单' }
+  ]},
+  '系统菜单': { title: '系统菜单', items: [
+    { label: '开机', desc: '启动机器人', action: '开机' },
+    { label: '关机', desc: '停止机器人', action: '关机' },
+    { label: '主人管理', desc: '设置主人', action: '设置主人' },
+    { label: '主菜单', desc: '返回主菜单', action: '主菜单' }
+  ]}
+};
+
+var chat = document.getElementById('chat');
+var modeBtns = document.querySelectorAll('.mode-btn');
+
+function addMsg(kind, html, text) {
+  var div = document.createElement('div');
+  div.className = 'msg ' + kind;
+  if (kind === 'bot') {
+    var nick = document.createElement('span');
+    nick.className = 'nick';
+    nick.textContent = '机器人';
+    div.appendChild(nick);
+  }
+  var body = document.createElement('div');
+  if (html) body.innerHTML = html; else body.textContent = text;
+  div.appendChild(body);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  chat.parentElement.scrollIntoView({ block: 'end' });
+}
+
+function renderMenu(menuKey) {
+  var m = MENUS[menuKey] || MENUS['主菜单'];
+  var lines = ['<b>' + m.title + '</b>'];
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━');
+  if (MODE === 'text_link') {
+    lines.push('点击下方蓝色文字按钮即可触发 ↓');
+    lines.push('');
+    for (var i = 0; i < m.items.length; i += 2) {
+      var cell = m.items.slice(i, i + 2).map(function(it) {
+        return '<span class="tbtn" data-action="' + it.action + '" data-label="' + it.label + '">' + it.label + '</span>';
+      }).join('<span class="sep"></span>');
+      lines.push(cell);
+    }
+  } else if (MODE === 'text') {
+    lines.push('发送菜单名即可触发 ↓');
+    lines.push('');
+    m.items.forEach(function(it) {
+      lines.push((it.desc ? it.label + ' - ' + it.desc : it.label) + '　发送「' + it.action + '」');
+    });
+  } else {
+    lines.push('<div class="img-demo">【图片菜单】' + m.title + '<span class="badge">MENU</span><br><span style="font-size:11px;opacity:.7">图片菜单在 QQ 群内以图片卡片展示，此处为示意</span></div>');
+  }
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('PHP · QQ机器人平台');
+  return lines.join('<br>');
+}
+
+function showMenu(menuKey, fromUser) {
+  if (fromUser) {
+    addMsg('user', null, fromUser);
+    addMsg('typing', null, '机器人回复中…');
+    setTimeout(function() {
+      chat.removeChild(chat.lastChild);
+      addMsg('bot', renderMenu(menuKey));
+      bindBtns();
+    }, 700);
+  } else {
+    addMsg('bot', renderMenu(menuKey));
+    bindBtns();
+  }
+}
+
+function bindBtns() {
+  document.querySelectorAll('.tbtn').forEach(function(btn) {
+    btn.onclick = function() {
+      var action = btn.getAttribute('data-action');
+      var label = btn.getAttribute('data-label');
+      if (action === 'url') { addMsg('user', null, label); addMsg('bot', '点击直达赞助链接（真实环境下跳转）。'); return; }
+      if (action === 'panel') { addMsg('user', null, label); addMsg('bot', '点击直达面板登录页（真实环境下跳转）。'); return; }
+      showMenu(MENUS[action] ? action : '主菜单', label);
+    };
+  });
+}
+
+modeBtns.forEach(function(btn) {
+  btn.onclick = function() {
+    MODE = btn.getAttribute('data-mode');
+    modeBtns.forEach(function(b) { b.classList.toggle('active', b === btn); });
+    showMenu('主菜单');
+  };
+});
+
+// 初始展示
+addMsg('bot', '<b>菜单测试说明</b><br>点击右上角模式按钮切换 纯文字 / 文字链接 / 图片菜单 三种模式；文字链接模式下点击蓝色文字按钮模拟「指令触发 → 机器人回复」。');
+addMsg('bot', renderMenu('主菜单'));
+bindBtns();
+</script>
+</body>
+</html>

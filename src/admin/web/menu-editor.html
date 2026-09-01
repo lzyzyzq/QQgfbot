@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>测试菜单 · 后台编辑器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background: #f2f3f5; color: #333; padding-bottom: 120px; }
+  header { background: linear-gradient(135deg,#1e3a8a,#2563eb); color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  header h1 { font-size: 17px; font-weight: 600; }
+  header .sub { font-size: 12px; opacity: .85; margin-top: 3px; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 14px 12px; }
+  .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+  .card h2 { font-size: 14px; color: #1e3a8a; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  label { font-size: 12px; color: #666; flex: 0 0 auto; }
+  select, input[type=text], textarea { padding: 8px 10px; border: 1px solid #d9d9d9; border-radius: 8px; font-size: 13px; font-family: inherit; width: 100%; }
+  input[type=text] { width: 100%; }
+  textarea { width: 100%; min-height: 52px; resize: vertical; line-height: 1.5; }
+  .btn { padding: 8px 16px; border: 1px solid #d9d9d9; background: #fff; border-radius: 8px; font-size: 13px; cursor: pointer; color: #555; }
+  .btn:hover { border-color: #2563eb; color: #2563eb; }
+  .btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.danger { color: #ef4444; border-color: #ef4444; }
+  .btn.sm { padding: 4px 10px; font-size: 12px; }
+  .btn.green { background: #16a34a; border-color: #16a34a; color: #fff; }
+  .btn.header-btn { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.45); color: #fff; }
+  .btn.header-btn:hover { background: rgba(255,255,255,.32); color: #fff; }
+  .btn.header-btn.green { background: #16a34a; border-color: #16a34a; }
+  .hint { font-size: 11px; color: #999; margin-top: 4px; }
+  .field { margin-bottom: 10px; }
+  .field > label { display: block; margin-bottom: 4px; font-size: 12px; color: #666; }
+  .pages-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .page-tab { padding: 6px 12px; border: 1px solid #d9d9d9; border-radius: 16px; font-size: 13px; cursor: pointer; background: #fff; color: #555; }
+  .page-tab.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .page-tab .x { margin-left: 6px; color: inherit; opacity: .6; cursor: pointer; }
+  .page-tab .x:hover { opacity: 1; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  /* 区块卡片 */
+  .block-card { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .block-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .block-head .bno { font-size: 12px; color: #999; min-width: 16px; }
+  .block-head .type-sel { flex: 1; min-width: 120px; }
+  .icon-btn { width: 26px; height: 26px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; line-height: 26px; text-align: center; background: #eef2ff; color: #2563eb; }
+  .icon-btn.del { background: #fef2f2; color: #ef4444; }
+  .icon-btn:hover { opacity: .8; }
+  .b-body .field:last-child { margin-bottom: 0; }
+  .link-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .link-row .lbl { flex: 1; }
+  .link-row .ltype { flex: 0 0 86px; width: 86px; padding: 8px 6px; }
+  .link-row .lval { flex: 1.5; }
+  .meta-checks { display: flex; gap: 14px; flex-wrap: wrap; padding: 6px 0; }
+  .meta-checks label { font-size: 13px; display: flex; align-items: center; gap: 4px; }
+  .menu-row { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+  .menu-row-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .menu-row-head .lbl { font-size: 12px; color: #666; }
+  .menu-item { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .menu-item input { flex: 1; }
+  .menu-item .type-sel { flex: 0 0 86px; width: 86px; padding: 8px 6px; }
+  .menu-item .val-input { flex: 2; }
+  .menu-item .del { flex: 0 0 auto; }
+  .item-extras { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: #f6f8fb; border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; font-size: 12px; }
+  .item-extras .xt { color: #888; }
+  .item-extras select { max-width: 240px; }
+  .item-extras .btn { margin: 0; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: #f6f8fb; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; }
+  .meta-row select { flex: 0 1 auto; max-width: 220px; }
+  .meta-row input[type="text"] { flex: 1; min-width: 90px; }
+  .meta-row .b-meta-skey { flex: 1.4; }
+  .switch { position: relative; width: 40px; height: 22px; display: inline-block; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .sl { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 22px; transition: .2s; }
+  .switch .sl:before { content: ""; position: absolute; height: 18px; width: 18px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .sl { background: #2563eb; }
+  .switch input:checked + .sl:before { transform: translateX(18px); }
+  .preview { background: #fff; border-radius: 12px; padding: 14px; white-space: pre-wrap; word-break: break-word; font-size: 14px; line-height: 1.7; }
+  .preview .link { color: #2563eb; cursor: pointer; }
+  .pv-avatar { text-align: center; margin: 4px 0; }
+  .pv-avatar img { border-radius: 50%; display: inline-block; border: 2px solid #e2e8f0; max-width: 100%; }
+  .pv-avatar-tip { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+  .insert-btn { display: block; width: 100%; margin: 6px 0; padding: 6px; border: 1px dashed #c7d2fe; background: #eef2ff; color: #2563eb; border-radius: 8px; font-size: 12px; cursor: pointer; }
+  .insert-btn:hover { background: #2563eb; color: #fff; border-color: #2563eb; }
+  /* 区块插入区（下拉选择类型 + 插入） */
+  .insert-zone { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+  .insert-zone .ins-type { flex: 1; min-width: 120px; }
+  .insert-zone .btn { flex-shrink: 0; }
+  /* 左右并排组 */
+  .group-children { border: 1px dashed #c7d2fe; border-radius: 10px; padding: 8px; margin-top: 8px; background: #fafbff; }
+  .group-child { border-style: dashed; background: #fff; margin-bottom: 8px; }
+  .group-child:last-child { margin-bottom: 0; }
+  .g-hint { font-size: 12px; color: #6366f1; background: #eef2ff; border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; }
+  .g-dot { font-size: 12px; color: #6366f1; flex-shrink: 0; }
+  .g-add { margin-top: 8px; width: 100%; }
+  .icon-btn.insL, .icon-btn.insR { background: #ecfdf5; color: #059669; font-size: 13px; width: 24px; height: 24px; line-height: 24px; flex-shrink: 0; }
+  .menu-item { flex-wrap: wrap; }
+  /* 预览：左右并排组 */
+  .pv-group { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
+  .pv-group-child { flex: 1; min-width: 0; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 4px 6px; background: #f8fafc; }
+  .pv-group-child .pv-avatar { margin: 2px 0; }
+  /* 长按拖拽排序（纯前端交互增强，不影响插件/后端） */
+  .drag-handle { width: 26px; height: 26px; border: none; border-radius: 6px; cursor: grab; font-size: 13px; line-height: 26px; text-align: center; background: #f1f5f9; color: #94a3b8; touch-action: none; user-select: none; flex-shrink: 0; }
+  .drag-handle:active { cursor: grabbing; }
+  .block-card.dragging { opacity: .45; border: 2px dashed #2563eb; box-shadow: 0 8px 24px rgba(37,99,235,.25); }
+  body.drag-active { user-select: none; cursor: grabbing; }
+  .size-inputs { display: flex; gap: 8px; margin-top: 6px; }
+  .size-inputs input { flex: 1; }
+  .meta-field { margin-bottom: 8px; }
+  #toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.75); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; display: none; z-index: 99; }
+  .backlink { color: #fff; text-decoration: none; font-size: 12px; opacity: .9; }
+  .sticky-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 10px 16px; display: flex; gap: 10px; justify-content: center; z-index: 20; }
+  .BLOCK_NAMES {}
+  /* 插件工坊 */
+  .workshop-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .workshop-overlay.active { display: flex; }
+  .workshop { background: #fff; border-radius: 14px; width: min(1100px, 96vw); height: 86vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .workshop-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: linear-gradient(135deg,#0f172a,#1e293b); color: #fff; }
+  .workshop-head h3 { font-size: 15px; flex: 1; }
+  .workshop-head .ws-x { cursor: pointer; font-size: 18px; opacity: .8; border: none; background: none; color: #fff; }
+  .workshop-body { flex: 1; display: flex; min-height: 0; }
+  .ws-side { width: 250px; border-right: 1px solid #e5e7eb; overflow-y: auto; background: #f8fafc; flex-shrink: 0; }
+  .ws-side .ws-item { padding: 10px 12px; border-bottom: 1px solid #eef0f3; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .ws-side .ws-item:hover { background: #eef2ff; }
+  .ws-side .ws-item.active { background: #2563eb; color: #fff; }
+  .ws-side .ws-item .nm { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ws-side .ws-item .tg { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #e2e8f0; color: #475569; flex-shrink: 0; }
+  .ws-side .ws-item.active .tg { background: rgba(255,255,255,.25); color: #fff; }
+  .ws-side .ws-item .on { font-size: 10px; flex-shrink: 0; }
+  .ws-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .ws-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid #e5e7eb; background: #fff; }
+  .ws-toolbar .fname { font-family: Consolas,Menlo,monospace; font-size: 13px; color: #2563eb; font-weight: 600; flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ws-editor-wrap { flex: 1; display: flex; min-height: 0; position: relative; background: #0d1117; }
+  .ws-gutter { width: 52px; background: #0d1117; color: #484f58; text-align: right; padding: 12px 8px; font-family: Consolas,Menlo,monospace; font-size: 13px; line-height: 1.65; overflow: hidden; user-select: none; border-right: 1px solid #21262d; }
+  .ws-code { flex: 1; background: #0d1117; color: #c9d1d9; border: none; outline: none; resize: none; padding: 12px; font-family: Consolas,Menlo,monospace; font-size: 13px; line-height: 1.65; tab-size: 4; white-space: pre; overflow: auto; }
+  .ws-status { padding: 8px 14px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #334155; background: #f8fafc; max-height: 96px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  .ws-status.ok { color: #16a34a; }
+  .ws-status.err { color: #dc2626; }
+  .ws-deps { padding: 8px 14px; border-top: 1px solid #e5e7eb; font-size: 12px; background: #fffbeb; color: #92400e; max-height: 96px; overflow-y: auto; }
+  .ws-deps .d-tag { display: inline-block; padding: 1px 8px; border-radius: 8px; margin: 2px 4px 2px 0; background: #fef3c7; border: 1px solid #fcd34d; font-family: Consolas,Menlo,monospace; font-size: 11px; }
+  .ws-deps .d-tag.builtin { background: #dcfce7; border-color: #86efac; color: #166534; }
+  .ws-deps .d-tag.ctx { background: #e0e7ff; border-color: #a5b4fc; color: #3730a3; }
+  .ws-deps .d-tag.missing { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+  .ws-btn { padding: 6px 12px; border: 1px solid #d9d9d9; background: #fff; border-radius: 8px; font-size: 12px; cursor: pointer; color: #555; }
+  .ws-btn:hover { border-color: #2563eb; color: #2563eb; }
+  .ws-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .ws-btn.green { background: #16a34a; border-color: #16a34a; color: #fff; }
+  .ws-btn.warn { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+  .ws-btn.danger { color: #ef4444; border-color: #ef4444; }
+  .ws-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .ws-count { font-size: 11px; color: #94a3b8; }
+  @media (max-width: 700px){ .ws-side { width: 140px; } .ws-toolbar .fname { font-size: 12px; } }
+  /* ===== 三杠收缩侧边栏 ===== */
+  #btnMenu { font-size: 17px; line-height: 1; padding: 8px 12px; }
+  .sidebar-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 40; display: none; }
+  .sidebar-overlay.open { display: block; }
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: min(320px, 86vw); background: #fff; z-index: 45; box-shadow: 2px 0 20px rgba(0,0,0,.18); transform: translateX(-105%); transition: transform .22s ease; display: flex; flex-direction: column; }
+  .sidebar.open { transform: translateX(0); }
+  .sb-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: linear-gradient(135deg,#1e3a8a,#2563eb); color: #fff; font-weight: 600; font-size: 15px; }
+  .sb-head .sb-x { cursor: pointer; font-size: 18px; opacity: .85; background: none; border: none; color: #fff; }
+  .sb-body { flex: 1; overflow-y: auto; padding: 10px 12px; }
+  .sb-section { margin-bottom: 14px; }
+  .sb-title { font-size: 13px; font-weight: 600; color: #1e3a8a; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+  .sb-title .btn { padding: 2px 8px; font-size: 11px; }
+  .sb-item { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #475569; border: 1px solid transparent; margin-bottom: 4px; }
+  .sb-item:hover { background: #eef2ff; color: #1e3a8a; }
+  .sb-item.active { background: #2563eb; color: #fff; }
+  .sb-item .sb-on { font-size: 10px; opacity: .8; margin-left: 6px; }
+  .sb-extern { font-size: 12px; }
+  .el-plugin { font-size: 12px; font-weight: 600; color: #334155; background: #f1f5f9; border-radius: 6px; padding: 4px 8px; margin: 6px 0 3px; display: flex; align-items: center; gap: 6px; }
+  .el-off { font-size: 10px; background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 0 6px; }
+  .el-item { display: flex; gap: 6px; align-items: center; padding: 3px 8px; border-bottom: 1px dashed #eef0f3; }
+  .el-label { color: #2563eb; font-weight: 600; flex-shrink: 0; }
+  .el-cmd { color: #64748b; font-size: 11px; word-break: break-all; }
+  .el-empty { color: #94a3b8; font-size: 12px; padding: 4px 0; }
+  /* ===== 变量管理 ===== */
+  .var-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  .var-table th, .var-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eef0f3; font-size: 13px; vertical-align: middle; }
+  .var-table th { color: #64748b; font-weight: 600; font-size: 12px; background: #f8fafc; }
+  .var-table code { background: #eef2ff; color: #3730a3; border-radius: 4px; padding: 1px 6px; font-size: 12px; }
+  .var-table .var-val { word-break: break-all; color: #334155; }
+  .var-hint { font-size: 11px; color: #94a3b8; background: #f8fafc; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; line-height: 1.6; }
+  .var-hint code { background: #eef2ff; color: #3730a3; border-radius: 4px; padding: 0 5px; font-size: 11px; }
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <button class="btn header-btn" id="btnMenu" onclick="toggleSidebar()" title="展开/收起侧边栏（插件快速切换 · 外显文字指令 · 全局变量）">☰</button>
+      <div><h1>🧩 插件卡片 · 后台编辑器</h1><div class="sub">所有 js 插件的卡片内容都在此编辑预览：整卡 = 有序区块列表，按住区块标题行「≡」可长按拖动排序（桌面鼠标按住拖 / 手机长按拖，头像可任意摆放），每块可增删 / 上移 / 下移 / 编辑，每个区块前、后都有「＋」可插入新板块；cmd=回填指令，link=跳转，image=发送图片，page=跳转页面，plugin=调用插件；头像可调大小且与菜单同一卡片；配置按 插件+机器人 分组保存</div></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn header-btn" onclick="loadConfig()">↻ 重新加载</button>
+      <button class="btn header-btn green" onclick="saveConfig()">💾 保存配置</button>
+      <button class="btn header-btn" id="btnWorkshop" onclick="openWorkshop()" title="仅超级主人可用：预览/在线修改/热重载所有插件代码" style="display:none;border-color:#22d3ee;color:#22d3ee">🔧 插件工坊</button>
+      <a href="/" class="backlink">← 返回管理面板</a>
+    </div>
+  </div>
+  <div id="saveBar" style="margin-top:8px;font-size:12px;opacity:.95;display:none"></div>
+</header>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sb-head">导航与指令 <span class="sb-x" onclick="toggleSidebar()">✕</span></div>
+  <div class="sb-body">
+    <div class="sb-section">
+      <div class="sb-title">🧩 插件（点选切换）</div>
+      <div id="sbPlugins"><div class="el-empty">加载中...</div></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">🔗 外显文字指令 <button class="btn" onclick="loadExternLinks()">刷新</button></div>
+      <div id="sbExternLinks" class="sb-extern"><div class="el-empty">自动扫描各插件源码中的外显文字链接（点击☰后自动加载）</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>🧩 选择插件</h2>
+    <div class="row">
+      <label>插件：</label>
+      <select id="pluginSel" style="flex:1"><option value="">加载中...</option></select>
+    </div>
+    <div class="hint">全部 js 机器人插件均可在本页编辑/预览/保存其卡片配置（按机器人分组）。「欢迎新用户」自动渲染入群欢迎卡片；「测试菜单」渲染菜单卡片；其他插件读取配置后即可生效。</div>
+  </div>
+
+  <div class="card">
+    <h2>🤖 选择机器人</h2>
+    <div class="row">
+      <label>机器人 AppID：</label>
+      <select id="botSel" style="flex:1"><option value="">加载中...</option></select>
+    </div>
+    <div class="hint">下拉来自「我的机器人」列表；选择后自动加载该机器人 + 当前插件的卡片配置。</div>
+  </div>
+
+  <div class="card">
+    <h2>📝 插件信息 <span style="color:#999;font-size:12px">（名称 / 版本 / 用途 / 触发说明，保存后生效）</span></h2>
+    <div class="meta-field"><label>插件名称</label><input type="text" id="metaName" placeholder="插件显示名称"></div>
+    <div class="meta-field"><label>版本号</label><input type="text" id="metaVersion" placeholder="如 1.0.0"></div>
+    <div class="meta-field"><label>用途说明</label><textarea id="metaDesc" placeholder="这个插件是做什么的？"></textarea></div>
+    <div class="meta-field"><label>触发指令说明（会触发什么功能 / 需要它做到什么）</label><textarea id="metaTrigger" placeholder="例如：发「禁言 @用户 10」可禁言该成员 10 分钟"></textarea></div>
+    <div class="toolbar">
+      <button class="btn primary" onclick="saveMeta()">💾 保存插件信息</button>
+      <button class="btn" onclick="loadMeta()">↻ 重新加载</button>
+      <button class="btn danger" onclick="resetMeta()">↺ 恢复原始信息</button>
+    </div>
+    <div class="hint">改动保存到服务器 config（plugin.file-xxx.meta），网页插件列表与卡片说明会按此显示。</div>
+  </div>
+
+  <div class="card">
+    <h2>📄 页面管理</h2>
+    <div class="pages-tabs" id="pagesTabs"></div>
+    <div class="toolbar">
+      <label>主菜单页</label>
+      <select id="mainPage" style="flex:1"></select>
+      <input type="text" id="newPageName" placeholder="新页面名（如：娱乐功能）" style="flex:1">
+      <button class="btn primary" onclick="addPage()">＋ 新增页面</button>
+    </div>
+  </div>
+
+  <div class="card" id="pageEditor">
+    <h2>🧱 页面区块 <span id="curPageName" style="color:#999;font-size:12px"></span></h2>
+    <div class="hint" style="margin-bottom:10px">从上到下即卡片显示顺序。按住区块标题行「≡」拖动可调位置（桌面鼠标按住拖 / 手机长按拖），也可用 ↑↓ 按钮；每个区块上、下都有「＋」（下拉选择类型后插入新板块）；「⇆ 左右并排组」把多个子块排在同一行；每个区块都可选 靠左/居中/靠右 对齐；链接/菜单项/信息项每行左右都有「＋」可插入新项。</div>
+    <div id="blocksEditor"></div>
+    <div class="toolbar" style="margin-top:8px">
+      <label>添加区块：</label>
+      <select id="addBlockType" style="flex:1">
+        <option value="avatar">头像</option>
+        <option value="head_links">外显链接（免@联系群主）</option>
+        <option value="title">标题</option>
+        <option value="meta">用户信息（昵称/ID/群）</option>
+        <option value="divider">分割线</option>
+        <option value="intro">说明文字</option>
+        <option value="rows">菜单项（功能按钮）</option>
+        <option value="tips">提示</option>
+        <option value="footer_title">底部标题</option>
+        <option value="footer">底部内容（代码块/实时时间）</option>
+        <option value="__group">⇆ 左右并排组（多子块并排一行）</option>
+        <option value="official_group">⚙️ 官方功能组（一键预置全部官方能力）</option>
+      </select>
+      <button class="btn primary" onclick="addBlock()">＋ 添加区块</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>👁️ 渲染预览</h2>
+    <div class="preview" id="preview"></div>
+  </div>
+
+  <div class="card">
+    <h2>🔑 全局变量 <span style="color:#999;font-size:12px">（用户自定义，各插件共用）</span></h2>
+    <div class="var-hint">在下方创建变量名 + 值，保存到服务器 config（plugin.vars），任意插件代码里用 <code>ctx.engine.getVariable('变量名')</code> 读取、<code>ctx.engine.setVariable('变量名','值')</code> 写入；同一个变量可被多个插件、多个机器人调用。</div>
+    <div id="varsList"><div class="hint">加载中...</div></div>
+    <div class="row">
+      <input type="text" id="varNameInput" placeholder="变量名（如：客服QQ / 公告链接）" style="flex:1">
+      <input type="text" id="varValueInput" placeholder="变量值" style="flex:2">
+      <button class="btn primary" onclick="addVar()">＋ 添加/更新变量</button>
+    </div>
+    <div class="hint" style="margin-top:6px">同名保存即覆盖更新；删除需点列表里的「删除」。</div>
+  </div>
+</div>
+
+<div class="sticky-bottom">
+  <button class="btn danger" onclick="resetDefault()">↺ 恢复默认</button>
+  <button class="btn" onclick="loadConfig()">↻ 重新加载</button>
+  <button class="btn green" onclick="saveConfig()">💾 保存配置</button>
+</div>
+<div id="toast"></div>
+
+<script>
+var cfg = { main_page: '主菜单', pages: {} };
+var curPage = '主菜单';
+var bots = [];
+var curPlugin = '测试菜单';
+var pluginList = [];
+var BLOCK_NAMES = { avatar:'头像', head_links:'外显链接', title:'标题', meta:'用户信息', divider:'分割线', intro:'说明文字', rows:'菜单项', tips:'提示', footer_title:'底部标题', footer:'底部内容', official_group:'⚙️ 官方功能组', __group:'⇆ 左右并排组' };
+var ALIGN_OPTIONS = [ { v:'left', t:'靠左' }, { v:'center', t:'居中' }, { v:'right', t:'靠右' } ];
+function alignOptionsHtml(sel){
+  return ALIGN_OPTIONS.map(function(o){
+    return '<option value="'+o.v+'"'+(sel===o.v?' selected':'')+'>'+o.t+'</option>';
+  }).join('');
+}
+function blockAlign(b, def){ return (b && b.align === 'center') ? 'center' : (b && b.align === 'right') ? 'right' : (def || 'left'); }
+var FAKE = { nick:'测试', qq:'10001', openid:'OPENID…', group:'测试群', gnumber:'123456' };
+// 官方开放平台能力清单（后端 /api/menu-config/capabilities 会覆盖为最新；此处为离线兜底）
+var OFFICIAL_CAPS = [
+  { label: '📝 文字消息', value: '测试官方 文字消息' },
+  { label: '🖼️ 图片消息', value: '测试官方 图片消息' },
+  { label: '🔊 语音消息', value: '测试官方 语音消息' },
+  { label: '🎬 视频消息', value: '测试官方 视频消息' },
+  { label: '📁 文件消息', value: '测试官方 文件消息' },
+  { label: '📄 Markdown消息', value: '测试官方 Markdown消息' },
+  { label: '🔘 内联按钮', value: '测试官方 内联按钮' },
+  { label: '📇 文卡', value: '测试官方 文卡' },
+  { label: '🖼️ 大图卡', value: '测试官方 大图卡' },
+  { label: '🔗 跳转卡', value: '测试官方 跳转卡' },
+  { label: '🗒️ 表单卡', value: '测试官方 表单卡' },
+  { label: '💨 流式消息', value: '测试官方 流式消息' },
+  { label: '🗑️ 撤回消息', value: '测试官方 撤回消息' },
+  { label: '😀 表情表态', value: '测试官方 表情表态' },
+  { label: '🏠 群信息', value: '测试官方 群信息' },
+  { label: '👥 群成员', value: '测试官方 群成员' },
+  { label: '📢 群公告', value: '测试官方 群公告' },
+  { label: '🔇 全员禁言', value: '测试官方 全员禁言' },
+  { label: '🔕 禁言列表', value: '测试官方 禁言列表' },
+  { label: '📥 入群申请', value: '测试官方 入群申请' },
+  { label: '🗂️ 群组列表', value: '测试官方 群组列表' },
+  { label: '📡 频道信息', value: '测试官方 频道信息' },
+  { label: '🤖 机器人信息', value: '测试官方 机器人信息' },
+  { label: '👤 用户信息', value: '测试官方 用户信息' },
+  { label: '🆔 OpenID查询', value: '测试官方 OpenID查询' }
+];
+function officialCapabilitiesGroup(){
+  var rows = [];
+  for (var i = 0; i < OFFICIAL_CAPS.length; i += 2){
+    var row = [{ label: OFFICIAL_CAPS[i].label, type: 'cmd', value: OFFICIAL_CAPS[i].value }];
+    if (OFFICIAL_CAPS[i + 1]) row.push({ label: OFFICIAL_CAPS[i + 1].label, type: 'cmd', value: OFFICIAL_CAPS[i + 1].value });
+    rows.push(row);
+  }
+  return rows;
+}
+var TYPE_OPTIONS = [
+  { v:'cmd',      t:'cmd 回填' },
+  { v:'cmd_auto', t:'cmd_auto 一键触发' },
+  { v:'link',     t:'link 跳转' },
+  { v:'image',    t:'image 发送图片' },
+  { v:'page',     t:'page 跳转页面' },
+  { v:'plugin',   t:'plugin 调用插件' }
+];
+var TYPE_PLACEHOLDER = { cmd:'指令内容（如：签到）', cmd_auto:'指令内容（点此直接发送，如：今日运势）', link:'https:// 网址', image:'图片 URL', page:'页面名（如：官方功能）', plugin:'插件名 指令（如：娱乐中心 掷骰子）' };
+function typeOptionsHtml(sel){
+  return TYPE_OPTIONS.map(function(o){
+    return '<option value="'+o.v+'"'+(sel===o.v?' selected':'')+'>'+o.t+'</option>';
+  }).join('');
+}
+
+function pluginQS(){ return 'plugin=' + encodeURIComponent(curPlugin); }
+function pluginBody(body){ body.plugin = curPlugin; return body; }
+
+function $(id){ return document.getElementById(id); }
+function toast(msg){ var t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._t); t._t=setTimeout(function(){t.style.display='none'},2200); }
+
+function api(url, opts){
+  opts = opts || {};
+  var token = localStorage.getItem('admin_token') || '';
+  var headers = {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  if (opts.body && !(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+   return fetch(url, Object.assign({}, opts, { headers: Object.assign({}, headers, opts.headers || {}), credentials: 'same-origin', cache: opts.cache || 'no-store' })).then(function(r){
+     if (r.status === 401){ toast('⚠️ 登录已失效或未登录，请返回管理面板登录后重试'); }
+     return r.text().then(function(txt){
+       var d = null;
+       try { d = JSON.parse(txt); } catch(e){}
+       if (d && typeof d === 'object') return { ok: r.ok, status: r.status, data: d };
+       var preview = String(txt).replace(/\s+/g, ' ').slice(0, 120);
+       var why = '后端接口返回异常（HTTP ' + r.status + (preview ? '：' + preview : '') + '），请确认后端已升级并重启服务（cd /var/www/php && unzip -o 新版包 && pm2 restart qqbot）';
+       return { ok: false, status: r.status, data: { error: why } };
+     });
+   }).catch(function(err){
+     toast('⚠️ 网络请求失败：' + (err && err.message ? err.message : String(err)) + '（请检查网络或后端服务）');
+     return { ok: false, status: 0, data: { error: 'network_error: ' + (err && err.message || String(err)) } };
+   });
+}
+
+function setSaveBar(html, ok){
+  var sb = $('saveBar');
+  if (!sb) return;
+  sb.style.display = 'block';
+  sb.textContent = html;
+  sb.style.color = ok === false ? '#fca5a5' : '#dcfce7';
+  clearTimeout(sb._t);
+  sb._t = setTimeout(function(){ sb.style.display = 'none'; }, 6000);
+}
+
+function defaultPages(){
+  return {
+    '主菜单': {
+      blocks: [
+        { type: 'avatar', source: 'user' },
+        { type: 'head_links', items: [{ label: '免@联系群主', type: 'cmd', value: '联系群主' }] },
+        { type: 'title', text: '**🌟 空空 Bot 测试菜单**' },
+        { type: 'meta', show: ['nickname', 'userid', 'group'] },
+        { type: 'divider', text: '━━━━━━━━━━━━━━' },
+        { type: 'intro', text: '点下方链接，指令会填入输入框，点发送即可使用 ↓' },
+        { type: 'rows', rows: [
+          [ { label:'📅 签到', type:'cmd', value:'签到' }, { label:'📋 我的签到', type:'cmd', value:'我的签到' } ],
+          [ { label:'📊 签到记录', type:'cmd', value:'签到记录' } ],
+          [ { label:'🔮 今日运势', type:'cmd', value:'今日运势' }, { label:'🎲 掷骰子', type:'cmd', value:'掷骰子' } ],
+          [ { label:'😄 笑话', type:'cmd', value:'笑话' } ],
+          [ { label:'⚙️ 官方功能', type:'cmd', value:'测试菜单 @官方功能' } ]
+        ] },
+        { type: 'tips', text: '📌 Tips: 签到为测试功能，点击后确认输入框指令再发送' },
+        { type: 'divider', text: '━━━━━━━━━━━━━━' },
+        { type: 'footer_title', text: '⚠️ 测试功能 ⚠️' },
+        { type: 'footer', fence: 'text', lines: ['当前时间：{time}', '最后更新：2026-08-28'] }
+      ]
+    },
+    '官方功能': {
+      blocks: [
+        { type: 'avatar', source: 'user' },
+        { type: 'head_links', items: [{ label: '免@联系群主', type: 'cmd', value: '联系群主' }] },
+        { type: 'title', text: '**⚙️ 官方开放平台功能**' },
+        { type: 'meta', show: ['nickname', 'userid', 'group'] },
+        { type: 'divider', text: '━━━━━━━━━━━━━━' },
+        { type: 'intro', text: '以下是官方开放平台可实现的能力演示，点某项回填演示指令，点发送即可调用官方接口 ↓' },
+        { type: 'rows', rows: [
+          [ { label:'📝 文字消息', type:'cmd', value:'测试官方 文字消息' }, { label:'🖼️ 图片消息', type:'cmd', value:'测试官方 图片消息' } ],
+          [ { label:'🔊 语音消息', type:'cmd', value:'测试官方 语音消息' }, { label:'🎬 视频消息', type:'cmd', value:'测试官方 视频消息' } ],
+          [ { label:'📄 Markdown消息', type:'cmd', value:'测试官方 Markdown消息' }, { label:'🔘 内联按钮', type:'cmd', value:'测试官方 内联按钮' } ],
+          [ { label:'📇 文卡', type:'cmd', value:'测试官方 文卡' }, { label:'🖼️ 大图卡', type:'cmd', value:'测试官方 大图卡' } ],
+          [ { label:'🔗 跳转卡', type:'cmd', value:'测试官方 跳转卡' }, { label:'💨 流式消息', type:'cmd', value:'测试官方 流式消息' } ],
+          [ { label:'🗑️ 撤回消息', type:'cmd', value:'测试官方 撤回消息' }, { label:'🏠 群信息', type:'cmd', value:'测试官方 群信息' } ],
+          [ { label:'👥 群成员', type:'cmd', value:'测试官方 群成员' }, { label:'🔇 禁言列表', type:'cmd', value:'测试官方 禁言列表' } ],
+          [ { label:'🤖 机器人信息', type:'cmd', value:'测试官方 机器人信息' } ],
+          [ { label:'🏠 返回主菜单', type:'cmd', value:'测试菜单' } ]
+        ] },
+        { type: 'tips', text: '📌 每一项对应一个官方接口，指令格式：测试官方 <能力>；可在此新增/删除/编辑你的功能项' },
+        { type: 'divider', text: '━━━━━━━━━━━━━━' },
+        { type: 'footer_title', text: '⚠️ 官方能力提示 ⚠️' },
+        { type: 'footer', fence: 'text', lines: ['当前时间：{time}', '最后更新：2026-08-28'] }
+      ]
+    }
+  };
+}
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function curBlocks(){ var pg = cfg.pages[curPage] || {}; if (!Array.isArray(pg.blocks)) pg.blocks = []; return pg.blocks; }
+
+// ========== 页面切换 ==========
+function renderTabs(){
+  var names = Object.keys(cfg.pages);
+  var el = $('pagesTabs');
+  el.innerHTML = '';
+  names.forEach(function(n){
+    var t = document.createElement('span');
+    t.className = 'page-tab' + (n === curPage ? ' active' : '');
+    t.innerHTML = esc(n) + '<span class="x" title="删除页面">✕</span>';
+    t.onclick = function(e){
+      if (e.target.classList.contains('x')){ deletePage(n); e.stopPropagation(); return; }
+      curPage = n; renderTabs(); renderBlocksEditor(); renderPreview();
+    };
+    el.appendChild(t);
+  });
+  var sp = $('mainPage');
+  sp.innerHTML = '';
+  names.forEach(function(n){
+    var o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    if (n === cfg.main_page) o.selected = true;
+    sp.appendChild(o);
+  });
+}
+
+// ========== 区块编辑器 ==========
+// ========== 菜单项能力模板（plugin/image 快捷配置） ==========
+var ITEM_TPL = {
+  sing:     { label: '🎤 唱歌',   type: 'plugin', value: '唱歌 <歌名>' },
+  qing:     { label: '🎶 清唱',   type: 'plugin', value: '清唱 <歌名>' },
+  guai:     { label: '😜 怪唱',   type: 'plugin', value: '怪唱 <歌名>' },
+  drawcmd:  { label: '🎨 AI画图', type: 'image',  via: 'draw', value: '<画面描述>' },
+  drawcmd2: { label: '🎨 画图',   type: 'plugin', value: '画图 <画面描述>' }
+};
+
+// ========== 用户信息行（meta）字段编辑器 ==========
+var META_LABEL = { nickname: '👤 昵称', userid: '🆔 用户ID', group: '👥 群信息', role: '🔑 群内权限', points: '💰 积分', checkin_streak: '🔥 连续签到', checkin_date: '📅 最近签到', fish_coins: '🎣 钓鱼金币', fish_catches: '🐟 钓鱼收获', farm_coins: '🌾 农场金币' };
+var META_OPTIONS = [
+  { v: 'nickname',        t: '👤 昵称' },
+  { v: 'userid',          t: '🆔 用户ID' },
+  { v: 'group',           t: '👥 群信息' },
+  { v: 'role',            t: '🔑 群内权限（群主/管理/主人）' },
+  { v: 'points',          t: '💰 积分（签到系统累计）' },
+  { v: 'checkin_streak',  t: '🔥 连续签到（天）' },
+  { v: 'checkin_date',    t: '📅 最近签到（日期）' },
+  { v: 'fish_coins',      t: '🎣 钓鱼金币' },
+  { v: 'fish_catches',    t: '🐟 钓鱼收获（条）' },
+  { v: 'farm_coins',      t: '🌾 农场金币' },
+  { v: '__custom',        t: '📊 自定义（指定插件+数据key）' }
+];
+function normalizeMetaFromBlock(b){
+  if (Array.isArray(b.meta_fields) && b.meta_fields.length) return b.meta_fields.slice();
+  var show = Array.isArray(b.show) ? b.show : [];
+  var out = [];
+  show.forEach(function(s){
+    if (typeof s === 'string' && s) out.push({ key: s, label: '' });
+    else if (s && typeof s === 'object' && s.key) out.push({ key: s.key, label: s.label || '', plugin: s.plugin, skey: s.skey, enabled: s.enabled });
+  });
+  return out;
+}
+function makeMetaFieldEditor(fd, mi, path){
+  var row = document.createElement('div');
+  row.className = 'meta-row';
+  var enabled = fd.enabled !== false;
+  var isCustom = fd.key === '__custom';
+  var optHtml = META_OPTIONS.map(function(o){
+    return '<option value="'+o.v+'"'+(fd.key===o.v?' selected':'')+'>'+o.t+'</option>';
+  }).join('');
+  var customHtml = isCustom
+    ? '<input type="text" class="b-meta-plugin" placeholder="插件名（如 娱乐中心）；或 data:文件.json（读 data/database 玩家数据）" value="'+esc(fd.plugin||'')+'">' +
+      '<input type="text" class="b-meta-skey" placeholder="数据key（{id}=当前用户ID）；data:时填 {id}:字段" value="'+esc(fd.skey||'')+'">'
+    : '';
+  row.innerHTML =
+    '<button class="icon-btn insL" title="在此项左侧插入">＋</button>' +
+    '<input type="checkbox" class="b-meta-en" title="勾选=显示该项"'+(enabled?' checked':'')+'>' +
+    '<select class="b-meta-key">'+optHtml+'</select>' +
+    '<input type="text" class="b-meta-label" placeholder="显示标签（留空=默认）" value="'+esc(fd.label||'')+'">' +
+    customHtml +
+    '<button class="icon-btn del b-meta-del">✕</button>' +
+    '<button class="icon-btn insR" title="在此项右侧插入">＋</button>';
+  var insMeta = function(idx){
+    try {
+      syncBlocksFromDom(); var blk = resolveBlk(path); if (!blk || blk.type !== 'meta') return;
+      if (!Array.isArray(blk.meta_fields)) blk.meta_fields = [];
+      idx = Math.max(0, Math.min(blk.meta_fields.length, idx));
+      blk.meta_fields.splice(idx,0,{key:'nickname',label:''});
+      renderBlocksEditor(); renderPreview();
+    } catch(e){ toast('⚠️ 添加信息项出错：' + (e && e.message || e)); }
+  };
+  row.querySelector('.b-meta-del').onclick = function(){ try { syncBlocksFromDom(); var blk=resolveBlk(path); if (blk) blk.meta_fields.splice(mi,1); renderBlocksEditor(); renderPreview(); } catch(e){ toast('⚠️ 删除信息项出错：' + (e && e.message || e)); } };
+  row.querySelector('.b-meta-key').onchange = function(){ syncBlocksFromDom(); renderBlocksEditor(); renderPreview(); };
+  row.querySelector('.insL').onclick = function(){ insMeta(mi); };
+  row.querySelector('.insR').onclick = function(){ insMeta(mi + 1); };
+  return row;
+}
+
+// ========== 菜单项 extras（image 发送方式 / plugin 模板+插件下拉 / page 页面下拉） ==========
+function renderItemExtras(it, item, ri, ii, onUpdate){
+  var box = it.querySelector('.item-extras');
+  if (!box) return;
+  var t = it.querySelector('.b-itype').value;
+  var html = '';
+  if (t === 'image'){
+    var via = item.via === 'draw' ? 'draw' : 'send';
+    html = '<span class="xt">发送方式</span>' +
+      '<select class="b-ivia">' +
+      '<option value="send"'+(via==='send'?' selected':'')+'>直接发送图片（URL→富媒体上传）</option>' +
+      '<option value="draw"'+(via==='draw'?' selected':'')+'>AI 画图（值=画面描述，机器人画出来）</option>' +
+      '</select>' +
+      '<button class="btn sm b-meta-tpl" data-tpl="drawcmd">🎨 用画图</button>';
+  } else if (t === 'plugin'){
+    html = '<span class="xt">常用能力</span>' +
+      '<button class="btn sm b-meta-tpl" data-tpl="sing">🎤 唱歌</button>' +
+      '<button class="btn sm b-meta-tpl" data-tpl="qing">🎶 清唱</button>' +
+      '<button class="btn sm b-meta-tpl" data-tpl="guai">😜 怪唱</button>' +
+      '<button class="btn sm b-meta-tpl" data-tpl="drawcmd2">🎨 画图</button>' +
+      '<span class="xt">插件</span>' +
+      '<select class="b-pi"><option value="">选择已加载插件…</option>' +
+      pluginList.map(function(p){ return '<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>'; }).join('') +
+      '</select>';
+  } else if (t === 'page'){
+    html = '<span class="xt">跳转页面</span><select class="b-pg"><option value="">选择页面…</option>' +
+      Object.keys(cfg.pages || {}).map(function(pg){ return '<option value="'+esc(pg)+'"'+(item.value===pg?' selected':'')+'>'+esc(pg)+'</option>'; }).join('') +
+      '</select>';
+  }
+  box.innerHTML = html;
+  var ivia = box.querySelector('.b-ivia');
+  if (ivia) ivia.onchange = function(){
+    var v = ivia.value;
+    it.querySelector('.b-ival').placeholder = v === 'draw' ? '画面描述（如：蓝色 星空 落日）' : (TYPE_PLACEHOLDER.image || '图片 URL');
+    syncBlocksFromDom(); renderBlocksEditor(); renderPreview();
+  };
+  Array.prototype.forEach.call(box.querySelectorAll('.b-meta-tpl'), function(btn){
+    btn.onclick = function(){ onUpdate('applyTpl', ri, btn.getAttribute('data-tpl'), ii); };
+  });
+  var pi = box.querySelector('.b-pi');
+  if (pi) pi.onchange = function(){
+    if (!pi.value) return;
+    var val = it.querySelector('.b-ival');
+    if (!val) return;
+    if (val.value.indexOf(pi.value + ' ') === 0) return;
+    val.value = pi.value + ' ' + val.value;
+  };
+  var pg = box.querySelector('.b-pg');
+  if (pg) pg.onchange = function(){
+    if (!pg.value) return;
+    var val = it.querySelector('.b-ival');
+    if (val) val.value = pg.value;
+  };
+}
+
+function makeRowEditor(row, ri, onUpdate){
+  var wrap = document.createElement('div');
+  wrap.className = 'menu-row';
+  var head = document.createElement('div');
+  head.className = 'menu-row-head';
+  head.innerHTML = '<span class="lbl">第 ' + (ri+1) + ' 行</span>';
+  var ops = document.createElement('span');
+  [['↑', function(){ onUpdate('moveRow', ri, -1); }], ['↓', function(){ onUpdate('moveRow', ri, 1); }], ['✕', function(){ onUpdate('delRow', ri); }]].forEach(function(p){
+    var b = document.createElement('button'); b.className = 'icon-btn' + (p[0]==='✕' ? ' del' : ''); b.textContent = p[0]; b.onclick = p[1]; ops.appendChild(b);
+  });
+  head.appendChild(ops);
+  wrap.appendChild(head);
+  row.forEach(function(item, ii){
+    var it = document.createElement('div');
+    it.className = 'menu-item';
+    var imgPh = (item.type === 'image' && item.via === 'draw') ? '画面描述（如：蓝色 星空 落日）' : (TYPE_PLACEHOLDER[item.type] || '指令或URL');
+    it.innerHTML =
+      '<button class="icon-btn insL" title="在此项左侧插入新项">＋</button>' +
+      '<input type="text" class="b-ilabel" placeholder="按钮文字" value="'+esc(item.label)+'">' +
+      '<select class="b-itype">'+typeOptionsHtml(item.type)+'</select>' +
+      '<input type="text" class="b-ival" placeholder="'+(imgPh)+'" value="'+esc(item.value)+'">' +
+      '<button class="icon-btn del b-item-del">✕</button>' +
+      '<div class="item-extras"></div>' +
+      '<button class="icon-btn insR" title="在此项右侧插入新项">＋</button>';
+    it.querySelector('.b-item-del').onclick = function(){ onUpdate('delItem', ri, ii); };
+    it.querySelector('.insL').onclick = function(){ onUpdate('addItemAt', ri, ii); };
+    it.querySelector('.insR').onclick = function(){ onUpdate('addItemAt', ri, ii + 1); };
+    it.querySelector('.b-itype').onchange = function(){
+      var t = it.querySelector('.b-itype').value;
+      it.querySelector('.b-ival').placeholder = TYPE_PLACEHOLDER[t] || '指令或URL';
+      renderItemExtras(it, item, ri, ii, onUpdate);
+      syncBlocksFromDom(); renderBlocksEditor(); renderPreview();
+    };
+    renderItemExtras(it, item, ri, ii, onUpdate);
+    wrap.appendChild(it);
+  });
+  var addBtn = document.createElement('div');
+  addBtn.innerHTML = '<button class="btn sm">＋ 该项</button>';
+  addBtn.querySelector('button').onclick = function(){ onUpdate('addItem', ri); };
+  wrap.appendChild(addBtn);
+  return wrap;
+}
+
+function renderBlockCard(el, b, path, isChild){
+  var card = document.createElement('div');
+  card.className = isChild ? 'block-card group-child' : 'block-card';
+  var head = document.createElement('div');
+  head.className = 'block-head';
+  var no = document.createElement('span');
+  no.className = 'bno'; no.textContent = (path.length ? path.join('.') : '1') + '.';
+  if (!isChild){
+    var dh = document.createElement('button');
+    dh.className = 'drag-handle'; dh.textContent = '≡'; dh.title = '长按/按住拖动排序（头像也能任意摆放）';
+    head.appendChild(dh);
+  } else {
+    var gd = document.createElement('span');
+    gd.className = 'g-dot'; gd.textContent = '⇆'; gd.title = '左右并排组内子块';
+    head.appendChild(gd);
+  }
+  head.appendChild(no);
+  var sel = document.createElement('select');
+  sel.className = 'type-sel';
+  Object.keys(BLOCK_NAMES).forEach(function(k){
+    var o = document.createElement('option');
+    o.value = k; o.textContent = BLOCK_NAMES[k];
+    if (k === b.type) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = function(){ syncBlocksFromDom(); renderBlocksEditor(); renderPreview(); };
+  var ops = document.createElement('span');
+  [['↑', function(){ moveBlock(path, -1); }], ['↓', function(){ moveBlock(path, 1); }], ['✕', function(){ delBlock(path); }]].forEach(function(p){
+    var b2 = document.createElement('button'); b2.className = 'icon-btn' + (p[0]==='✕' ? ' del' : ''); b2.textContent = p[0]; b2.onclick = p[1]; ops.appendChild(b2);
+  });
+  head.appendChild(sel); head.appendChild(ops);
+  card.appendChild(head);
+
+  var body = document.createElement('div');
+  body.className = 'b-body';
+  renderBlockFields(body, b, path, isChild);
+  card.appendChild(body);
+  el.appendChild(card);
+  return card;
+}
+
+function renderBlockFields(body, b, path, isChild){
+  var type = b.type;
+  var alF = document.createElement('div'); alF.className = 'field';
+  alF.innerHTML = '<label>对齐（' + (type === '__group' ? '组内子块水平分布' : '区块内容') + '）</label><select class="b-align">' + alignOptionsHtml(blockAlign(b, type === 'avatar' ? 'center' : 'left')) + '</select>';
+  alF.querySelector('.b-align').onchange = function(){ syncBlocksFromDom(); renderBlocksEditor(); renderPreview(); };
+  body.appendChild(alF);
+
+  var onRowUpdate = function(op, a, b2, c){
+    syncBlocksFromDom();
+    var blk = resolveBlk(path); if (!blk || blk.type !== 'rows') return;
+    if (!Array.isArray(blk.rows)) blk.rows = [];
+    if (op === 'moveRow'){ var t = blk.rows.splice(a,1)[0]; blk.rows.splice(Math.max(0,Math.min(blk.rows.length,a+b2)),0,t); }
+    else if (op === 'delRow'){ blk.rows.splice(a,1); }
+    else if (op === 'addItem'){ if(!Array.isArray(blk.rows[a])) blk.rows[a]=[]; blk.rows[a].push({label:'新项',type:'cmd',value:'新项'}); }
+    else if (op === 'addItemAt'){
+      if(!Array.isArray(blk.rows[a])) blk.rows[a]=[];
+      var ins = c >= 0 ? c : 0; ins = Math.max(0, Math.min(blk.rows[a].length, ins));
+      blk.rows[a].splice(ins,0,{label:'新项',type:'cmd',value:'新项'});
+    }
+    else if (op === 'delItem'){ if (blk.rows[a]) blk.rows[a].splice(b2,1); }
+    else if (op === 'applyTpl'){
+      var tpl = ITEM_TPL[b2];
+      var rowArr = blk.rows[a];
+      var titem = rowArr && rowArr[c];
+      if (tpl && titem){ titem.label = tpl.label; titem.type = tpl.type; titem.value = tpl.value; if (tpl.via) titem.via = tpl.via; else delete titem.via; }
+    }
+    renderBlocksEditor(); renderPreview();
+  };
+
+  var f;
+  if (type === 'avatar'){
+    f = document.createElement('div'); f.className = 'field';
+    f.innerHTML = '<label>头像来源</label><select class="b-avatar-source"><option value="user"'+(b.source==='user'?' selected':'')+'>用户头像（绑定QQ头像）</option><option value="member"'+(b.source==='member'?' selected':'')+'>群成员头像</option><option value="fixed"'+(b.source==='fixed'?' selected':'')+'>固定图片URL</option><option value="none"'+(b.source==='none'?' selected':'')+'>不显示</option></select>' +
+      (b.source === 'fixed' ? '<input type="text" class="b-avatar-value" placeholder="图片URL" value="'+esc(b.value||'')+'">' : '') +
+      '<div class="size-inputs">' +
+      '<div><label>宽(px)</label><input type="number" class="b-avatar-w" min="20" max="640" step="8" value="'+(b.width||208)+'" oninput="renderPreview()"></div>' +
+      '<div><label>高(px)</label><input type="number" class="b-avatar-h" min="20" max="640" step="8" value="'+(b.height||208)+'" oninput="renderPreview()"></div>' +
+      '</div>' +
+      '<button class="btn sm b-save-avatar" title="仅保存头像来源与宽高，不影响其它区块">💾 保存头像大小</button>';
+    f.querySelector('.b-avatar-source').onchange = function(){ syncBlocksFromDom(); renderBlocksEditor(); renderPreview(); };
+    f.querySelector('.b-save-avatar').onclick = function(){ saveAvatarSize(); };
+  } else if (type === 'head_links'){
+    f = document.createElement('div'); f.className = 'field';
+    f.innerHTML = '<label>外显链接（每项一行：label + 类型 + 指令/URL；每行左右「＋」插入新链接）</label><div class="b-links"></div><button class="btn sm b-add-link">＋ 添加链接</button>';
+    var linksBox = f.querySelector('.b-links');
+    (b.items || []).forEach(function(it, li){
+      var row = document.createElement('div');
+      row.className = 'link-row';
+      row.innerHTML =
+        '<button class="icon-btn insL" title="在此链接左侧插入">＋</button>' +
+        '<input type="text" class="lbl" placeholder="显示文字" value="'+esc(it.label)+'">' +
+        '<select class="ltype">'+typeOptionsHtml(it.type)+'</select>' +
+        '<input type="text" class="lval" placeholder="'+(TYPE_PLACEHOLDER[it.type]||'指令或URL')+'" value="'+esc(it.value)+'">' +
+        '<button class="icon-btn del b-link-del">✕</button>' +
+        '<button class="icon-btn insR" title="在此链接右侧插入">＋</button>';
+      row.querySelector('.b-link-del').onclick = function(){ syncBlocksFromDom(); var blk=resolveBlk(path); if (blk) blk.items.splice(li,1); renderBlocksEditor(); renderPreview(); };
+      row.querySelector('.insL').onclick = function(){ insLink(li); };
+      row.querySelector('.insR').onclick = function(){ insLink(li + 1); };
+      row.querySelector('.ltype').onchange = function(){ row.querySelector('.lval').placeholder = TYPE_PLACEHOLDER[row.querySelector('.ltype').value] || '指令或URL'; };
+      linksBox.appendChild(row);
+    });
+    var insLink = function(idx){
+      syncBlocksFromDom(); var blk = resolveBlk(path); if (!blk) return;
+      if (!Array.isArray(blk.items)) blk.items = [];
+      idx = Math.max(0, Math.min(blk.items.length, idx));
+      blk.items.splice(idx, 0, {label:'新链接',type:'cmd',value:'新链接'});
+      renderBlocksEditor(); renderPreview();
+    };
+    f.querySelector('.b-add-link').onclick = function(){ syncBlocksFromDom(); var blk=resolveBlk(path); if(!blk) return; if(!Array.isArray(blk.items)) blk.items=[]; blk.items.push({label:'新链接',type:'cmd',value:'新链接'}); renderBlocksEditor(); renderPreview(); };
+  } else if (type === 'title' || type === 'divider' || type === 'footer_title'){
+    f = document.createElement('div'); f.className = 'field';
+    f.innerHTML = '<label>' + (type==='divider' ? '分隔符样式' : (type==='title' ? '标题（支持 **加粗** markdown）' : '底部标题（文字外显）')) + '</label><input type="text" class="b-text" value="'+esc(b.text||'')+'">';
+  } else if (type === 'intro' || type === 'tips'){
+    f = document.createElement('div'); f.className = 'field';
+    f.innerHTML = '<label>' + (type==='intro' ? '说明文字 intro' : '提示 tips（留空不显示）') + '</label><textarea class="b-textarea">'+esc(b.text||'')+'</textarea>';
+  } else if (type === 'meta'){
+    f = document.createElement('div'); f.className = 'field';
+    f.innerHTML = '<label>用户信息行（勾选=显示；数据源对应后端功能：签到/钓鱼/积分/群权限等；可增删改与自定义）</label><div class="meta-fields"></div>' +
+      '<button class="btn sm b-add-meta">＋ 添加信息项</button>';
+    var mf = f.querySelector('.meta-fields');
+    normalizeMetaFromBlock(b).forEach(function(fd, mi){
+      mf.appendChild(makeMetaFieldEditor(fd, mi, path));
+    });
+    f.querySelector('.b-add-meta').onclick = function(){ try { syncBlocksFromDom(); var blk = resolveBlk(path); if (!blk || blk.type !== 'meta') return; if (!Array.isArray(blk.meta_fields)) blk.meta_fields = []; blk.meta_fields.push({ key: 'nickname', label: '' }); renderBlocksEditor(); renderPreview(); } catch(e){ toast('⚠️ 添加信息项出错：' + (e && e.message || e)); } };
+  } else if (type === 'rows'){
+    f = document.createElement('div'); f.className = 'field';
+    f.innerHTML = '<label>菜单项（每行 1~N 项；cmd=回填指令，link=跳转，image=发图片，page=跳页，plugin=调用插件；每项左右「＋」插入新项）</label><div class="b-rows"></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn sm b-add-row">＋ 添加一行</button>' +
+      '<button class="btn sm b-add-official" title="一键追加官方开放平台全部能力（'+OFFICIAL_CAPS.length+' 项）">⚙️ 追加官方功能</button>' +
+      '</div>';
+    var rowsBox = f.querySelector('.b-rows');
+    (b.rows || []).forEach(function(row, ri){
+      rowsBox.appendChild(makeRowEditor(row, ri, onRowUpdate));
+    });
+    f.querySelector('.b-add-row').onclick = function(){ syncBlocksFromDom(); var blk=resolveBlk(path); if(!blk||blk.type!=='rows') return; if(!Array.isArray(blk.rows)) blk.rows=[]; blk.rows.push([{label:'新功能',type:'cmd',value:'新功能'}]); renderBlocksEditor(); renderPreview(); };
+    f.querySelector('.b-add-official').onclick = function(){
+      syncBlocksFromDom();
+      var blk = resolveBlk(path);
+      if (!blk || blk.type !== 'rows') return;
+      if (!Array.isArray(blk.rows)) blk.rows = [];
+      officialCapabilitiesGroup().forEach(function(r){ blk.rows.push(r); });
+      renderBlocksEditor(); renderPreview();
+      toast('⚙️ 已追加 ' + OFFICIAL_CAPS.length + ' 项官方能力到菜单项区块');
+    };
+  } else if (type === 'footer'){
+    f = document.createElement('div');
+    var fenceF = document.createElement('div'); fenceF.className = 'field';
+    fenceF.innerHTML = '<label>代码块类型名（如 text / plain / txt，留空=不包裹代码块纯文本）</label><input type="text" class="b-fence" value="'+esc(b.fence==null?'text':b.fence)+'">';
+    var linesF = document.createElement('div'); linesF.className = 'field';
+    linesF.innerHTML = '<label>底部内容（每行一行，支持 {time} 占位实时时间）</label><textarea class="b-lines" rows="3">'+esc((b.lines||[]).join('\n'))+'</textarea>';
+    f.appendChild(fenceF); f.appendChild(linesF);
+  } else if (type === '__group'){
+    var hint = document.createElement('div'); hint.className = 'g-hint';
+    hint.textContent = '左右并排组：组内子块会在同一行并排显示（上方预览可看到并排效果）。QQ 卡片文本模式会按行连接近似并排；用 ↑↓ 调整组内子块顺序，点「⇆」标识的子块可单独编辑。';
+    body.appendChild(hint);
+    var box = document.createElement('div'); box.className = 'group-children';
+    var kids = Array.isArray(b.children) ? b.children : [];
+    kids.forEach(function(kid, ci){
+      renderInsertZone(box, path, ci, false);
+      renderBlockCard(box, kid, path.concat([ci]), true);
+    });
+    var append = document.createElement('button');
+    append.className = 'btn sm g-add'; append.textContent = '＋ 在组内添加子块';
+    append.onclick = function(){ addBlockAt(path, kids.length, 'title'); };
+    box.appendChild(append);
+    body.appendChild(box);
+  }
+  if (f) body.appendChild(f);
+}
+
+function renderBlocksEditor(){
+  var blks = curBlocks();
+  var el = $('blocksEditor');
+  el.innerHTML = '';
+  $('curPageName').textContent = '（' + curPage + '）';
+  blks.forEach(function(b, bi){
+    renderInsertZone(el, [], bi, false);
+    var card = renderBlockCard(el, b, [bi], false);
+    attachBlockDrag(card);
+  });
+  renderInsertZone(el, [], blks.length, true);
+}
+
+function renderInsertZone(parent, containerPath, idx, isTail){
+  var zone = document.createElement('div');
+  zone.className = 'insert-zone';
+  var sel = document.createElement('select');
+  sel.className = 'ins-type';
+  Object.keys(BLOCK_NAMES).forEach(function(k){
+    var o = document.createElement('option');
+    o.value = k; o.textContent = BLOCK_NAMES[k];
+    if (k === 'avatar') o.selected = true;
+    sel.appendChild(o);
+  });
+  var btn = document.createElement('button');
+  btn.className = 'btn sm';
+  btn.textContent = '＋ ' + (isTail ? '在末尾添加区块' : '在此添加区块');
+  btn.onclick = function(){ addBlockAt(containerPath, idx, sel.value); };
+  zone.appendChild(sel); zone.appendChild(btn);
+  parent.appendChild(zone);
+}
+
+// ========== 长按/按住拖动排序（纯前端交互增强；桌面鼠标按住拖动，手机长按拖动） ==========
+var _drag = null;
+function attachBlockDrag(card){
+  var handle = card.querySelector('.drag-handle');
+  if (!handle) return;
+  handle.addEventListener('pointerdown', function(e){
+    if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+    e.preventDefault();
+    var startX = e.clientX, startY = e.clientY;
+    var active = false;
+    var timer = setTimeout(function(){
+      active = true;
+      _drag = { card: card };
+      card.classList.add('dragging');
+      document.body.classList.add('drag-active');
+      if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_e) {} }
+      try { document.activeElement && document.activeElement.blur(); } catch (_e) {}
+    }, 320);
+    var moved = function(x, y){ return Math.abs(x - startX) > 8 || Math.abs(y - startY) > 8; };
+    var onMove = function(ev){
+      if (!active) { if (moved(ev.clientX, ev.clientY)) clearTimeout(timer); return; }
+      ev.preventDefault();
+      var blocksEl = $('blocksEditor');
+      var t = document.elementFromPoint(ev.clientX, ev.clientY);
+      var tgt = t ? t.closest('.block-card') : null;
+      if (!tgt || tgt === card) return;
+      var rect = tgt.getBoundingClientRect();
+      var after = ev.clientY > rect.top + rect.height / 2;
+      if (after) blocksEl.insertBefore(card, tgt.nextSibling);
+      else blocksEl.insertBefore(card, tgt);
+    };
+    var onUp = function(){
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      document.body.classList.remove('drag-active');
+      var wasActive = active;
+      _drag = null;
+      document.querySelectorAll('.block-card').forEach(function(c){ c.classList.remove('dragging'); });
+      if (wasActive){
+        try { syncBlocksFromDom(); renderBlocksEditor(); renderPreview(); } catch (_e) {}
+        toast('已调整区块顺序');
+      }
+    };
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  });
+}
+
+function collectBlockFromCard(card){
+  var type = card.querySelector('.type-sel').value;
+  var b = { type: type };
+  var al = card.querySelector('.b-align');
+  if (al && al.value && al.value !== 'left') b.align = al.value;
+  if (type === 'avatar'){
+    b.source = card.querySelector('.b-avatar-source').value;
+    var av = card.querySelector('.b-avatar-value');
+    if (b.source === 'fixed' && av) b.value = av.value.trim();
+    var aw = Math.round(Number(card.querySelector('.b-avatar-w').value));
+    var ah = Math.round(Number(card.querySelector('.b-avatar-h').value));
+    if (aw >= 20 && aw <= 640) b.width = aw;
+    if (ah >= 20 && ah <= 640) b.height = ah;
+  }
+  else if (type === 'head_links'){
+    b.items = [];
+    card.querySelectorAll('.link-row').forEach(function(row){
+      var label = row.querySelector('.lbl').value.trim();
+      var t = row.querySelector('.ltype').value;
+      var val = row.querySelector('.lval').value.trim();
+      if (label && val) b.items.push({ label: label, type: t, value: val });
+    });
+  }
+  else if (type === 'title' || type === 'divider' || type === 'footer_title') b.text = card.querySelector('.b-text').value;
+  else if (type === 'intro' || type === 'tips') b.text = card.querySelector('.b-textarea').value;
+  else if (type === 'meta'){
+    b.meta_fields = [];
+    card.querySelectorAll('.meta-row').forEach(function(mr){
+      var en = mr.querySelector('.b-meta-en').checked;
+      var key = mr.querySelector('.b-meta-key').value;
+      if (!key) return;
+      var f = { key: key };
+      if (en === false) f.enabled = false;
+      var lbl = mr.querySelector('.b-meta-label').value.trim();
+      if (lbl) f.label = lbl;
+      if (key === '__custom'){
+        var pEl = mr.querySelector('.b-meta-plugin');
+        var sEl = mr.querySelector('.b-meta-skey');
+        var pl = pEl ? pEl.value.trim() : '';
+        var sk = sEl ? sEl.value.trim() : '';
+        f.plugin = pl; f.skey = sk;
+      }
+      b.meta_fields.push(f);
+    });
+  }
+  else if (type === 'rows'){
+    b.rows = [];
+    card.querySelectorAll('.menu-row').forEach(function(w){
+      var row = [];
+      w.querySelectorAll('.menu-item').forEach(function(it){
+        var label = it.querySelector('.b-ilabel').value.trim();
+        var t = it.querySelector('.b-itype').value;
+        var val = it.querySelector('.b-ival').value.trim();
+        if (!label && !val) return;
+        var itObj = { label: label, type: t, value: val };
+        var ivia = it.querySelector('.b-ivia');
+        if (ivia && ivia.value && ivia.value !== 'send') itObj.via = ivia.value;
+        row.push(itObj);
+      });
+      if (row.length) b.rows.push(row);
+    });
+  }
+  else if (type === 'footer'){
+    b.fence = card.querySelector('.b-fence').value;
+    b.lines = card.querySelector('.b-lines').value.split('\n').map(function(s){ return s.trim(); }).filter(function(s){ return s !== ''; });
+  }
+  else if (type === '__group'){
+    b.gap = 8;
+    b.children = [];
+    var box = card.querySelector('.group-children');
+    if (box){
+      box.querySelectorAll(':scope > .block-card.group-child').forEach(function(cc){
+        b.children.push(collectBlockFromCard(cc));
+      });
+    }
+  }
+  return b;
+}
+
+function syncBlocksFromDom(){
+  var blks = [];
+  document.querySelectorAll('#blocksEditor > .block-card').forEach(function(card){
+    blks.push(collectBlockFromCard(card));
+  });
+  cfg.pages[curPage].blocks = blks;
+}
+
+// path：顶层块=[bi]，组内子块=[bi, ci]；操作以此定位
+function resolveBlk(path){
+  var arr = curBlocks();
+  for (var i = 0; i < path.length - 1; i++){
+    var p = arr[path[i]];
+    if (!p || !Array.isArray(p.children)) return null;
+    arr = p.children;
+  }
+  return arr[path[path.length - 1]];
+}
+function containerOf(path){
+  if (!path.length) return { parent: curBlocks(), index: -1 };
+  var arr = curBlocks();
+  for (var i = 0; i < path.length - 1; i++){
+    var p = arr[path[i]];
+    if (!p) p = arr[path[i]] = { type: 'title', children: [] };
+    if (!Array.isArray(p.children)) p.children = [];
+    arr = p.children;
+  }
+  return { parent: arr, index: path[path.length - 1] };
+}
+
+function blockDefaults(){
+  return {
+    avatar: { type:'avatar', source:'user', width:208, height:208 },
+    head_links: { type:'head_links', items:[{label:'新链接',type:'cmd',value:'新链接'}] },
+    title: { type:'title', text:'**新标题**' },
+    meta: { type:'meta', show:['nickname','userid','group'] },
+    divider: { type:'divider', text:'━━━━━━━━━━━━━━' },
+    intro: { type:'intro', text:'说明文字' },
+    rows: { type:'rows', rows:[[{label:'新功能',type:'cmd',value:'新功能'}]] },
+    tips: { type:'tips', text:'提示' },
+    footer_title: { type:'footer_title', text:'底部标题' },
+    footer: { type:'footer', fence:'text', lines:['当前时间：{time}'] },
+    __group: { type:'__group', gap:8, children:[ { type:'title', text:'**左项**' }, { type:'title', text:'**右项**' } ] }
+  };
+}
+function addBlockAt(containerPath, idx, type){
+  type = type || $('addBlockType').value;
+  syncBlocksFromDom();
+  var arr = curBlocks();
+  for (var i = 0; i < containerPath.length; i++){
+    var p = arr[containerPath[i]];
+    if (!p) p = arr[containerPath[i]] = { type: 'title', children: [] };
+    if (!Array.isArray(p.children)) p.children = [];
+    arr = p.children;
+  }
+  var defaults = blockDefaults();
+  var nb;
+  if (type === 'official_group') nb = { type: 'rows', rows: officialCapabilitiesGroup() };
+  else nb = defaults[type] ? JSON.parse(JSON.stringify(defaults[type])) : { type: type };
+  arr.splice(Math.max(0, Math.min(arr.length, idx)), 0, nb);
+  renderBlocksEditor(); renderPreview();
+  toast('已插入区块：' + BLOCK_NAMES[type] + (type === 'official_group' ? '（' + OFFICIAL_CAPS.length + ' 项官方能力）' : ''));
+}
+function addBlock(){
+  addBlockAt([], curBlocks().length, $('addBlockType').value);
+}
+function moveBlock(path, dir){
+  syncBlocksFromDom();
+  var c = containerOf(path);
+  if (c.index < 0) return;
+  var t = c.parent.splice(c.index,1)[0];
+  var ni = Math.max(0, Math.min(c.parent.length, c.index + dir));
+  c.parent.splice(ni,0,t);
+  renderBlocksEditor(); renderPreview();
+}
+function delBlock(path){
+  syncBlocksFromDom();
+  var c = containerOf(path);
+  if (c.index < 0) return;
+  c.parent.splice(c.index,1);
+  renderBlocksEditor(); renderPreview();
+}
+
+// ========== 页面 CRUD ==========
+function addPage(){
+  var n = $('newPageName').value.trim();
+  if (!n){ toast('请输入新页面名'); return; }
+  if (cfg.pages[n]){ toast('页面已存在：'+n); return; }
+  cfg.pages[n] = { blocks: [
+    { type: 'avatar', source: 'user' },
+    { type: 'title', text: '**'+n+'**' },
+    { type: 'meta', show: ['nickname','userid','group'] },
+    { type: 'divider', text: '━━━━━━━━━━━━━━' },
+    { type: 'rows', rows: [[{label:'返回主菜单',type:'cmd',value:'测试菜单'}]] },
+    { type: 'footer', fence:'text', lines:['当前时间：{time}'] }
+  ] };
+  $('newPageName').value = '';
+  curPage = n; renderTabs(); renderBlocksEditor(); renderPreview();
+  toast('已新增页面：'+n);
+}
+function deletePage(n){
+  if (!confirm('确定删除页面「'+n+'」？')) return;
+  delete cfg.pages[n];
+  if (cfg.main_page === n){ var ks=Object.keys(cfg.pages); cfg.main_page = ks[0]||''; }
+  if (curPage === n){ curPage = cfg.main_page; }
+  renderTabs(); renderBlocksEditor(); renderPreview();
+}
+
+// ========== 渲染预览 ==========
+function menuLink(label, item){
+  if (item.type === 'link') return { text:'['+label+']('+item.value+')', url: item.value };
+  var value = item.value;
+  if (item.type === 'image') value = '__img:' + value;
+  else if (item.type === 'page') value = '__page:' + value;
+  else if (item.type === 'plugin') value = '__call:' + value;
+  return { text:'['+label+'](mqqapi://aio/%69nlinecmd?command='+encodeURIComponent(value)+'&enter=false&reply=false)', url:'mqqapi://aio/inlinecmd?command='+encodeURIComponent(value)+'&enter=false&reply=false' };
+}
+function renderBlockToLines(b, out){
+  var al = blockAlign(b, b.type === 'avatar' ? 'center' : 'left');
+  switch(b.type){
+    case 'avatar':
+      if (b.source !== 'none') out.push({ align: al, kind: 'img', alt: '头像 #'+(b.width||208)+'px #'+(b.height||208)+'px', url: 'https://q1.qlogo.cn/g?b=qq&nk='+FAKE.qq+'&s=640' });
+      break;
+    case 'head_links':
+      (b.items||[]).forEach(function(it){ if (it && it.label && it.value) out.push({ align: al, kind: 'text', text: menuLink(it.label, it).text }); });
+      break;
+    case 'title': if (b.text) out.push({ align: al, kind: 'text', text: b.text }); break;
+    case 'meta':
+      var mf = (Array.isArray(b.meta_fields) && b.meta_fields.length) ? b.meta_fields : normalizeMetaFromBlock(b);
+      mf.forEach(function(fd){
+        if (!fd || fd.enabled === false) return;
+        var lbl = fd.label || (META_LABEL[fd.key] || '');
+        var t = null;
+        if (fd.key === 'nickname') t = (lbl||'👤 昵称')+'：'+FAKE.nick+'（QQ: '+FAKE.qq+'）';
+        else if (fd.key === 'userid') t = (lbl||'🆔 用户ID')+'：'+FAKE.openid;
+        else if (fd.key === 'group') t = (lbl||'👥 群信息')+'：'+FAKE.group+'（群号：'+FAKE.gnumber+'）';
+        else if (fd.key === 'role') t = (lbl||'🔑 群内权限')+'：群主';
+        else if (fd.key === 'points') t = (lbl||'💰 积分')+'：128';
+        else if (fd.key === 'checkin_streak') t = (lbl||'🔥 连续签到')+'：3 天';
+        else if (fd.key === 'checkin_date') t = (lbl||'📅 最近签到')+'：2026-08-28';
+        else if (fd.key === 'fish_coins') t = (lbl||'🎣 钓鱼金币')+'：45';
+        else if (fd.key === 'fish_catches') t = (lbl||'🐟 钓鱼收获')+'：8 条';
+        else if (fd.key === 'farm_coins') t = (lbl||'🌾 农场金币')+'：120';
+        else if (fd.key === '__custom') t = (lbl||'📊 自定义')+'：演示值';
+        else if (fd.key) t = (lbl||fd.key)+'：演示值';
+        if (t) out.push({ align: al, kind: 'text', text: t });
+      });
+      break;
+    case 'divider': out.push({ align: al, kind: 'text', text: b.text || '━━━━━━━━━━━━━━' }); break;
+    case 'intro': if (b.text){ out.push({ align: al, kind: 'text', text: b.text }); out.push({ align: al, kind: 'text', text: '' }); } break;
+    case 'rows':
+      (b.rows||[]).forEach(function(row){
+        if (!Array.isArray(row) || !row.length) return;
+        out.push({ align: al, kind: 'text', text: row.map(function(it){ return menuLink(it.label, it).text; }).join('　|　') });
+      });
+      break;
+    case 'tips': if (b.text){ out.push({ align: al, kind: 'text', text: '' }); out.push({ align: al, kind: 'text', text: b.text }); } break;
+    case 'footer_title': if (b.text) out.push({ align: al, kind: 'text', text: b.text }); break;
+    case 'footer':
+      var fl = (b.lines||[]).map(function(s){ return s.replace(/\{time\}/g, new Date().toLocaleString('zh-CN',{hour12:false})); });
+      if (fl.length){
+        out.push({ align: al, kind: 'text', text: '' });
+        var fence = b.fence === '' ? '' : (b.fence || 'text');
+        if (fence) out.push({ align: al, kind: 'text', text: '```'+fence });
+        fl.forEach(function(l){ out.push({ align: al, kind: 'text', text: l }); });
+        if (fence) out.push({ align: al, kind: 'text', text: '```' });
+      }
+      break;
+  }
+}
+function previewLines(){
+  syncBlocksFromDom();
+  var out = [];
+  curBlocks().forEach(function(b){
+    if (!b || typeof b !== 'object') return;
+    if (b.type === '__group'){
+      var kids = [];
+      (Array.isArray(b.children) ? b.children : []).forEach(function(k){
+        var kl = [];
+        renderBlockToLines(k, kl);
+        kids.push({ align: blockAlign(k, k.type === 'avatar' ? 'center' : 'left'), lines: kl });
+      });
+      out.push({ group: true, align: blockAlign(b, 'center'), children: kids });
+    } else {
+      renderBlockToLines(b, out);
+    }
+  });
+  return out;
+}
+function renderLine(it){
+  var al = (it && it.align) || 'left';
+  if (it && it.kind === 'img'){
+    var sizes = ((it.alt||'').match(/#(\d+)px/g) || []).map(function(s){ return parseInt(s.replace(/\D+/g, ''), 10); });
+    var aw = (sizes[0] && sizes[0] >= 1) ? sizes[0] : 208;
+    var ah = (sizes[1] && sizes[1] >= 1) ? sizes[1] : 208;
+    return '<div class="pv-avatar" style="text-align:' + al + '"><img src="' + esc(it.url) + '" style="width:'+aw+'px;height:'+ah+'px" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'inline\'"><span style="display:none;color:#999">👤 头像（加载失败）</span><div class="pv-avatar-tip">👤 头像 ' + aw + '×' + ah + 'px · 与菜单同一卡片</div></div>';
+  }
+  var t = it ? (it.text || '') : String(it);
+  var html = esc(t).replace(/\[([^\]]+)\]\((mqqapi:[^)]+|https?:[^)]+)\)/g, '<span class="link" title="点击回填/跳转">$1 ↗</span>');
+  if (al !== 'left') html = '<div style="text-align:' + al + '">' + html + '</div>';
+  return html;
+}
+function renderPreview(){
+  var items = previewLines();
+  var el = $('preview');
+  el.innerHTML = items.map(function(it){
+    if (it && it.group){
+      return '<div class="pv-group" style="text-align:' + it.align + '">' + (it.children || []).map(function(k){
+        var inner = k.lines.map(renderLine).join('\n');
+        return '<div class="pv-group-child" style="text-align:' + k.align + '">' + inner + '</div>';
+      }).join('') + '</div>';
+    }
+    return renderLine(it);
+  }).join('\n');
+}
+
+// ========== 加载与保存 ==========
+function loadBots(){
+  api('/api/bots').then(function(r){
+    if (r.status === 401){
+      $('botSel').innerHTML = '<option value="">登录失效，请返回管理面板重新登录</option>';
+      setSaveBar('⚠️ 未登录或登录已失效：请先返回管理面板重新登录，再打开本编辑器', false);
+      return;
+    }
+    if (!r.ok || !Array.isArray(r.data)){ $('botSel').innerHTML = '<option value="">未获取到机器人列表</option>'; return; }
+    bots = r.data;
+    var sel = $('botSel');
+    sel.innerHTML = '';
+    bots.forEach(function(b){
+      var o = document.createElement('option');
+      o.value = b.appId || b.id || '';
+      o.textContent = (b.name || '未命名') + '（' + (b.appId || b.id || '无appid') + '）';
+      sel.appendChild(o);
+    });
+    if (!bots.length){ sel.innerHTML = '<option value="">暂无机器人，请先在「我的机器人」添加</option>'; }
+    else { loadPlugins(); loadCapabilities(); loadConfig(); loadMeta(); }
+  });
+}
+
+function loadPlugins(){
+  api('/api/menu-config/plugins').then(function(r){
+    var sel = $('pluginSel');
+    // 兼容多种后端返回结构：{plugins:[...]} / {list:[...]} / {data:[...]} / 裸数组
+    var raw = null;
+    if (r && r.data && typeof r.data === 'object'){
+      if (Array.isArray(r.data)) raw = r.data;
+      else raw = r.data.plugins || r.data.list || r.data.data || null;
+    } else if (r && Array.isArray(r.data)) {
+      raw = r.data;
+    }
+    if (raw && Array.isArray(raw)) pluginList = raw.filter(function(p){ return p && p.name; });
+    else pluginList = [{ name: '测试菜单', hasDefault: true }, { name: '欢迎新用户', hasDefault: true }];
+    sel.innerHTML = '';
+    pluginList.forEach(function(p){
+      var o = document.createElement('option');
+      o.value = p.name;
+      o.textContent = p.name + (p.hasDefault ? ' ★' : '');
+      sel.appendChild(o);
+    });
+    if (!pluginList.length){
+      pluginList = [{ name: '测试菜单', hasDefault: true }];
+      sel.innerHTML = '<option value="测试菜单">测试菜单</option>';
+    }
+    sel.value = curPlugin;
+    if (!sel.value){ sel.selectedIndex = 0; curPlugin = sel.value || pluginList[0].name; }
+    if (!raw){
+      var why = (r && r.data && (r.data.msg || r.data.error || r.data.warn)) || (!r.ok ? ('HTTP ' + r.status) : '');
+      if (why) setSaveBar('⚠️ 插件列表接口不可用（' + why + '），暂显示内置插件。若后端已升级请重启服务生效', false);
+    }
+  });
+}
+
+$('pluginSel').addEventListener('change', function(){
+  curPlugin = $('pluginSel').value || '测试菜单';
+  cfg = { main_page: '主菜单', pages: {} };
+  curPage = '主菜单';
+  loadConfig();
+  loadMeta();
+});
+
+function loadMeta(){
+  api('/api/menu-config/meta?' + pluginQS()).then(function(r){
+    if (!r.ok || !r.data || r.data.code !== 200){
+      var why = (r.data && (r.data.msg || r.data.error || r.data.warn))
+        || (!r.ok ? ('HTTP ' + (r.status || '?') + '（接口未找到或未登录）')
+           : ('接口返回异常（HTTP ' + (r.status || '?') + '，code=' + (r.data ? r.data.code : '?') + '），请确认后端已升级 4.2.46+ 并重启服务'));
+      toast('插件信息加载失败：' + why);
+      return;
+    }
+    var m = r.data.meta || {};
+    $('metaName').value = m.name || '';
+    $('metaVersion').value = m.version || '';
+    $('metaDesc').value = m.description || '';
+    $('metaTrigger').value = m.trigger || '';
+  });
+}
+function saveMeta(){
+  var meta = {
+    name: $('metaName').value.trim(),
+    version: $('metaVersion').value.trim(),
+    description: $('metaDesc').value.trim(),
+    trigger: $('metaTrigger').value.trim()
+  };
+  setSaveBar('⏳ 正在保存「' + curPlugin + '」插件信息...');
+  api('/api/menu-config/meta', { method: 'POST', body: JSON.stringify(pluginBody({ meta: meta })) }).then(function(r){
+    if (r.ok && r.data && r.data.code === 200){
+      toast('✅ 插件信息已保存');
+      setSaveBar('✅ 「' + curPlugin + '」插件信息已保存');
+    } else {
+      var why = (r.data && (r.data.msg || r.data.error)) || ('HTTP ' + r.status);
+      toast('❌ 保存失败：' + why);
+      setSaveBar('❌ 保存失败：' + why, false);
+    }
+  });
+}
+function resetMeta(){
+  if (!confirm('确定恢复「' + curPlugin + '」原始信息？自定义的名称/版本/用途将被清除。')) return;
+  api('/api/menu-config/meta/reset', { method: 'POST', body: JSON.stringify(pluginBody({})) }).then(function(r){
+    if (r.ok && r.data && r.data.code === 200){
+      toast('✅ 已恢复原始信息');
+      loadMeta();
+    } else {
+      toast('❌ 恢复失败');
+    }
+  });
+}
+
+function loadConfig(){
+  var appid = $('botSel').value;
+  if (!appid){ toast('请先选择机器人'); return; }
+  setSaveBar('⏳ 正在加载 ' + curPlugin + ' 配置...');
+  api('/api/menu-config?' + pluginQS() + '&appid=' + encodeURIComponent(appid)).then(function(r){
+    if (!r.ok || !r.data || r.data.code !== 200){
+      var why = (r.data && (r.data.msg || r.data.error || r.data.warn))
+        || (!r.ok ? ('HTTP ' + (r.status || '?') + '（接口未找到或未登录）')
+           : ('接口返回异常（HTTP ' + (r.status || '?') + '，code=' + (r.data ? r.data.code : '?') + '），请确认后端已升级 4.2.46+ 并重启服务'));
+      toast('加载失败：' + why);
+      setSaveBar('❌ 加载失败：' + why, false);
+      return;
+    }
+    var c = r.data.config || {};
+    cfg.main_page = c.main_page || '主菜单';
+    cfg.pages = (c.pages && typeof c.pages === 'object' && Object.keys(c.pages).length) ? c.pages : defaultPages();
+    curPage = cfg.pages[cfg.main_page] ? cfg.main_page : (Object.keys(cfg.pages)[0] || '主菜单');
+    if (!cfg.pages[curPage]) { cfg.pages = defaultPages(); curPage = '主菜单'; }
+    renderTabs(); renderBlocksEditor(); renderPreview();
+    setSaveBar('✅ 已加载「' + curPlugin + '」配置');
+  });
+}
+
+// 仅保存头像区块（来源 + 宽高），不动其它区块
+function findFirstAvatar(blks){
+  for (var i = 0; i < blks.length; i++){
+    var b = blks[i];
+    if (b.type === 'avatar') return b;
+    if (b.type === '__group' && Array.isArray(b.children)){
+      var c = findFirstAvatar(b.children);
+      if (c) return c;
+    }
+  }
+  return null;
+}
+function saveAvatarSize(){
+  syncBlocksFromDom();
+  var a = findFirstAvatar(curBlocks());
+  if (!a){ toast('⚠️ 当前页面没有头像区块，可先「添加区块 → 头像」'); return; }
+  var appid = $('botSel').value;
+  if (!appid){ toast('请先选择机器人'); return; }
+  var sizeTxt = (a.width || 208) + '×' + (a.height || 208);
+  setSaveBar('⏳ 正在保存头像大小 ' + sizeTxt + '...');
+  api('/api/menu-config', { method: 'POST', body: JSON.stringify(pluginBody({ appid: appid, config: cfg })) }).then(function(r){
+    if (r.ok && r.data && r.data.code === 200){
+      toast('✅ 头像大小已保存 ' + sizeTxt + 'px');
+      setSaveBar('✅ 头像大小已保存为 ' + sizeTxt + 'px，已同步到服务器');
+      loadConfig();
+    } else {
+      var why = (r.data && (r.data.msg || r.data.error)) || ('HTTP ' + r.status);
+      toast('❌ 保存失败：' + why);
+      setSaveBar('❌ 保存失败：' + why, false);
+    }
+  });
+}
+
+function loadCapabilities(){
+  api('/api/menu-config/capabilities?' + pluginQS()).then(function(r){
+    var list = r && r.data && typeof r.data === 'object' && Array.isArray(r.data.capabilities) && r.data.capabilities.length ? r.data.capabilities : null;
+    if (list && list.length){
+      OFFICIAL_CAPS = list.map(function(c){ return { label: c.label, value: c.value, desc: c.desc || '' }; });
+    }
+  }).catch(function(){});
+}
+
+function saveConfig(){
+  try {
+    var appid = $('botSel').value;
+    if (!appid){ toast('请先选择机器人'); return; }
+    syncBlocksFromDom();
+    cfg.main_page = $('mainPage').value || cfg.main_page;
+    setSaveBar('⏳ 正在保存「' + curPlugin + '」' + appid + ' 的配置...');
+    api('/api/menu-config', { method: 'POST', body: JSON.stringify(pluginBody({ appid: appid, config: cfg })) }).then(function(r){
+      if (r.ok && r.data && r.data.code === 200){
+        toast('✅ 保存成功');
+        setSaveBar('✅ 「' + curPlugin + '」保存成功，已重新加载服务器配置');
+        loadConfig();
+      }
+      else {
+        var why = (r.data && (r.data.msg || r.data.error)) || ('HTTP ' + r.status);
+        toast('❌ 保存失败：' + why);
+        setSaveBar('❌ 保存失败：' + why, false);
+      }
+    }).catch(function(err){
+      toast('❌ 保存失败：' + (err && err.message || err));
+      setSaveBar('❌ 保存失败：' + (err && err.message || err), false);
+    });
+  } catch (err){
+    toast('❌ 保存出错：' + (err && err.message || err));
+    setSaveBar('❌ 保存出错：' + (err && err.message || err), false);
+  }
+}
+
+function resetDefault(){
+  var appid = $('botSel').value;
+  if (!appid){ toast('请先选择机器人'); return; }
+  if (!confirm('确定将「' + curPlugin + '」恢复默认配置？当前该机器人自定义内容将被清除。')) return;
+  api('/api/menu-config', { method: 'POST', body: JSON.stringify(pluginBody({ appid: appid })) }).then(function(r){
+    if (r.ok && r.data && r.data.code === 200){
+      toast('✅ 已恢复默认配置');
+      setSaveBar('✅ 「' + curPlugin + '」已恢复默认配置，正在重新加载...');
+      loadConfig();
+    }
+    else {
+      var why = (r.data && (r.data.msg || r.data.error)) || ('HTTP ' + r.status);
+      toast('❌ 恢复失败：' + why);
+      setSaveBar('❌ 恢复失败：' + why, false);
+    }
+  });
+}
+
+$('botSel').addEventListener('change', loadConfig);
+$('mainPage').addEventListener('change', function(){ cfg.main_page = $('mainPage').value; renderPreview(); });
+
+// ========== 插件工坊（仅超级主人） ==========
+var ws = { plugins: [], name: '', id: '', fileType: 'js' };
+var NODE_BUILTIN = ['assert','async_hooks','buffer','child_process','cluster','console','constants','crypto','dgram','diagnostics_channel','dns','domain','events','fs','http','http2','https','inspector','module','net','os','path','perf_hooks','process','punycode','querystring','readline','repl','stream','string_decoder','sys','timers','tls','trace_events','tty','url','util','v8','vm','wasi','worker_threads','zlib'];
+var WORKSHOP_CTX_HINTS = '沙箱能力：ctx.bot（发消息/图片/卡片等全部机器人能力）、ctx.eventBus（message.group 等事件）、ctx.logger（日志）、ctx.memory / ctx.db（数据）。require 可用 Node 内置模块与服务器已安装的 npm 包；禁止 require 相对路径文件。';
+
+function openWorkshop(){
+  $('modalWorkshop').classList.add('active');
+  loadWorkshopPlugins();
+}
+function closeWorkshop(){ $('modalWorkshop').classList.remove('active'); }
+function wsStatus(msg, cls){
+  var el = $('wsStatus');
+  el.textContent = msg;
+  el.className = 'ws-status' + (cls ? ' ' + cls : '');
+}
+async function loadWorkshopPlugins(){
+  wsStatus('⏳ 正在加载插件列表...');
+  try {
+    const r = await api('/api/plugins');
+    if (Array.isArray(r.data)) ws.plugins = r.data;
+    else { wsStatus('❌ 插件列表加载失败：' + ((r.data && (r.data.error || r.data.msg)) || r.status), 'err'); return; }
+  } catch (e) { wsStatus('❌ 插件列表加载失败：' + e.message, 'err'); return; }
+  var side = $('wsSide');
+  side.innerHTML = ws.plugins.map(function(p){
+    var on = p.enabled ? '<span class="on" style="color:#16a34a">●</span>' : '<span class="on" style="color:#cbd5e1">○</span>';
+    var typeLabel = p.type === 'zip' ? '目录' : (p.fileType || p.type || 'js');
+    return '<div class="ws-item" data-name="' + esc(p.name) + '" data-id="' + (p.id ? esc(p.id) : '') + '" data-type="' + esc(p.type || 'js') + '" onclick="wsPick(this)">'
+      + '<span class="nm">' + esc(p.name) + '</span><span class="tg">' + esc(typeLabel) + '</span>' + on + '</div>';
+  }).join('') || '<div style="padding:20px;text-align:center;color:#999;font-size:13px">暂无插件</div>';
+  $('wsCount').textContent = ws.plugins.length + ' 个插件';
+  wsStatus('✅ 已加载 ' + ws.plugins.length + ' 个插件（●启用 ○禁用），点击左侧查看代码', 'ok');
+}
+async function wsPick(el){
+  ws.name = el.getAttribute('data-name');
+  ws.id = el.getAttribute('data-id') || '';
+  document.querySelectorAll('#wsSide .ws-item').forEach(function(x){ x.classList.remove('active'); });
+  el.classList.add('active');
+  $('wsFileName').textContent = ws.name + ' · 加载中...';
+  $('wsCode').value = ''; updateWsGutter(); $('wsDeps').innerHTML = '';
+  try {
+    const r = await api('/api/plugins/' + encodeURIComponent(ws.name) + '/code');
+    if (r.ok && typeof r.data.code === 'string'){
+      ws.fileType = r.data.fileType || (r.data.fileName ? String(r.data.fileName).split('.').pop() : 'js');
+      $('wsFileName').textContent = (r.data.fileName || ws.name + '.js') + ' · ' + ws.name;
+      $('wsCode').value = r.data.code;
+      updateWsGutter();
+      analyzeDeps(r.data.code);
+      var p = ws.plugins.find(function(x){ return x.name === ws.name; });
+      $('wsToggleBtn').textContent = p && p.enabled ? '⏸ 禁用' : '▶ 启用';
+      wsStatus('✅ 已加载完整代码（' + (r.data.fileName || '') + '），修改后点「保存并热重载」立即生效；也可点「🧪 测试」模拟触发', 'ok');
+    } else {
+      wsStatus('❌ 读取代码失败：' + ((r.data && (r.data.error || r.data.msg)) || r.status), 'err');
+    }
+  } catch (e) { wsStatus('❌ 读取代码失败：' + e.message, 'err'); }
+}
+function analyzeDeps(code){
+  var mods = {};
+  var re = /(?:require\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s+(?:[^'"]*?from\s+)?['"]([^'"]+)['"])/g;
+  var m;
+  while ((m = re.exec(code))) { var mod = (m[1] || m[2]); if (mod) mods[mod] = 1; }
+  var keys = Object.keys(mods);
+  // ---- 沙箱能力调用分析：提取插件实际用到的 ctx.bot.xxx / ctx.engine.xxx / ctx.xxx ----
+  var botUsed = {}, engUsed = {}, ctxUsed = {}, mm;
+  while ((mm = /ctx\.bot\.([A-Za-z_$][\w$]*)/g.exec(code))) botUsed[mm[1]] = 1;
+  while ((mm = /ctx\.engine\.([A-Za-z_$][\w$]*)/g.exec(code))) engUsed[mm[1]] = 1;
+  while ((mm = /ctx\.(storage|eventBus|identity|link|config|logger)\b/g.exec(code))) ctxUsed[mm[1]] = 1;
+  var capParts = [];
+  Object.keys(botUsed).forEach(function(k){ capParts.push('<span class="d-tag ctx">ctx.bot.' + esc(k) + '</span>'); });
+  Object.keys(engUsed).forEach(function(k){ capParts.push('<span class="d-tag ctx">ctx.engine.' + esc(k) + '</span>'); });
+  Object.keys(ctxUsed).forEach(function(k){ capParts.push('<span class="d-tag ctx">ctx.' + esc(k) + '</span>'); });
+  var depParts = [];
+  keys.forEach(function(mod){
+    if (mod.startsWith('.') || mod.startsWith('/')){
+      depParts.push('<span class="d-tag missing">' + esc(mod) + ' · 相对路径 require 被沙箱禁止</span>');
+    } else {
+      var root = mod.split('/')[0];
+      if (NODE_BUILTIN.indexOf(root) >= 0) depParts.push('<span class="d-tag builtin">' + esc(root) + ' · Node内置✓</span>');
+      else depParts.push('<span class="d-tag">' + esc(mod) + ' · npm包（服务器未装则保存时报 Cannot find module，需在服务器执行 npm install ' + esc(root) + '）</span>');
+    }
+  });
+  var html = '📦 依赖分析：';
+  if (depParts.length) html += '模块 ' + depParts.join('');
+  else html += '未检测到外部 require/import。';
+  html += '<br>🔧 沙箱能力调用：' + (capParts.length ? capParts.join('') : '仅使用 ctx 基础能力');
+  html += '<br><span style="color:#64748b">' + WORKSHOP_CTX_HINTS + '</span>';
+  $('wsDeps').innerHTML = html;
+}
+function updateWsGutter(){
+  var n = $('wsCode').value.split('\n').length;
+  var html = [];
+  for (var i = 1; i <= n; i++) html.push(i);
+  $('wsGutter').innerHTML = html.join('<br>');
+}
+function syncWsGutter(){ $('wsGutter').scrollTop = $('wsCode').scrollTop; }
+async function wsSave(){
+  var code = $('wsCode').value;
+  if (!ws.name){ wsStatus('⚠️ 请先选择左侧插件', 'err'); return; }
+  if (!/module\.exports\s*=|exports\./.test(code)){
+    wsStatus('⚠️ 该代码没有 module.exports / exports 导出，插件无法加载，请补上导出', 'err');
+    return;
+  }
+  try { new Function(code); }
+  catch (e) { wsStatus('❌ JS 语法错误，未保存：' + e.message, 'err'); return; }
+  wsStatus('⏳ 正在保存并热重载...');
+  try {
+    const r = await api('/api/plugins/' + encodeURIComponent(ws.name) + '/code', { method: 'PUT', body: JSON.stringify({ code: code }) });
+    if (r.ok){
+      wsStatus('✅ ' + (r.data.message || '已保存并热重载，效果立即生效'), 'ok');
+      toast('✅ 插件代码已保存并重载');
+    } else {
+      wsStatus('❌ 保存失败：' + ((r.data && (r.data.error || r.data.msg)) || r.status), 'err');
+    }
+  } catch (e) { wsStatus('❌ 保存失败：' + e.message, 'err'); }
+}
+async function wsToggle(){
+  if (!ws.id){ wsStatus('⚠️ 该插件无数据库记录（启动后手动放入目录），无法启停；可在管理面板批准后操作', 'err'); return; }
+  try {
+    const r = await api('/api/plugins/' + encodeURIComponent(ws.id) + '/toggle', { method: 'POST' });
+    if (r.ok){ wsStatus('✅ 已切换启用状态，刷新列表...', 'ok'); loadWorkshopPlugins(); }
+    else wsStatus('❌ 操作失败：' + ((r.data && (r.data.error || r.data.msg)) || r.status), 'err');
+  } catch (e) { wsStatus('❌ 操作失败：' + e.message, 'err'); }
+}
+function wsTest(){
+  if (!ws.name){ wsStatus('⚠️ 请先选择左侧插件', 'err'); return; }
+  var msg = prompt('输入要模拟触发该插件的群消息（如：群信息）', '群信息');
+  if (msg === null) return;
+  wsStatus('⏳ 正在模拟测试「' + ws.name + '」...');
+  api('/api/plugins/test', { method: 'POST', body: JSON.stringify({ plugin_name: ws.name, message: msg, user_id: 'TESTUSER', user_name: '测试用户', group_id: 'TESTGROUP', group_name: '测试群', bot_id: $('botSel').value || '' }) }).then(function(r){
+    if (r.ok && r.data){
+      var lines = [];
+      var replies = r.data.replies || [];
+      var msgs = r.data.messages || [];
+      if (replies.length) lines.push('📤 回复内容：' + replies.join(' | '));
+      msgs.forEach(function(x){
+        if (typeof x === 'string') lines.push('📦 ' + x);
+        else lines.push('📦 [' + (x.type || '?') + '] ' + (x.content || JSON.stringify(x)));
+      });
+      if (r.data.error) lines.push('❌ ' + r.data.error);
+      if (!lines.length) lines.push('✅ 已触发，无消息输出（插件可能静默处理）');
+      wsStatus(lines.join('\n'), lines.some(function(l){ return l.indexOf('❌') === 0; }) ? 'err' : 'ok');
+    } else {
+      wsStatus('❌ 测试失败：' + ((r.data && (r.data.error || r.data.msg)) || r.status), 'err');
+    }
+  });
+}
+document.addEventListener('keydown', function(e){
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){
+    var w = $('modalWorkshop');
+    if (w && w.classList.contains('active')){ e.preventDefault(); wsSave(); }
+  }
+});
+
+// ===== 三杠收缩侧边栏（插件切换 + 外显文字指令） =====
+var sidebarOpen = false;
+var varCache = {};
+
+function escAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
+
+function toggleSidebar(){
+  sidebarOpen = !sidebarOpen;
+  $('sidebar').classList.toggle('open', sidebarOpen);
+  $('sidebarOverlay').classList.toggle('open', sidebarOpen);
+  if (sidebarOpen){ renderSidebarPlugins(); loadExternLinks(); }
+}
+
+function renderSidebarPlugins(){
+  var box = $('sbPlugins');
+  if (!pluginList || !pluginList.length){ box.innerHTML = '<div class="el-empty">暂无插件</div>'; return; }
+  box.innerHTML = pluginList.map(function(p){
+    var active = p.name === curPlugin ? ' active' : '';
+    return '<div class="sb-item' + active + '" onclick="selectPlugin(\'' + escAttr(p.name) + '\')">' + esc(p.name) + (p.hasDefault ? ' ★' : '') + '</div>';
+  }).join('');
+}
+
+function selectPlugin(name){
+  var sel = $('pluginSel');
+  sel.value = name;
+  curPlugin = name;
+  cfg = { main_page: '主菜单', pages: {} };
+  curPage = '主菜单';
+  loadConfig();
+  loadMeta();
+  renderSidebarPlugins();
+}
+
+function loadExternLinks(){
+  var box = $('sbExternLinks');
+  box.innerHTML = '<div class="el-empty">扫描中...</div>';
+  api('/api/menu-config/extern-links').then(function(r){
+    if (!r.ok || !r.data || r.data.code !== 200){
+      box.innerHTML = '<div class="el-empty">外显指令扫描失败' + (r.data && r.data.error ? '：' + esc(r.data.error) : '') + '</div>';
+      return;
+    }
+    var list = r.data.plugins || [];
+    if (!list.length){ box.innerHTML = '<div class="el-empty">插件源码中未扫描到外显文字指令</div>'; return; }
+    box.innerHTML = list.map(function(p){
+      var items = (p.links || []).map(function(l){
+        return '<div class="el-item"><span class="el-label">' + esc(l.label) + '</span><span class="el-cmd">' + esc(l.command) + '</span></div>';
+      }).join('');
+      return '<div class="el-plugin">' + esc(p.plugin) + (p.enabled ? '' : '<span class="el-off">停用</span>') + '</div>' + items;
+    }).join('');
+  }).catch(function(e){
+    box.innerHTML = '<div class="el-empty">扫描失败：' + esc(e && e.message || '') + '</div>';
+  });
+}
+
+// ===== 全局变量管理（config plugin.vars，插件经 ctx.engine.getVariable/setVariable 调用） =====
+function loadVars(){
+  var box = $('varsList');
+  if (!box) return;
+  box.innerHTML = '<div class="hint">加载中...</div>';
+  api('/api/menu-config/vars').then(function(r){
+    if (!r.ok || !r.data || r.data.code !== 200){ box.innerHTML = '<div class="hint">变量加载失败' + (r.data && r.data.error ? '：' + esc(r.data.error) : '') + '</div>'; return; }
+    varCache = r.data.vars || {};
+    renderVars(varCache);
+  }).catch(function(){ box.innerHTML = '<div class="hint">变量加载失败</div>'; });
+}
+
+function renderVars(vars){
+  var box = $('varsList');
+  var keys = Object.keys(vars);
+  if (!keys.length){ box.innerHTML = '<div class="hint">还没有变量，在下方输入名称和值后点「添加/更新变量」。</div>'; return; }
+  box.innerHTML = '<table class="var-table"><thead><tr><th>变量名</th><th>值</th><th style="width:130px">操作</th></tr></thead><tbody>' +
+    keys.map(function(k){
+      return '<tr><td><code>' + esc(k) + '</code></td><td class="var-val">' + esc(vars[k]) + '</td><td><button class="btn sm" onclick="editVar(\'' + escAttr(k) + '\')">编辑</button> <button class="btn sm danger" onclick="delVar(\'' + escAttr(k) + '\')">删除</button></td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+function addVar(){
+  var n = $('varNameInput').value.trim();
+  var v = $('varValueInput').value;
+  if (!n){ toast('请输入变量名'); return; }
+  api('/api/menu-config/vars', { method: 'PUT', body: JSON.stringify({ name: n, value: v }) }).then(function(r){
+    if (r.ok && r.data && r.data.code === 200){ toast('变量「' + n + '」已保存'); $('varNameInput').value = ''; $('varValueInput').value = ''; loadVars(); }
+    else toast('保存失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+  });
+}
+
+function editVar(name){
+  $('varNameInput').value = name;
+  $('varValueInput').value = varCache[name] != null ? varCache[name] : '';
+  $('varNameInput').focus();
+}
+
+function delVar(name){
+  if (!confirm('删除变量「' + name + '」？')) return;
+  api('/api/menu-config/vars/' + encodeURIComponent(name), { method: 'DELETE' }).then(function(r){
+    if (r.ok && r.data && r.data.code === 200){ toast('已删除'); loadVars(); }
+    else toast('删除失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+  });
+}
+
+// 仅超级主人显示「插件工坊」入口
+api('/api/auth/me').then(function(r){
+  if (r.ok && r.data && r.data.role === 'super_master'){
+    $('btnWorkshop').style.display = 'inline-block';
+  }
+}).catch(function(){});
+
+loadBots();
+loadVars();
+</script>
+<div class="workshop-overlay" id="modalWorkshop">
+  <div class="workshop">
+    <div class="workshop-head">
+      <h3>🔧 插件工坊（仅超级主人 · 预览/在线修改/热重载全部插件代码）</h3>
+      <span class="ws-count" id="wsCount"></span>
+      <button class="ws-x" onclick="closeWorkshop()">✕</button>
+    </div>
+    <div class="workshop-body">
+      <div class="ws-side" id="wsSide"><div style="padding:20px;text-align:center;color:#999;font-size:13px">加载中...</div></div>
+      <div class="ws-main">
+        <div class="ws-toolbar">
+          <span class="fname" id="wsFileName">选择左侧插件查看代码</span>
+          <button class="ws-btn" onclick="wsTest()" title="模拟群内消息触发该插件">🧪 测试</button>
+          <button class="ws-btn warn" id="wsToggleBtn" onclick="wsToggle()" title="超级主人可启停任意插件">启用/禁用</button>
+          <button class="ws-btn green primary" onclick="wsSave()" title="保存到服务器 plugins 目录并立即热重载生效">💾 保存并热重载</button>
+        </div>
+        <div class="ws-editor-wrap">
+          <div class="ws-gutter" id="wsGutter"></div>
+          <textarea class="ws-code" id="wsCode" spellcheck="false" placeholder="选择左侧插件后，此处显示其完整代码，可直接修改；Ctrl+S 保存并热重载。插件用 module.exports = { manifest, onEnable } 导出，沙箱提供 ctx.bot / ctx.eventBus / ctx.logger，require 可用 Node 内置模块与已安装 npm 包" onscroll="syncWsGutter()" oninput="updateWsGutter()"></textarea>
+        </div>
+        <div class="ws-deps" id="wsDeps">📦 选择插件后自动分析其依赖（Node 内置 / npm 包 / ctx 能力）</div>
+        <div class="ws-status" id="wsStatus">就绪：点击左侧插件 → 预览完整代码 → 在线修改 → 保存即热重载生效（无需重启服务器）</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>谁是卧底 · 文字游戏</title>
+<style>
+:root{--bg:#0f1220;--card:#1a1f36;--card2:#222844;--line:#2e3660;--text:#eef1ff;--muted:#9aa3c9;--accent:#7c6cff;--danger:#ff5d7a;--ok:#38d39f;--warn:#ffc24b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+.wrap{max-width:680px;margin:0 auto;padding:20px 16px 60px}
+.hero{position:relative;border-radius:18px;overflow:hidden;margin-bottom:18px;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.hero img{width:100%;height:230px;object-fit:cover;display:block}
+.hero .mask{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,18,32,0) 30%,rgba(15,18,32,.92) 92%)}
+.hero h1{position:absolute;left:20px;bottom:16px;font-size:26px;font-weight:800;letter-spacing:2px}
+.hero h1 small{display:block;font-size:12px;color:var(--muted);font-weight:400;letter-spacing:1px;margin-top:4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.card h2{font-size:16px;margin-bottom:12px;color:var(--accent);letter-spacing:1px}
+.card p{color:var(--muted);font-size:13px;line-height:1.8}
+.btn{display:inline-block;border:none;cursor:pointer;padding:12px 22px;border-radius:10px;font-size:15px;font-weight:600;background:var(--accent);color:#fff;transition:transform .12s,opacity .12s}
+.btn:active{transform:scale(.96)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ok{background:var(--ok)}
+.btn.danger{background:var(--danger)}
+.btn.ghost{background:var(--card2);color:var(--text)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select{background:var(--card2);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px;font-size:14px;width:100%}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.hidden{display:none}
+.badge{display:inline-block;background:var(--card2);border:1px solid var(--line);color:var(--muted);padding:2px 10px;border-radius:20px;font-size:12px;margin:2px 4px 2px 0}
+.cards{display:flex;flex-direction:column;gap:8px}
+.pcard{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:14px}
+.pcard.out{opacity:.4;text-decoration:line-through}
+.pcard .role{font-size:11px;color:var(--muted)}
+.pcard.voted{background:rgba(124,108,255,.12);border-color:var(--accent)}
+.pick{width:100%;text-align:left;background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:8px;cursor:pointer}
+.pick:active{background:var(--accent)}
+.pick b{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+.word{font-size:34px;font-weight:800;text-align:center;padding:40px 16px;border-radius:14px;background:linear-gradient(135deg,#2a2258,#141a3a);border:1px solid var(--line);letter-spacing:4px}
+.word.white{color:#fff;text-shadow:0 0 18px rgba(255,255,255,.55)}
+.hint{text-align:center;color:var(--muted);font-size:13px;margin-top:10px}
+.steps{list-style:none;counter-reset:s}
+.steps li{counter-increment:s;color:var(--muted);font-size:13px;line-height:1.9;padding-left:30px;position:relative}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center}
+.players{display:flex;flex-wrap:wrap;gap:6px}
+.pchip{background:var(--card2);border:1px solid var(--line);padding:6px 12px;border-radius:20px;font-size:13px}
+.pchip.dead{opacity:.35;text-decoration:line-through}
+.tip{font-size:12px;color:var(--warn);margin-top:8px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <img src="cover.jpg" alt="谁是卧底封面" onerror="this.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;800&quot; height=&quot;400&quot;><rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;#1a1f36&quot;/><text x=&quot;50%&quot; y=&quot;50%&quot; fill=&quot;#7c6cff&quot; font-size=&quot;40&quot; text-anchor=&quot;middle&quot; font-family=&quot;sans-serif&quot;>谁是卧底</text></svg>')">
+    <div class="mask"></div>
+    <h1>谁是卧底<small>经典聚会文字游戏 · 面对面玩法 · 无需下载</small></h1>
+  </div>
+
+  <div id="viewHome">
+    <div class="card">
+      <h2>游戏说明</h2>
+      <ol class="steps">
+        <li>开始后每位玩家依次查看自己的身份牌：多数人拿到<b>平民词</b>，卧底拿到<b>卧底词</b>（含义相近但有区别），10 人以上可能有人拿到<b>白板</b>。</li>
+        <li>每人轮流用一句话描述自己拿到的词（不可以说出词语本身，要努力不被卧底发现）。</li>
+        <li>描述完成后大家投票，票数最多者出局；若出局者就是卧底，平民获胜，否则继续下一轮。</li>
+        <li>卧底要伪装成平民活到最后；白板玩家要凭描述猜出平民词。</li>
+      </ol>
+      <p style="margin-top:10px">内置 <span id="libCount" style="color:var(--accent);font-weight:700">0</span> 组经典词语库，每局随机抽取。</p>
+    </div>
+    <div class="card">
+      <h2>开始游戏</h2>
+      <div class="row" style="margin-bottom:12px">
+        <div style="flex:1;min-width:140px"><label>玩家人数（4-12）</label><input id="nPlayers" type="number" min="4" max="12" value="6"></div>
+        <div style="flex:1;min-width:200px"><label>也可以自定义词对（平民词 / 卧底词）</label><input id="customWords" placeholder="例：奶茶/果茶（留空则随机内置词库）"></div>
+      </div>
+      <div id="nameList"></div>
+      <div style="margin-top:14px;text-align:center"><button class="btn" onclick="startGame()">发牌开始</button></div>
+    </div>
+  </div>
+
+  <div id="viewDeal" class="hidden">
+    <div class="card">
+      <h2>发牌阶段</h2>
+      <div id="dealCard"></div>
+      <div style="text-align:center;margin-top:14px">
+        <button id="dealBtn" class="btn" onclick="nextDeal()">开始发牌</button>
+      </div>
+      <div class="players" id="dealChips" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <div id="viewPlay" class="hidden">
+    <div class="card">
+      <h2>游戏进行中</h2>
+      <div class="players" id="aliveChips"></div>
+      <div class="card" style="background:var(--card2);border-color:var(--line)">
+        <h2 style="color:var(--warn)">讨论 + 投票</h2>
+        <p>所有人轮流描述自己手上的词，不要说出词语本身，然后选出你们认为的「卧底」。</p>
+        <div id="voteArea" style="margin-top:12px"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn ok" onclick="nextVote()">确认票数最多者出局</button>
+        <button class="btn ghost" onclick="showResult()">直接揭晓本局结果</button>
+      </div>
+      <div class="tip">出局判定后若卧底仍在场，游戏继续（重新投票）。也可以随时点「直接揭晓」看答案。</div>
+    </div>
+  </div>
+
+  <div id="viewResult" class="hidden">
+    <div class="card">
+      <h2 style="color:var(--ok)">本局揭晓</h2>
+      <div id="resultContent"></div>
+      <div style="text-align:center;margin-top:16px"><button class="btn" onclick="location.reload()">再来一局</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var LIB=[
+['奶茶','果茶'],['苹果','梨'],['土豆','红薯'],['饺子','馄饨'],['米饭','面条'],
+['火锅','麻辣烫'],['银行','储蓄所'],['警察','城管'],['咖啡','奶茶'],['篮球','排球'],
+['动物园','水族馆'],['移动','联通'],['汉堡','三明治'],['可乐','雪碧'],['洗发水','沐浴露'],
+['地铁','公交'],['医生','护士'],['老师','教授'],['沙发','躺椅'],['鼠标','触控板'],
+['眼镜','墨镜'],['自行车','电动车'],['信用卡','储蓄卡'],['超市','便利店'],['电梯','扶梯'],
+['玉米','爆米花'],['钢笔','圆珠笔'],['空调','风扇'],['电视剧','电影'],['婚宴','满月酒'],
+['游泳','潜水'],['口红','唇彩'],['高跟鞋','坡跟鞋'],['台灯','壁灯'],['超市','商场'],
+['泡面','挂面'],['榴莲','菠萝蜜'],['葡萄','提子'],['龙虾','螃蟹'],['桔子','橙子']
+];
+document.getElementById('libCount').textContent=LIB.length;
+
+var N=6, players=[], round=0, phase='', state={};
+
+function setupNames(){
+  var n=parseInt(document.getElementById('nPlayers').value)||6;
+  n=Math.max(4,Math.min(12,n));
+  document.getElementById('nPlayers').value=n;
+  var html='';
+  for(var i=1;i<=n;i++){html+='<div style="margin-bottom:6px"><label>玩家'+i+' 昵称</label><input id="pn'+i+'" value="玩家'+i+'" maxlength="8"></div>'}
+  document.getElementById('nameList').innerHTML=html;
+}
+setupNames();
+document.getElementById('nPlayers').addEventListener('input',setupNames);
+
+function pickWordPair(){
+  var c=document.getElementById('customWords').value.trim();
+  if(c){
+    var sp=c.split(/[\/\/|]/);
+    if(sp.length===2&&sp[0].trim()&&sp[1].trim())return [sp[0].trim(),sp[1].trim()];
+  }
+  return LIB[Math.floor(Math.random()*LIB.length)];
+}
+
+function startGame(){
+  var n=parseInt(document.getElementById('nPlayers').value)||6;
+  n=Math.max(4,Math.min(12,n));
+  N=n;
+  players=[];
+  for(var i=1;i<=n;i++){
+    var nm=document.getElementById('pn'+i).value.trim()||('玩家'+i);
+    players.push({name:nm,role:'',dead:false,out:false});
+  }
+  var pw=pickWordPair();
+  var civil=pw[0], spy=pw[1];
+  var nSpy=Math.min(n>=8?2:1,Math.floor((n-1)/2));
+  var nWhite=n>=10?1:0;
+  var roles=['civil'].concat(new Array(nSpy).fill('spy')).concat(new Array(nWhite).fill('white'));
+  while(roles.length<n)roles.push('civil');
+  // 洗牌分配
+  for(var k=roles.length-1;k>0;k--){var j=Math.floor(Math.random()*(k+1));var t=roles[k];roles[k]=roles[j];roles[j]=t;}
+  state={civil:civil,spy:spy,nSpy:nSpy,nWhite:nWhite,roles:roles,dealIdx:0,lastVote:-1};
+  show('viewDeal');
+  renderDealChips();
+  document.getElementById('dealCard').innerHTML='<div class="hint" style="font-size:15px;color:var(--text)">共 '+n+' 人 · 卧底 '+(nSpy?nSpy+' 人':'无')+(nWhite?' · 白板 1 人':'')+'<br>点击下方按钮，将手机/屏幕依次传给每位玩家查看自己的身份牌</div>';
+  document.getElementById('dealBtn').style.display='';
+  document.getElementById('dealBtn').textContent='查看玩家1的身份牌';
+}
+
+function renderDealChips(){
+  document.getElementById('dealChips').innerHTML=players.map(function(p,i){
+    var tag=state.roles[i]==='spy'?'卧底':state.roles[i]==='white'?'白板':'平民';
+    return '<span class="pchip">'+p.name+'<span style="color:var(--muted)">（'+tag+'）</span></span>';
+  }).join('');
+}
+
+function nextDeal(){
+  var i=state.dealIdx;
+  if(i>=N){dealDone();return;}
+  var role=state.roles[i];
+  var word=role==='spy'?state.spy:role==='white'?'白板':state.civil;
+  var isWhite=role==='white';
+  document.getElementById('dealCard').innerHTML=
+    '<div style="text-align:center;margin-bottom:10px;color:var(--muted)">传给 <b style="color:var(--text);font-size:16px">'+players[i].name+'</b> 查看</div>'+
+    '<div class="word'+(isWhite?' white':'')+'">'+word+'</div>'+
+    '<div class="hint">'+(isWhite?'你是白板！仔细观察大家的描述，猜出平民词':'请不要说出这个词语本身，记住后传给下一位')+'</div>';
+  document.getElementById('dealBtn').textContent=(i+1>=N?'全部看完，进入游戏':'传给下一位（'+players[Math.min(i+1,N-1)].name+'）');
+  document.getElementById('dealBtn').style.display='';
+}
+
+function dealDone(){
+  state.dealIdx=0;
+  phase='play';
+  show('viewPlay');
+  renderAlive();
+  renderVote();
+}
+
+function aliveList(){return players.filter(function(p){return !p.out});}
+
+function renderAlive(){
+  document.getElementById('aliveChips').innerHTML=players.map(function(p){
+    return '<span class="pchip'+(p.out?' dead':'')+'">'+p.name+(p.out?'（出局）':'')+'</span>';
+  }).join('');
+}
+
+function renderVote(){
+  var al=aliveList();
+  var html='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">当前在场 '+al.length+' 人，请选择你认为的卧底：</div>';
+  al.forEach(function(p,i){
+    var sel=state.lastVote===i?' style="background:rgba(124,108,255,.2);border-color:var(--accent)"':'';
+    html+='<button class="pick"'+sel+' onclick="pickVote('+i+')"><span style="font-weight:700;color:var(--accent)">'+p.name+'</span><b>点此选择 '+p.name+' 出局</b></button>';
+  });
+  document.getElementById('voteArea').innerHTML=html;
+}
+
+function pickVote(i){
+  var al=aliveList();
+  state.lastVote=i;
+  renderVote();
+}
+
+function nextVote(){
+  var al=aliveList();
+  if(al.length<=1){showResult();return;}
+  // 随机一个卧底候选作为"被票出者"（实体游戏由玩家投票决定，这里由操作者点选）
+  // 简化：由操作者点击具体玩家按钮投票，此处确认
+  if(state.lastVote<0){alert('请先选择一位玩家投票');return;}
+  var idx=state.lastVote;
+  var p=players[players.indexOf(al[idx])];
+  p.out=true;
+  state.lastVote=-1;
+  renderAlive();
+  var remainSpy=aliveList().filter(function(x){return state.roles[players.indexOf(x)]==='spy'}).length;
+  if(remainSpy===0){
+    // 出局的如果是卧底则平民胜（此处直接揭晓）
+    alert('🎉 '+p.name+' 出局！卧底已被淘汰，平民获胜！');
+    showResult();
+    return;
+  }
+  if(aliveList().length<=1){alert('剩余人数过少，本局结束');showResult();return;}
+  renderVote();
+}
+
+function showResult(){
+  show('viewResult');
+  var rc='<div style="font-size:14px;color:var(--muted);margin-bottom:10px">平民词</div><div class="word" style="font-size:26px;padding:18px">'+state.civil+'</div>'+
+    '<div style="font-size:14px;color:var(--muted);margin:14px 0 10px">卧底词'+(state.nWhite?' / 白板':'')+'</div><div class="word" style="font-size:26px;padding:18px;color:var(--danger)">'+state.spy+(state.nWhite?' <span style="color:#fff;text-shadow:0 0 14px rgba(255,255,255,.6)">/ 白板</span>':'')+'</div>'+
+    '<div style="margin-top:16px">';
+  players.forEach(function(p,i){
+    var r=state.roles[i];
+    var tag=r==='spy'?'卧底':(r==='white'?'白板':'平民');
+    var col=r==='spy'?'var(--danger)':r==='white'?'#fff':'var(--text)';
+    rc+='<div style="background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;margin-bottom:6px;font-size:14px">'+p.name+' · <span style="color:'+col+';font-weight:700">'+tag+'</span></div>';
+  });
+  rc+='</div>';
+  document.getElementById('resultContent').innerHTML=rc;
+}
+
+function show(id){
+  ['viewHome','viewDeal','viewPlay','viewResult'].forEach(function(v){document.getElementById(v).classList.add('hidden');});
+  document.getElementById(id).classList.remove('hidden');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1452 @@
+<html lang="zh-CN">
+ <head> 
+  <meta charset="utf-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1"> 
+  <title>空空爱追剧</title> 
+  <script src="static/plugin-info.js"></script> 
+  <script src="https://cdn.tailwindcss.com"></script> 
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #f0f2f5;
+      color: #1f2937;
+      font-size: 16px;
+      transition: background 0.4s ease, color 0.4s ease;
+    }
+
+    html.dark, html.dark body {
+      background: #18191C;
+      color: #e5e7eb;
+    }
+
+    .app-layout {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+    }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      gap: 16px;
+    }
+
+    .dark header {
+      background: #2a2b2e;
+      border-color: #3f4045;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1f2937;
+      flex: 1;
+    }
+
+    .dark .header-title {
+      color: #e5e7eb;
+    }
+
+    .refresh-btn {
+      padding: 8px 16px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .refresh-btn:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .refresh-btn:active {
+      transform: scale(0.95);
+    }
+
+    .refresh-btn svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.5s;
+    }
+
+    .refresh-btn.spinning svg {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      padding: 16px;
+      min-height: 0;
+      overflow: hidden;
+      height: calc(100vh - 80px);
+      position: relative;
+      padding-left: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 12px;
+        height: calc(100vh - 70px);
+        padding-left: 12px;
+      }
+    }
+
+    /* 菜单按钮 - 在header中 */
+    .menu-toggle-btn {
+      width: 40px;
+      height: 40px;
+      background: transparent;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      transition: all 0.3s;
+      flex-shrink: 0;
+    }
+
+    .menu-toggle-btn:hover {
+      background: #f3f4f6;
+      transform: scale(1.05);
+    }
+
+    .dark .menu-toggle-btn {
+      border-color: #3f4045;
+    }
+
+    .dark .menu-toggle-btn:hover {
+      background: #374151;
+    }
+
+    /* 侧边栏 - 默认隐藏，打开时浮在内容上方 */
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 280px;
+      height: 100vh;
+      background: white;
+      border-right: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 16px;
+      overflow-y: auto;
+      z-index: 250;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .dark .sidebar {
+      background: #1f2937;
+      border-color: #3f4045;
+    }
+
+    /* 侧边栏遮罩 - 点击关闭 */
+    .sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 240;
+      display: none;
+    }
+
+    .sidebar-overlay.open {
+      display: block;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #e5e7eb;
+      border-radius: 10px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: #3b82f6;
+    }
+
+    .dark .sidebar::-webkit-scrollbar-thumb {
+      background: #4a4b50;
+    }
+
+    .glass-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s;
+    }
+
+    .glass-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .dark .glass-card {
+      background: #2a2b2e;
+      border-color: #3f4045;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .dark .glass-card:hover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      padding: 16px;
+      border-bottom: 1px solid #f3f4f6;
+      font-weight: 600;
+      font-size: 14px;
+      color: #1f2937;
+    }
+
+    .dark .card-header {
+      border-color: #3f4045;
+      color: #e5e7eb;
+    }
+
+    .card-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .card-content::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .card-content::-webkit-scrollbar-thumb {
+      background: #e5e7eb;
+      border-radius: 10px;
+    }
+
+    .card-content::-webkit-scrollbar-thumb:hover {
+      background: #3b82f6;
+    }
+
+    .dark .card-content::-webkit-scrollbar-thumb {
+      background: #4a4b50;
+    }
+
+    .group-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      justify-content: flex-start;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #f3f4f6;
+      margin-bottom: 8px;
+      background: #fff;
+      transition: all 0.3s;
+    }
+
+    .dark .group-item {
+      background: #374151;
+      border-color: #3f4045;
+    }
+
+    .group-item:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .group-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .group-name {
+      font-weight: 500;
+      color: #1f2937;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dark .group-name {
+      color: #e5e7eb;
+    }
+
+    .group-id {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    .dark .group-id {
+      color: #6b7280;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+      margin-left: 12px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #d1d5db;
+      transition: background-color 0.35s, box-shadow 0.3s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider:hover {
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+
+    .dark .toggle-slider {
+      background-color: #4a4b50;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: transform 0.35s;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #3b82f6;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
+
+    .bulk-actions {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .dark .bulk-actions {
+      border-color: #3f4045;
+    }
+
+    .bulk-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.3s;
+      color: #1f2937;
+    }
+
+    .dark .bulk-btn {
+      background: #374151;
+      border-color: #4a4b50;
+      color: #e5e7eb;
+    }
+
+    .bulk-btn:hover {
+      background: #f3f4f6;
+      border-color: #3b82f6;
+      color: #3b82f6;
+    }
+
+    .dark .bulk-btn:hover {
+      background: #4a4b50;
+      border-color: #3b82f6;
+      color: #3b82f6;
+    }
+
+    .bulk-btn:active {
+      transform: scale(0.95);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: #9ca3af;
+    }
+
+    .dark .empty-state {
+      color: #6b7280;
+    }
+
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+    }
+
+    .toast {
+      padding: 12px 24px;
+      border-radius: 8px;
+      color: white;
+      margin-bottom: 8px;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      animation: toastIn 0.3s ease-out;
+    }
+
+    .toast.success {
+      background: #10b981;
+    }
+
+    .toast.error {
+      background: #ef4444;
+    }
+
+    .toast.info {
+      background: #3b82f6;
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateX(100%);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .main-area {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+    }
+
+    .dark .main-area {
+      background: #2a2b2e;
+      border-color: #3f4045;
+      color: #6b7280;
+    }
+
+    /* 导航菜单项 - 圆角长方形按钮 */
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      transition: all 0.3s;
+      color: #6b7280;
+      font-weight: 500;
+      background: white;
+      margin-bottom: 8px;
+    }
+
+    .nav-item:hover {
+      background: #f3f4f6;
+      color: #3b82f6;
+      border-color: #3b82f6;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+
+    .dark .nav-item {
+      background: #374151;
+      border-color: #4a4b50;
+      color: #e5e7eb;
+    }
+
+    .dark .nav-item:hover {
+      background: #4a4b50;
+      color: #3b82f6;
+      border-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .nav-item.active {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+
+    .dark .nav-item.active {
+      background: #1e3a8a;
+      border-color: #3b82f6;
+      color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    /* 页面内容 */
+    .page-content {
+      display: none;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .page-content.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-content .glass-card {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .page-content .glass-card > div:last-child {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+  </style> 
+  <script src="js/jq.js"></script> 
+  <style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}</style> 
+  <style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}</style>
+ </head> 
+ <body id="v1"> 
+  <div id="v2" class="app-layout"> 
+   <!-- Header --> 
+   <header id="v3"> 
+    <button class="menu-toggle-btn" id="menuToggleBtn" onclick="toggleSidebar()" style="position: relative; left: auto; top: auto; margin-right: 16px;"> 
+     <svg id="v4" width="24" height="24" fill="none" stroke="currentColor" viewbox="0 0 24 24"> 
+      <path id="v5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path> 
+     </svg> </button> 
+    <div id="v6" class="header-title">
+      空空爱追剧 
+    </div> 
+    <button class="refresh-btn" id="refreshBtn"> 
+     <svg id="v7" fill="none" stroke="currentColor" viewbox="0 0 24 24"> 
+      <path id="v8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path> 
+     </svg> 刷新 </button> 
+   </header> 
+   <!-- Main Content --> 
+   <div id="v9" class="main-content"> 
+    <!-- 侧边栏遮罩 --> 
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"> 
+    </div> 
+    <!-- Sidebar Navigation --> 
+    <div class="sidebar" id="sidebar"> 
+     <div id="v10" class="nav-item active" onclick="switchPage('announcement'); closeSidebar();"> 
+      <span id="v11">更新公告</span> 
+     </div> 
+     <div id="v12" class="nav-item" onclick="switchPage('settings'); closeSidebar();"> 
+      <span id="v13">基础设置</span> 
+     </div> 
+     <div id="v14" class="nav-item" onclick="switchPage('group-switch'); closeSidebar();"> 
+      <span id="v15">开关管理</span> 
+     </div> 
+    </div> 
+    <!-- Main Area - Group Switch Page --> 
+    <div id="page-group-switch" class="page-content"> 
+     <div id="v16" class="glass-card" style="height: 100%; display: flex; flex-direction: column;"> 
+      <div id="v17" style="padding: 16px; border-bottom: 1px solid #f3f4f6;"> 
+       <div id="v18" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 16px;"> 
+        <button class="bulk-btn" id="enableAllBtn" style="padding: 8px 12px; font-size: 12px; white-space: nowrap; flex: 1;">全部开启</button> 
+        <div id="v19" style="font-weight: 600; font-size: 16px; color: rgb(31, 41, 55); cursor: pointer; padding: 8px; transition: all0 0.3s;" onclick="switchPage('group-switch');">
+          群聊开关 
+        </div> 
+        <div id="v20" style="color: #d1d5db; font-size: 16px;">
+          | 
+        </div> 
+        <div id="v21" style="font-weight: 600; font-size: 16px; color: rgb(156, 163, 175); cursor: pointer; padding: 8px; transition: all000 0.3s;" onclick="switchPage('friend-list');">
+          好友开关 
+        </div> 
+        <button class="bulk-btn" id="disableAllBtn" style="padding: 8px 12px; font-size: 12px; white-space: nowrap; flex: 1;">全部关闭</button> 
+       </div> 
+       <input type="text" id="group-search" placeholder="搜索群名或群号..." style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.3s;" oninput="filterGroups()" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none';"> 
+      </div> 
+      <div id="v22" style="flex: 1; overflow-y: auto; padding: 16px; background: #f9fafb;"> 
+       <!-- 加载中 --> 
+       <div id="groups-loading" style="text-align: center; padding: 32px 16px; display: none;"> 
+        <div id="v23" style="font-size: 14px; color: #9ca3af;">
+          加载中... 
+        </div> 
+       </div> 
+       <!-- 群列表容器 --> 
+       <div id="groups-container" style="display: none; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;"> 
+        <!-- 动态生成 --> 
+       </div> 
+       <!-- 空状态 --> 
+       <div id="groups-empty" style="text-align: center; padding: 32px 16px; display: block;"> 
+        <div id="v24" style="font-size: 14px; color: #9ca3af;">
+          暂无群聊 
+        </div> 
+       </div> 
+      </div> 
+     </div> 
+    </div> 
+    <!-- Main Area - Friend List Page --> 
+    <div id="page-friend-list" class="page-content active"> 
+     <div id="v25" class="glass-card" style="height: 100%; display: flex; flex-direction: column;"> 
+      <div id="v26" style="padding: 16px; border-bottom: 1px solid #f3f4f6;"> 
+       <div id="v27" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 16px;"> 
+        <button class="bulk-btn" id="enableAllFriendsBtn" style="padding: 8px 12px; font-size: 12px; white-space: nowrap; flex: 1;">全部开启</button> 
+        <div id="v28" style="font-weight: 600; font-size: 16px; color: rgb(156, 163, 175); cursor: pointer; padding: 8px; transition: all00 0.3s;" onclick="switchPage('group-switch');">
+          群聊开关 
+        </div> 
+        <div id="v29" style="color: #d1d5db; font-size: 16px;">
+          | 
+        </div> 
+        <div id="v30" style="font-weight: 600; font-size: 16px; color: rgb(31, 41, 55); cursor: pointer; padding: 8px; transition: all0 0.3s;" onclick="switchPage('friend-list');">
+          好友开关 
+        </div> 
+        <button class="bulk-btn" id="disableAllFriendsBtn" style="padding: 8px 12px; font-size: 12px; white-space: nowrap; flex: 1;">全部关闭</button> 
+       </div> 
+       <input type="text" id="friend-search" placeholder="搜索好友昵称或QQ..." style="width: 100%; padding: 8px 12px; border: 1px solid rgb(59, 130, 246); border-radius: 8px; font-size: 14px; outline: none; transition: 0.3s; box-shadow: rgba(59, 130, 246, 0.1) 0px 0px 0px 3px;" oninput="filterFriends()" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none';"> 
+      </div> 
+      <div id="v31" style="flex: 1; overflow-y: auto; padding: 16px; background: #f9fafb;"> 
+       <!-- 加载中 --> 
+       <div id="friends-loading" style="text-align: center; padding: 32px 16px; display: none;"> 
+        <div id="v32" style="font-size: 14px; color: #9ca3af;">
+          加载中... 
+        </div> 
+       </div> 
+       <!-- 好友列表容器 --> 
+       <div id="friends-container" style="display: none; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;"> 
+        <!-- 动态生成 --> 
+       </div> 
+       <!-- 空状态 --> 
+       <div id="friends-empty" style="text-align: center; padding: 32px 16px; display: none;"> 
+        <div id="v33" style="font-size: 14px; color: #9ca3af;">
+          暂无好友 
+        </div> 
+       </div> 
+      </div> 
+     </div> 
+    </div> 
+    <!-- Main Area - Settings Page --> 
+    <div id="page-settings" class="page-content"> 
+     <div id="v34" class="glass-card" style="height: 100%; display: flex; flex-direction: column;"> 
+      <div id="v35" style="padding: 16px; border-bottom: 1px solid #f3f4f6;"> 
+       <div id="v36" style="font-weight: 600; font-size: 18px; color: #1f2937;">
+         基础设置 
+       </div> 
+      </div> 
+      <div id="v37" style="flex: 1; overflow-y: auto; padding: 16px; background: #f9fafb;"> 
+       <!-- 主人 QQ 设置 --> 
+       <div id="v38" style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px;"> 
+        <div id="v39" style="font-weight: 600; font-size: 14px; color: #1f2937; margin-bottom: 8px;">
+          主人 QQ 
+        </div> 
+        <input type="text" id="ownerQQsInput" placeholder="多个 QQ 用逗号分隔，如：123456,789012" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.3s; box-sizing: border-box;" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none';"> 
+        <div id="v40" style="font-size: 12px; color: #9ca3af; margin-top: 8px;">
+          支持多种分隔符：逗号、中文逗号、空格、&amp;、| 
+        </div> 
+       </div> 
+       <!-- 非主人回复开关 --> 
+       <div id="v41" style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px;"> 
+        <div id="v42" style="display: flex; justify-content: space-between; align-items: center;"> 
+         <div id="v43"> 
+          <div id="v44" style="font-weight: 600; font-size: 14px; color: #1f2937; margin-bottom: 4px;">
+            非主人回复开关 
+          </div> 
+          <div id="v45" style="font-size: 12px; color: #9ca3af;">
+            启用后，非主人消息会触发回复 
+          </div> 
+         </div> 
+         <label id="v46" class="toggle-switch" style="flex-shrink: 0;"> <input type="checkbox" id="nowoner" onchange="saveSettings()"> <span id="v47" class="toggle-slider"></span> </label> 
+        </div> 
+       </div> 
+       <!-- 非主人回复内容 --> 
+       <div id="v48" style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 16px;"> 
+        <div id="v49" style="font-weight: 600; font-size: 14px; color: #1f2937; margin-bottom: 8px;">
+          非主人回复内容 
+        </div> 
+        <textarea id="nowonernrInput" placeholder="输入非主人消息的回复内容" style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.3s; box-sizing: border-box; min-height: 80px; resize: vertical; font-family: inherit;" onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)';" onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none';"></textarea> 
+       </div> 
+       <!-- 保存按钮 --> 
+       <div id="v50" style="display: flex; gap: 8px;"> 
+        <button class="bulk-btn" id="saveSettingsBtn" style="padding: 10px 16px; font-size: 14px; flex: 1; background: #3b82f6; color: white; border: none; cursor: pointer;" onclick="saveSettings()">保存设置</button> 
+        <button class="bulk-btn" id="resetSettingsBtn" style="padding: 10px 16px; font-size: 14px; flex: 1;" onclick="loadSettings()">重置</button> 
+       </div> 
+      </div> 
+     </div> 
+    </div> 
+    <!-- Main Area - Announcement Page --> 
+    <div id="page-announcement" class="page-content active"> 
+     <div id="v51" class="glass-card" style="height: 100%; display: flex; flex-direction: column;"> 
+      <div id="v52" style="padding: 16px; border-bottom: 1px solid #f3f4f6; text-align: center;"> 
+       <div id="v53" style="font-weight: 600; font-size: 18px; color: #1f2937;">
+         更新公告 
+       </div> 
+      </div> 
+      <div id="v54" style="flex: 1; overflow-y: auto; padding: 16px; background: #f9fafb;"> 
+       <!-- 加载中 --> 
+       <div id="announcement-loading" style="text-align: center; padding: 32px 16px; display: block;"> 
+        <div id="v55" style="font-size: 14px; color: #9ca3af;">
+          加载中... 
+        </div> 
+       </div> 
+       <!-- 公告内容 --> 
+       <div id="announcement-content" style="display: none; white-space: pre-wrap; word-break: break-word; font-family: monospace; font-size: 13px; color: #1f2937; line-height: 1.6;"></div> 
+       <!-- 空状态 --> 
+       <div id="announcement-empty" style="text-align: center; padding: 32px 16px; display: none;"> 
+        <div id="v56" style="font-size: 14px; color: #9ca3af;">
+          无 
+        </div> 
+       </div> 
+      </div> 
+     </div> 
+    </div> 
+   </div> 
+   <!-- 调试面板 --> 
+   <div id="debugPanel" style="position: fixed; bottom: 20px; right: 20px; background: white; border: 1px solid #ccc; border-radius: 8px; padding: 16px; max-width: 400px; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; display: none;"> 
+    <div id="v57" style="font-weight: bold; margin-bottom: 8px;">
+      调试信息 
+    </div> 
+    <div id="debugContent" style="font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-all;">
+      === 开始初始化 === === 开始解析 API 基础路径 === webui_token: 未获取 window.__PLUGIN_NAME__: undefined location.pathname: /storage/emulated/0/Android/data/top.webcat.editor/files/WebCat/project/MKbot/MKbot/webui/dashboard.html 尝试的插件名列表: ["napcat-plugin-mkbot"] 尝试路径: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/config [ERROR] 尝试失败: Failed to fetch 使用兜底路径: /api/Plugin/ext/napcat-plugin-mkbot API 基础路径已设置: /api/Plugin/ext/napcat-plugin-mkbot 加载配置... [LOAD] 加载配置... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/config 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 加载配置失败: Failed to fetch 获取群聊列表... [LOAD] 获取群聊列表... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/groups 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 获取群聊列表失败: Failed to fetch 渲染群聊列表... [OK] 初始化完成 [LOAD] 加载更新公告... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/announcement 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 加载公告失败: Failed to fetch 切换页面: settings [LOAD] 加载设置... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/config 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 加载设置失败: Failed to fetch 切换页面: group-switch 切换页面: friend-list [LOAD] 获取好友列表... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/friends 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 获取好友列表失败: Failed to fetch 切换页面: group-switch 切换页面: friend-list [LOAD] 获取好友列表... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/friends 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 获取好友列表失败: Failed to fetch 切换页面: group-switch 切换页面: group-switch 切换页面: friend-list [LOAD] 获取好友列表... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/friends 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 获取好友列表失败: Failed to fetch 切换页面: friend-list [LOAD] 获取好友列表... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/friends 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 获取好友列表失败: Failed to fetch [SAVE] 保存好友配置: {"haoyou_of":[]} [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/config 方法: POST [ERROR] API 调用失败: Failed to fetch [ERROR] 保存好友配置失败: Failed to fetch [SAVE] 保存好友配置: {"haoyou_of":[]} [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/config 方法: POST [ERROR] API 调用失败: Failed to fetch [ERROR] 保存好友配置失败: Failed to fetch === 开始初始化 === === 开始解析 API 基础路径 === webui_token: 未获取 window.__PLUGIN_NAME__: undefined location.pathname: /storage/emulated/0/Android/data/top.webcat.editor/files/WebCat/project/MKbot/MKbot/webui/dashboard.html 尝试的插件名列表: ["napcat-plugin-mkbot"] 尝试路径: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/config [ERROR] 尝试失败: Failed to fetch 使用兜底路径: /api/Plugin/ext/napcat-plugin-mkbot API 基础路径已设置: /api/Plugin/ext/napcat-plugin-mkbot 加载配置... [LOAD] 加载配置... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/config 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 加载配置失败: Failed to fetch 获取群聊列表... [LOAD] 获取群聊列表... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/groups 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 获取群聊列表失败: Failed to fetch 渲染群聊列表... [OK] 初始化完成 [LOAD] 加载更新公告... [API] 调用: /api/Plugin/ext/napcat-plugin-mkbot/mkbot/announcement 方法: GET [ERROR] API 调用失败: Failed to fetch [ERROR] 加载公告失败: Failed to fetch 
+    </div> 
+    <button id="v58" onclick="document.getElementById('debugPanel').style.display='none'" style="margin-top: 8px; padding: 4px 8px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;">关闭</button> 
+   </div> 
+   <!-- 调试开关按钮 --> 
+   <button id="debugToggleBtn" onclick="document.getElementById('debugPanel').style.display = document.getElementById('debugPanel').style.display === 'none' ? 'block' : 'none'" style="position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; padding: 0; background: #666; color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 12px; z-index: 999; display: flex; align-items: center; justify-content: center;">🐛</button> 
+  </div> 
+  <!-- Toast Container --> 
+  <div class="toast-container" id="toastContainer"> 
+   <div id="v59" class="toast error">
+     保存好友配置失败: Failed to fetch 
+   </div> 
+   <div id="v60" class="toast success">
+     已全部开启 
+   </div> 
+   <div class="toast error">
+    加载配置失败: Failed to fetch
+   </div>
+   <div class="toast error">
+    获取群聊列表失败: Failed to fetch
+   </div>
+  </div> 
+  <script>
+    const ROUTE_PREFIX = '/mkbot';
+    const CONFIG_KEY = 'group_of';
+    const FRIEND_CONFIG_KEY = 'haoyou_of';
+    // 从 localStorage 获取 token（NapCat WebUI 鉴权方式）
+    const token = localStorage.getItem('token') || '';
+    let groupList = [];
+    let enabledGroups = [];
+    let friendList = [];
+    let enabledFriends = [];
+
+    // 获取授权请求头
+    function authHeaders(h = {}) {
+      if (token) h['Authorization'] = 'Bearer ' + token;
+      return h;
+    }
+
+    // 调试输出
+    function debug(msg) {
+      console.log(msg);
+      const panel = document.getElementById('debugPanel');
+      const content = document.getElementById('debugContent');
+      if (panel && content) {
+        // 不自动显示面板，只记录内容
+        content.textContent += msg + '\n';
+        content.scrollTop = content.scrollHeight;
+      }
+    }
+
+    // 获取 API 基础路径
+    async function resolveApiBase() {
+      debug('=== 开始解析 API 基础路径 ===');
+      debug('webui_token: ' + (token ? '已获取' : '未获取'));
+      debug('window.__PLUGIN_NAME__: ' + window.__PLUGIN_NAME__);
+      debug('location.pathname: ' + location.pathname);
+      
+      const tries = [];
+      if (window.__PLUGIN_NAME__) tries.push(window.__PLUGIN_NAME__);
+      try {
+        if (window.parent && window.parent.__PLUGIN_NAME__) tries.push(window.parent.__PLUGIN_NAME__);
+      } catch (e) { }
+
+      const extMatch = location.pathname.match(/\/ext\/([^\/]+)/);
+      if (extMatch) {
+        debug('从 URL 提取插件名: ' + extMatch[1]);
+        tries.unshift(extMatch[1]);
+      }
+
+      // 默认兜底
+      tries.push('napcat-plugin-mkbot');
+
+      debug('尝试的插件名列表: ' + JSON.stringify([...new Set(tries.filter(Boolean))]));
+
+      for (const name of [...new Set(tries.filter(Boolean))]) {
+        const base = '/api/Plugin/ext/' + name;
+        debug('尝试路径: ' + base + ROUTE_PREFIX + '/config');
+        try {
+          const r = await fetch(base + ROUTE_PREFIX + '/config', { headers: authHeaders() });
+          debug('响应状态: ' + r.status);
+          if (r.ok) {
+            debug('[OK] 找到 API 基础路径: ' + base);
+            return base;
+          }
+        } catch (e) {
+          debug('[ERROR] 尝试失败: ' + e.message);
+        }
+      }
+      const fallback = '/api/Plugin/ext/' + (window.__PLUGIN_NAME__ || 'napcat-plugin-mkbot');
+      debug('使用兜底路径: ' + fallback);
+      return fallback;
+    }
+
+    // 调用 API
+    async function apiCall(path, options = {}) {
+      const url = API_BASE + ROUTE_PREFIX + path;
+      debug('[API] 调用: ' + url);
+      debug('方法: ' + (options.method || 'GET'));
+      
+      try {
+        const res = await fetch(url, {
+          ...options,
+          headers: { 'Content-Type': 'application/json', ...options.headers, ...authHeaders() }
+        });
+        
+        debug('响应状态: ' + res.status);
+        
+        if (!res.ok) {
+          const text = await res.text();
+          debug('[ERROR] 错误响应: ' + text);
+          throw new Error(text || `HTTP ${res.status}`);
+        }
+        
+        const data = await res.json();
+        debug('[OK] 响应数据: ' + JSON.stringify(data));
+        return data;
+      } catch (error) {
+        debug('[ERROR] API 调用失败: ' + error.message);
+        throw error;
+      }
+    }
+
+    // 初始化
+    async function init() {
+      try {
+        debug('=== 开始初始化 ===');
+        API_BASE = await resolveApiBase();
+        debug('API 基础路径已设置: ' + API_BASE);
+        
+        debug('加载配置...');
+        await loadConfig();
+        
+        debug('获取群聊列表...');
+        await fetchGroupList();
+        
+        debug('渲染群聊列表...');
+        renderGroupList();
+        
+        debug('[OK] 初始化完成');
+      } catch (error) {
+        debug('[ERROR] 初始化失败: ' + error.message);
+        showToast('初始化失败: ' + error.message, 'error');
+      }
+    }
+
+    // 加载配置
+    async function loadConfig() {
+      try {
+        debug('[LOAD] 加载配置...');
+        const data = await apiCall('/config');
+        enabledGroups = data.data?.group_of || [];
+        enabledFriends = data.data?.haoyou_of || [];
+        debug('[OK] 配置加载成功，启用的群聊: ' + JSON.stringify(enabledGroups));
+        debug('[OK] 配置加载成功，启用的好友: ' + JSON.stringify(enabledFriends));
+      } catch (error) {
+        debug('[ERROR] 加载配置失败: ' + error.message);
+        showToast('加载配置失败: ' + error.message, 'error');
+        enabledGroups = [];
+        enabledFriends = [];
+      }
+    }
+
+    // 获取群聊列表
+    async function fetchGroupList() {
+      try {
+        debug('[LOAD] 获取群聊列表...');
+        const data = await apiCall('/groups');
+        groupList = data.data?.groups || [];
+        debug('[OK] 群聊列表加载成功，共 ' + groupList.length + ' 个群聊');
+        debug('群聊数据: ' + JSON.stringify(groupList));
+      } catch (error) {
+        debug('[ERROR] 获取群聊列表失败: ' + error.message);
+        showToast('获取群聊列表失败: ' + error.message, 'error');
+        groupList = [];
+      }
+    }
+
+    // 获取好友列表
+    async function fetchFriendList() {
+      try {
+        debug('[LOAD] 获取好友列表...');
+        const data = await apiCall('/friends');
+        friendList = data.data?.friends || [];
+        debug('[OK] 好友列表加载成功，共 ' + friendList.length + ' 个好友');
+        debug('好友数据: ' + JSON.stringify(friendList));
+      } catch (error) {
+        debug('[ERROR] 获取好友列表失败: ' + error.message);
+        showToast('获取好友列表失败: ' + error.message, 'error');
+        friendList = [];
+      }
+    }
+
+    // 渲染群聊列表
+    function renderGroupList() {
+      const container = document.getElementById('groups-container');
+      const empty = document.getElementById('groups-empty');
+      const loading = document.getElementById('groups-loading');
+      
+      loading.style.display = 'none';
+      
+      if (groupList.length === 0) {
+        container.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      container.style.display = 'grid';
+      empty.style.display = 'none';
+
+      container.innerHTML = groupList.map(group => {
+        const isEnabled = enabledGroups.includes(String(group.group_id));
+        const avatarUrl = `http://p.qlogo.cn/gh/${group.group_id}/${group.group_id}/100/`;
+        const groupName = (group.group_name || '未知群聊').substring(0, 10);
+        return `
+          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; transition: all 0.3s; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center;"
+            onmouseover="this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.2)'; this.style.borderColor='#3b82f6'; this.style.transform='translateY(-2px)';"
+            onmouseout="this.style.boxShadow='none'; this.style.borderColor='#e5e7eb'; this.style.transform='translateY(0)';">
+            <div style="width: 50px; height: 50px; border-radius: 8px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border: 1px solid #e5e7eb; margin-bottom: 8px;">
+              <img src="${avatarUrl}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='${(group.group_name || 'G')[0]}';">
+            </div>
+            <div style="flex: 1; min-width: 0; margin-bottom: 8px; width: 100%;">
+              <div style="font-weight: 500; color: #1f2937; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${groupName}${group.group_name && group.group_name.length > 10 ? '...' : ''}</div>
+              <div style="font-size: 11px; color: #9ca3af; margin-top: 2px; font-family: monospace;">${group.group_id}</div>
+            </div>
+            <label class="toggle-switch" style="flex-shrink: 0;">
+              <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleGroup('${group.group_id}', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 过滤群聊列表
+    function filterGroups() {
+      const searchInput = document.getElementById('group-search');
+      const filter = searchInput.value.trim().toLowerCase();
+      const container = document.getElementById('groups-container');
+      const empty = document.getElementById('groups-empty');
+      
+      if (groupList.length === 0) {
+        container.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      const filtered = filter ? groupList.filter(g => 
+        (g.group_name || '').toLowerCase().includes(filter) || 
+        String(g.group_id).includes(filter)
+      ) : groupList;
+
+      if (filtered.length === 0) {
+        container.style.display = 'none';
+        empty.style.display = 'block';
+        empty.innerHTML = '<div style="font-size: 14px; color: #9ca3af;">未找到匹配的群聊</div>';
+        return;
+      }
+
+      container.style.display = 'grid';
+      empty.style.display = 'none';
+
+      container.innerHTML = filtered.map(group => {
+        const isEnabled = enabledGroups.includes(String(group.group_id));
+        const avatarUrl = `http://p.qlogo.cn/gh/${group.group_id}/${group.group_id}/100/`;
+        const groupName = (group.group_name || '未知群聊').substring(0, 10);
+        return `
+          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; transition: all 0.3s; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center;"
+            onmouseover="this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.2)'; this.style.borderColor='#3b82f6'; this.style.transform='translateY(-2px)';"
+            onmouseout="this.style.boxShadow='none'; this.style.borderColor='#e5e7eb'; this.style.transform='translateY(0)';">
+            <div style="width: 50px; height: 50px; border-radius: 8px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border: 1px solid #e5e7eb; margin-bottom: 8px;">
+              <img src="${avatarUrl}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='${(group.group_name || 'G')[0]}';">
+            </div>
+            <div style="flex: 1; min-width: 0; margin-bottom: 8px; width: 100%;">
+              <div style="font-weight: 500; color: #1f2937; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${groupName}${group.group_name && group.group_name.length > 10 ? '...' : ''}</div>
+              <div style="font-size: 11px; color: #9ca3af; margin-top: 2px; font-family: monospace;">${group.group_id}</div>
+            </div>
+            <label class="toggle-switch" style="flex-shrink: 0;">
+              <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleGroup('${group.group_id}', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 切换群聊开关
+    async function toggleGroup(groupId, enabled) {
+      const index = enabledGroups.indexOf(String(groupId));
+      
+      if (enabled && index === -1) {
+        enabledGroups.push(String(groupId));
+      } else if (!enabled && index !== -1) {
+        enabledGroups.splice(index, 1);
+      }
+
+      await saveConfig();
+      showToast(`群聊 ${groupId} 已${enabled ? '开启' : '关闭'}`, 'success');
+    }
+
+    // 全部开启
+    async function enableAll() {
+      enabledGroups = groupList.map(g => String(g.group_id));
+      await saveConfig();
+      renderGroupList();
+      showToast('已全部开启', 'success');
+    }
+
+    // 全部关闭
+    async function disableAll() {
+      enabledGroups = [];
+      await saveConfig();
+      renderGroupList();
+      showToast('已全部关闭', 'success');
+    }
+
+    // 保存配置
+    async function saveConfig() {
+      try {
+        debug('[SAVE] 保存配置: ' + JSON.stringify({ [CONFIG_KEY]: enabledGroups, [FRIEND_CONFIG_KEY]: enabledFriends }));
+        const data = await apiCall('/config', {
+          method: 'POST',
+          body: JSON.stringify({ [CONFIG_KEY]: enabledGroups, [FRIEND_CONFIG_KEY]: enabledFriends })
+        });
+        debug('[OK] 配置保存成功');
+      } catch (error) {
+        debug('[ERROR] 保存配置失败: ' + error.message);
+        showToast('保存配置失败: ' + error.message, 'error');
+      }
+    }
+
+    // 刷新
+    async function refresh() {
+      const btn = document.getElementById('refreshBtn');
+      btn.classList.add('spinning');
+      debug('[REFRESH] 开始刷新...');
+      
+      try {
+        await fetchGroupList();
+        await loadConfig();
+        renderGroupList();
+        debug('[OK] 刷新成功');
+        showToast('刷新成功', 'success');
+      } catch (error) {
+        debug('[ERROR] 刷新失败: ' + error.message);
+        showToast('刷新失败: ' + error.message, 'error');
+      } finally {
+        btn.classList.remove('spinning');
+      }
+    }
+
+    // 显示提示
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    // 渲染好友列表
+    function renderFriendList() {
+      const container = document.getElementById('friends-container');
+      const empty = document.getElementById('friends-empty');
+      const loading = document.getElementById('friends-loading');
+      
+      loading.style.display = 'none';
+      
+      if (friendList.length === 0) {
+        container.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      container.style.display = 'grid';
+      container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(150px, 1fr))';
+      container.style.gap = '12px';
+      empty.style.display = 'none';
+
+      container.innerHTML = friendList.map(friend => {
+        const isEnabled = enabledFriends.includes(String(friend.user_id));
+        const avatarUrl = `http://q.qlogo.cn/headimg_dl?dst_uin=${friend.user_id}&spec=640`;
+        const friendName = (friend.nickname || '未知好友').substring(0, 10);
+        return `
+          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; transition: all 0.3s; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center;"
+            onmouseover="this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.2)'; this.style.borderColor='#3b82f6'; this.style.transform='translateY(-2px)';"
+            onmouseout="this.style.boxShadow='none'; this.style.borderColor='#e5e7eb'; this.style.transform='translateY(0)';">
+            <div style="width: 50px; height: 50px; border-radius: 8px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border: 1px solid #e5e7eb; margin-bottom: 8px;">
+              <img src="${avatarUrl}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='${(friend.nickname || 'F')[0]}';">
+            </div>
+            <div style="flex: 1; min-width: 0; margin-bottom: 8px; width: 100%;">
+              <div style="font-weight: 500; color: #1f2937; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${friendName}${friend.nickname && friend.nickname.length > 10 ? '...' : ''}</div>
+              <div style="font-size: 11px; color: #9ca3af; margin-top: 2px; font-family: monospace;">${friend.user_id}</div>
+            </div>
+            <label class="toggle-switch" style="flex-shrink: 0;">
+              <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleFriend('${friend.user_id}', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 过滤好友列表
+    function filterFriends() {
+      const searchInput = document.getElementById('friend-search');
+      const filter = searchInput.value.trim().toLowerCase();
+      const container = document.getElementById('friends-container');
+      const empty = document.getElementById('friends-empty');
+      
+      if (friendList.length === 0) {
+        container.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      const filtered = filter ? friendList.filter(f => 
+        (f.nickname || '').toLowerCase().includes(filter) || 
+        String(f.user_id).includes(filter)
+      ) : friendList;
+
+      if (filtered.length === 0) {
+        container.style.display = 'none';
+        empty.style.display = 'block';
+        empty.innerHTML = '<div style="font-size: 14px; color: #9ca3af;">未找到匹配的好友</div>';
+        return;
+      }
+
+      container.style.display = 'grid';
+      empty.style.display = 'none';
+
+      container.innerHTML = filtered.map(friend => {
+        const isEnabled = enabledFriends.includes(String(friend.user_id));
+        const avatarUrl = `http://q.qlogo.cn/headimg_dl?dst_uin=${friend.user_id}&spec=640`;
+        const friendName = (friend.nickname || '未知好友').substring(0, 10);
+        return `
+          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; transition: all 0.3s; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center;"
+            onmouseover="this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.2)'; this.style.borderColor='#3b82f6'; this.style.transform='translateY(-2px)';"
+            onmouseout="this.style.boxShadow='none'; this.style.borderColor='#e5e7eb'; this.style.transform='translateY(0)';">
+            <div style="width: 50px; height: 50px; border-radius: 8px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border: 1px solid #e5e7eb; margin-bottom: 8px;">
+              <img src="${avatarUrl}" alt="" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='${(friend.nickname || 'F')[0]}';">
+            </div>
+            <div style="flex: 1; min-width: 0; margin-bottom: 8px; width: 100%;">
+              <div style="font-weight: 500; color: #1f2937; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${friendName}${friend.nickname && friend.nickname.length > 10 ? '...' : ''}</div>
+              <div style="font-size: 11px; color: #9ca3af; margin-top: 2px; font-family: monospace;">${friend.user_id}</div>
+            </div>
+            <label class="toggle-switch" style="flex-shrink: 0;">
+              <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleFriend('${friend.user_id}', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 切换好友开关
+    async function toggleFriend(friendId, enabled) {
+      const index = enabledFriends.indexOf(String(friendId));
+      
+      if (enabled && index === -1) {
+        enabledFriends.push(String(friendId));
+      } else if (!enabled && index !== -1) {
+        enabledFriends.splice(index, 1);
+      }
+
+      await saveFriendConfig();
+      showToast(`好友 ${friendId} 已${enabled ? '开启' : '关闭'}`, 'success');
+    }
+
+    // 全部开启好友
+    async function enableAllFriends() {
+      enabledFriends = friendList.map(f => String(f.user_id));
+      await saveFriendConfig();
+      renderFriendList();
+      showToast('已全部开启', 'success');
+    }
+
+    // 全部关闭好友
+    async function disableAllFriends() {
+      enabledFriends = [];
+      await saveFriendConfig();
+      renderFriendList();
+      showToast('已全部关闭', 'success');
+    }
+
+    // 保存好友配置
+    async function saveFriendConfig() {
+      try {
+        debug('[SAVE] 保存好友配置: ' + JSON.stringify({ [FRIEND_CONFIG_KEY]: enabledFriends }));
+        const data = await apiCall('/config', {
+          method: 'POST',
+          body: JSON.stringify({ [FRIEND_CONFIG_KEY]: enabledFriends })
+        });
+        debug('[OK] 好友配置保存成功');
+      } catch (error) {
+        debug('[ERROR] 保存好友配置失败: ' + error.message);
+        showToast('保存好友配置失败: ' + error.message, 'error');
+      }
+    }
+
+    // 切换侧边栏
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+    }
+
+    // 关闭侧边栏
+    function closeSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+    }
+
+    // 切换页面
+    function switchPage(pageId) {
+      debug('切换页面: ' + pageId);
+      
+      // 隐藏所有页面
+      document.querySelectorAll('.page-content').forEach(page => {
+        page.classList.remove('active');
+      });
+      
+      // 移除所有导航项的 active 状态
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // 显示选中的页面
+      const page = document.getElementById('page-' + pageId);
+      if (page) {
+        page.classList.add('active');
+      }
+      
+      // 更新导航菜单的 active 状态
+      const navItems = document.querySelectorAll('.nav-item');
+      navItems.forEach(item => {
+        const pageLink = item.getAttribute('onclick');
+        if (pageLink && pageLink.includes(`switchPage('${pageId}')`)) {
+          item.classList.add('active');
+        }
+      });
+      
+      // 根据页面类型加载数据
+      if (pageId === 'group-switch') {
+        renderGroupList();
+      } else if (pageId === 'friend-list') {
+        if (friendList.length === 0) {
+          fetchFriendList().then(() => renderFriendList());
+        } else {
+          renderFriendList();
+        }
+      } else if (pageId === 'settings') {
+        loadSettings();
+      } else if (pageId === 'announcement') {
+        loadAnnouncement();
+      }
+    }
+
+    // 加载更新公告
+    async function loadAnnouncement() {
+      try {
+        debug('[LOAD] 加载更新公告...');
+        const loading = document.getElementById('announcement-loading');
+        const content = document.getElementById('announcement-content');
+        const empty = document.getElementById('announcement-empty');
+        
+        loading.style.display = 'block';
+        content.style.display = 'none';
+        empty.style.display = 'none';
+        
+        const data = await apiCall('/announcement');
+        debug('[OK] 公告加载成功');
+        
+        loading.style.display = 'none';
+        
+        const text = data.data || '';
+        if (text.trim()) {
+          content.textContent = text;
+          content.style.display = 'block';
+        } else {
+          empty.style.display = 'block';
+        }
+      } catch (error) {
+        debug('[ERROR] 加载公告失败: ' + error.message);
+        loading.style.display = 'none';
+        empty.style.display = 'block';
+      }
+    }
+
+    // 初始化
+    async function initPage() {
+      // 显示第一个页面（更新公告）
+      const firstPage = document.getElementById('page-announcement');
+      if (firstPage) {
+        firstPage.classList.add('active');
+      }
+      const firstNav = document.querySelector('.nav-item');
+      if (firstNav) {
+        firstNav.classList.add('active');
+      }
+      
+      // 显示加载状态
+      document.getElementById('groups-loading').style.display = 'block';
+      document.getElementById('groups-container').style.display = 'none';
+      document.getElementById('groups-empty').style.display = 'none';
+      document.getElementById('friends-loading').style.display = 'none';
+      document.getElementById('friends-container').style.display = 'none';
+      document.getElementById('friends-empty').style.display = 'none';
+      
+      // 初始化数据
+      await init();
+      
+      // 加载公告
+      await loadAnnouncement();
+    }
+
+    // 加载设置
+    async function loadSettings() {
+      try {
+        debug('[LOAD] 加载设置...');
+        const data = await apiCall('/config');
+        const config = data.data || {};
+        
+        // 填充表单
+        document.getElementById('ownerQQsInput').value = Array.isArray(config.OwnerQQs) ? config.OwnerQQs.join(', ') : '';
+        document.getElementById('nowoner').checked = config.nowoner ?? true;
+        document.getElementById('nowonernrInput').value = config.nowonernr ?? '';
+        
+        debug('[OK] 设置加载成功');
+      } catch (error) {
+        debug('[ERROR] 加载设置失败: ' + error.message);
+        showToast('加载设置失败: ' + error.message, 'error');
+      }
+    }
+
+    // 保存设置
+    async function saveSettings() {
+      try {
+        const ownerQQsStr = document.getElementById('ownerQQsInput').value.trim();
+        const nowoner = document.getElementById('nowoner').checked;
+        const nowonernr = document.getElementById('nowonernrInput').value.trim();
+        
+        // 解析 QQ 号
+        const qqArray = ownerQQsStr
+          .split(/[,，、\s&|]+/)
+          .map(qq => qq.trim())
+          .filter(qq => qq && /^\d+$/.test(qq));
+        
+        const config = {
+          OwnerQQs: qqArray,
+          nowoner: nowoner,
+          nowonernr: nowonernr
+        };
+        
+        debug('[SAVE] 保存设置: ' + JSON.stringify(config));
+        const data = await apiCall('/config', {
+          method: 'POST',
+          body: JSON.stringify(config)
+        });
+        debug('[OK] 设置保存成功');
+        showToast('设置已保存', 'success');
+      } catch (error) {
+        debug('[ERROR] 保存设置失败: ' + error.message);
+        showToast('保存设置失败: ' + error.message, 'error');
+      }
+    }
+
+    // 事件监听
+    document.getElementById('refreshBtn').addEventListener('click', refresh);
+    document.getElementById('enableAllBtn').addEventListener('click', enableAll);
+    document.getElementById('disableAllBtn').addEventListener('click', disableAll);
+    document.getElementById('enableAllFriendsBtn').addEventListener('click', enableAllFriends);
+    document.getElementById('disableAllFriendsBtn').addEventListener('click', disableAllFriends);
+
+    initPage();
+  </script> nfig = { OwnerQQs: qqArray, nowoner: nowoner, nowonernr: nowonernr }; debug('[SAVE] 保存设置: ' + JSON.stringify(config)); const data = await apiCall('/config', { method: 'POST', body: JSON.stringify(config) }); debug('[OK] 设置保存成功'); showToast('设置已保存', 'success'); } catch (error) { debug('[ERROR] 保存设置失败: ' + error.message); showToast('保存设置失败: ' + error.message, 'error'); } } // 事件监听 document.getElementById('refreshBtn').addEventListener('click', refresh); document.getElementById('enableAllBtn').addEventListener('click', enableAll); document.getElementById('disableAllBtn').addEventListener('click', disableAll); document.getElementById('enableAllFriendsBtn').addEventListener('click', enableAllFriends); document.getElementById('disableAllFriendsBtn').addEventListener('click', disableAllFriends); initPage(); Btn').addEventListener('click', enableAllFriends); document.getElementById('disableAllFriendsBtn').addEventListener('click', disableAllFriends); initPage(); nfig = { OwnerQQs: qqArray, nowoner: nowoner, nowonernr: nowonernr }; debug('[SAVE] 保存设置: ' + JSON.stringify(config)); const data = await apiCall('/config', { method: 'POST', body: JSON.stringify(config) }); debug('[OK] 设置保存成功'); showToast('设置已保存', 'success'); } catch (error) { debug('[ERROR] 保存设置失败: ' + error.message); showToast('保存设置失败: ' + error.message, 'error'); } } // 事件监听 document.getElementById('refreshBtn').addEventListener('click', refresh); document.getElementById('enableAllBtn').addEventListener('click', enableAll); document.getElementById('disableAllBtn').addEventListener('click', disableAll); document.getElementById('enableAllFriendsBtn').addEventListener('click', enableAllFriends); document.getElementById('disableAllFriendsBtn').addEventListener('click', disableAllFriends); initPage();  
+ </body>
+</html>
