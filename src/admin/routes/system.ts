@@ -17,6 +17,11 @@ import {
 import fs from 'fs';
 import path from 'path';
 import net from 'net';
+import { spawn } from 'child_process';
+import os from 'os';
+
+// 部署终端会话当前目录（默认 /var/www/php，面板「部署终端」页面维护，单实例共享）
+let terminalCwd = '/var/www/php';
 
 // 检测目标端口是否已被其他进程占用（排除服务自身当前端口）
 function portInUse(p: number, currentPort: number): Promise<boolean> {
@@ -266,6 +271,72 @@ export function createSystemRoutes(
       res.json({ ok: true, message: '重启命令已执行', detail: r || {} });
     } catch (err) {
       res.status(500).json({ error: String(err) });
+    }
+  });
+
+  // 部署终端：面板内嵌的命令终端，会话 cwd 默认 /var/www/php（部署根目录），
+  // 支持 cd 切换目录（会话内持久），其余命令在会话 cwd 下用 sh -c 执行。
+  // 仅超级主人可调用（配合 admin token），与面板公网访问（6655 反代）兼容。
+  router.post('/terminal/exec', requireSuperMaster, async (req: Request, res: Response) => {
+    const cmd = String((req.body && req.body.command) || '').trim();
+    const home = os.homedir() || '/root';
+    const resolveDir = (raw: string): string => {
+      let t = String(raw).trim().replace(/^['"]|['"]$/g, '');
+      if (!t) return terminalCwd;
+      if (t === '~') t = home;
+      else if (t.startsWith('~/')) t = path.join(home, t.slice(2));
+      return path.resolve(terminalCwd, t);
+    };
+    try {
+      if (!cmd) {
+        res.json({ ok: true, cwd: terminalCwd, output: '', code: 0 });
+        return;
+      }
+      // 纯 cd 命令：切换会话目录（cd / cd ~ / cd <dir>）
+      const cdMatch = cmd.match(/^cd(\s+\S.*)?$/);
+      if (cdMatch) {
+        const target = (cdMatch[1] || '').trim() || terminalCwd;
+        const resolved = resolveDir(target);
+        if (!fs.existsSync(resolved)) {
+          res.json({ ok: true, cwd: terminalCwd, output: `cd: 无此目录：${target}`, code: 1 });
+          return;
+        }
+        const st = fs.statSync(resolved);
+        if (!st.isDirectory()) {
+          res.json({ ok: true, cwd: terminalCwd, output: `cd: 不是目录：${target}`, code: 1 });
+          return;
+        }
+        terminalCwd = resolved;
+        res.json({ ok: true, cwd: terminalCwd, output: '', code: 0 });
+        return;
+      }
+      const timeout = Math.min(parseInt(String((req.body && req.body.timeout) || '30000'), 10) || 30000, 120000);
+      const child = spawn('sh', ['-c', cmd], {
+        cwd: terminalCwd,
+        env: { ...process.env, TERM: 'xterm', HOME: home },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let out = '';
+      let err = '';
+      child.stdout!.on('data', (d: Buffer) => {
+        out += d.toString();
+        if (out.length > 300000) { try { child.kill('SIGKILL'); } catch {} }
+      });
+      child.stderr!.on('data', (d: Buffer) => { err += d.toString(); });
+      const timer = setTimeout(() => {
+        try { child.kill('SIGTERM'); } catch {}
+        setTimeout(() => { try { child.kill('SIGKILL'); } catch {} }, 2000);
+      }, timeout);
+      child.on('error', (e: Error) => {
+        clearTimeout(timer);
+        res.json({ ok: true, cwd: terminalCwd, output: ((out + err).trim() ? (out + '\n' + err).trim() : '') + `\n[错误] ${e.message}`, code: 127 });
+      });
+      child.on('close', (code: number | null) => {
+        clearTimeout(timer);
+        res.json({ ok: true, cwd: terminalCwd, output: (out + err).trim() || '(无输出)', code: code == null ? -1 : code });
+      });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: String(e && e.message || e) });
     }
   });
 

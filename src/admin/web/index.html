@@ -155,6 +155,16 @@ input[type="file"]{color:var(--text2)}
 @media (min-width:769px) {
   .sidebar-overlay{display:none!important}
 }
+
+.term-window{background:#0d1117;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-top:10px}
+.term-out{height:46vh;overflow:auto;padding:12px 14px;font-family:Consolas,Menlo,monospace;font-size:13px;line-height:1.65;color:#c9d1d9;white-space:pre-wrap;word-break:break-all}
+.term-out .t-cmd{color:#58a6ff}
+.term-out .t-ok{color:#3fb950}
+.term-out .t-err{color:#f85149}
+.term-input-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #21262d;background:#010409}
+.term-prompt{font-family:Consolas,Menlo,monospace;font-size:13px;color:#3fb950;white-space:nowrap}
+.term-input{flex:1;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-family:Consolas,Menlo,monospace;font-size:13px;padding:7px 10px;outline:none}
+.term-input:focus{border-color:#58a6ff}
 </style>
 </head>
 <body>
@@ -206,6 +216,7 @@ input[type="file"]{color:var(--text2)}
   <div class="nav-item" data-page="plugins" onclick="switchPage('plugins')">插件管理</div>
   <div class="nav-item" data-page="menueditor" onclick="window.open('/menu-editor.html','_blank')">插件卡片 · 后台编辑器<span class="nav-badge" style="background:#8b5cf6">编辑</span></div>
   <div class="nav-item" data-page="files" onclick="switchPage('files')">文件管理</div>
+  <div class="nav-item" data-page="deployterminal" onclick="switchPage('deployterminal')">部署终端</div>
   <div class="nav-item" data-page="settings" onclick="switchPage('settings')">系统设置</div>
   <div class="nav-item" data-page="users" onclick="switchPage('users')">用户管理</div>
   <div class="nav-item" data-page="openids" onclick="switchPage('openids')">OpenID列表</div>
@@ -523,6 +534,30 @@ input[type="file"]{color:var(--text2)}
     <button class="btn btn-outline btn-sm" onclick="clearFileSelection()">取消选择</button>
   </div>
   <div class="table-wrap"><table><thead><tr><th style="width:36px"><input type="checkbox" id="fileSelectAll" onchange="toggleSelectAll(this)" title="全选"></th><th>名称</th><th style="width:80px">大小</th><th style="width:150px">修改时间</th><th style="width:280px">操作</th></tr></thead><tbody id="fileList"></tbody></table></div>
+</div>
+
+<div class="page" id="page-deployterminal">
+  <h2>部署终端</h2>
+  <div class="card">
+    <div class="action-bar" style="flex-wrap:wrap;gap:8px">
+      <span style="font-size:13px;color:var(--text2)">服务器命令终端 · 会话目录：</span>
+      <code id="termCwd" style="background:var(--bg2);border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:13px;color:var(--accent)">/var/www/php</code>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline btn-sm" onclick="termQuick('cd /var/www/php')">cd /var/www/php</button>
+      <button class="btn btn-outline btn-sm" onclick="termQuick('pm2 list')">pm2 状态</button>
+      <button class="btn btn-warn btn-sm" onclick="termQuick('cd /var/www/php && pm2 restart qqbot')">重启机器人</button>
+      <button class="btn btn-outline btn-sm" onclick="termClear()">清屏</button>
+    </div>
+    <div class="term-window">
+      <div class="term-out" id="termOut"></div>
+      <div class="term-input-row">
+        <span class="term-prompt" id="termPrompt">root@armbian:/var/www/php#</span>
+        <input id="termInput" class="term-input" placeholder="输入命令（Enter 执行，↑↓ 历史），如：unzip -o patch-4.2.59.zip" autocomplete="off" spellcheck="false" onkeydown="termKey(event)" />
+        <button class="btn btn-primary btn-sm" onclick="termExec()">执行</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin:8px 0 0">仅超级主人可执行；命令在服务器以 <code>sh -c</code> 运行，当前目录为上方会话目录（<code>cd</code> 可在会话内切换）。常用于：<code>unzip -o</code> 解压更新包、<code>pm2 restart qqbot</code> 重启机器人。</p>
+  </div>
 </div>
 
 <div class="page" id="page-settings">
@@ -1436,9 +1471,9 @@ function switchPage(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const page=docById('page-'+name);if(page)page.classList.add('active');
   const nav=document.querySelector(`.nav-item[data-page="${name}"]`);if(nav)nav.classList.add('active');
-  const titles={dashboard:'仪表盘',bots:'我的机器人',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',files:'文件管理',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',help:'帮助文档'};
+  const titles={dashboard:'仪表盘',bots:'我的机器人',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',help:'帮助文档'};
   docById('mobilePageTitle').textContent=titles[name]||name;
-  const loaders={dashboard:loadDashboard,bots:loadBots,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,files:()=>loadFiles(),settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,help:loadHelp};
+  const loaders={dashboard:loadDashboard,bots:loadBots,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
   if(currentBot&&['membersync','users','runlog','feedback','authcodes','channels','plugins'].includes(name)){
     applyBotFilterToPage().then(runLoader);
@@ -1456,6 +1491,68 @@ function switchPage(name){
     },30000);
   }
   if(window.innerWidth<769)toggleSidebar();
+}
+
+// ===== 部署终端 =====
+let termHistory=[];
+let termHistIdx=-1;
+function termAppend(html){const out=docById('termOut');out.insertAdjacentHTML('beforeend',html);out.scrollTop=out.scrollHeight;}
+function termPrint(text,cls){termAppend('<div class="'+(cls||'')+'">'+esc(String(text==null?'':text))+'</div>');}
+function termSetCwd(cwd){
+  cwd=cwd||'/var/www/php';
+  docById('termCwd').textContent=cwd;
+  docById('termPrompt').textContent='root@armbian:'+cwd.replace(/^\/root$/,'~')+'#';
+}
+let termInited=false;
+async function termInit(){
+  if(!termInited){
+    termInited=true;
+    termPrint('部署终端 · 服务器命令终端（部署目录 /var/www/php）');
+    termPrint('输入命令执行，Enter 回车；cd 切换目录；↑↓ 历史命令。示例：unzip -o patch-4.2.59.zip && pm2 restart qqbot','t-ok');
+    termSetCwd('/var/www/php');
+  }
+  const input=docById('termInput');
+  input.focus();
+  const cwd=docById('termCwd').textContent||'/var/www/php';
+  docById('termPrompt').textContent='root@armbian:'+(cwd.replace(/^\/root$/,'~'))+'#';
+}
+function termClear(){docById('termOut').innerHTML='';termInited=false;termInit();}
+function termQuick(cmd){
+  docById('termInput').value=cmd;
+  termExec();
+}
+async function termExec(){
+  const input=docById('termInput');
+  const cmd=(input.value||'').trim();
+  if(!cmd)return;
+  termHistory.push(cmd);
+  if(termHistory.length>200)termHistory.shift();
+  termHistIdx=termHistory.length;
+  termPrint('$ '+cmd,'t-cmd');
+  input.value='';
+  input.disabled=true;
+  try{
+    const j=await api('/api/system/terminal/exec',{method:'POST',body:{command:cmd}});
+    termSetCwd(j.cwd);
+    if(j.output)termPrint(j.output);
+    if(j.code===0)termPrint('✓ 完成（退出码 0）','t-ok');
+    else termPrint('✗ 退出码 '+(j.code==null?-1:j.code),(j.code===0?'t-ok':'t-err'));
+  }catch(e){termPrint('请求失败：'+(e&&e.message||e),'t-err');}
+  input.disabled=false;
+  input.focus();
+}
+function termKey(e){
+  const input=e.target;
+  if(e.key==='Enter'){termExec();return;}
+  if(e.key==='ArrowUp'){
+    e.preventDefault();
+    if(termHistIdx>0){termHistIdx--;input.value=termHistory[termHistIdx]||'';}
+    return;
+  }
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    if(termHistIdx<termHistory.length){termHistIdx++;input.value=termHistory[termHistIdx]||'';}
+  }
 }
 
 async function loadDashboard(){try{const stats=await api('/api/system/stats');const fw=stats.framework||{};const features=(stats.features||[]).join('、');docById('statsGrid').innerHTML=`<div class="stat-card"><div class="label">运行时间</div><div class="value blue">${fmtTime(stats.uptime)}</div></div><div class="stat-card"><div class="label">内存使用</div><div class="value green">${stats.memory.heapUsed} MB</div></div><div class="stat-card"><div class="label">插件数量</div><div class="value yellow">${stats.pluginCount||0}</div></div><div class="stat-card"><div class="label">进程 PID</div><div class="value">${stats.pid}</div></div><div class="stat-card"><div class="label">Node.js</div><div class="value blue">${stats.nodeVersion}</div></div><div class="stat-card"><div class="label">融合框架</div><div class="value green">${fw.name||'NapCatQQ'} ${fw.version||''}</div></div>`;docById('featureList').textContent=features||'暂无功能模块';docById('dashBotList').querySelector('tbody').innerHTML='';await loadDashBots()}catch{}}
