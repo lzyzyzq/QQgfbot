@@ -393,7 +393,6 @@ def mute_cmd(data, content):
 # ================= 广播（群公告 + 群消息 / 全体群广播 / GitHub 云端广播） =================
 
 def _fmt_cloud_task(t):
-    """把云端任务格式化为可读描述"""
     sched = t.get('schedule') or {}
     s = ''
     if sched.get('time'):
@@ -410,10 +409,11 @@ def _fmt_cloud_task(t):
         tgt_s = '目标群×%d' % len(t.get('groups') or [])
     else:
         tgt_s = '全部群'
-    return '🔹 %s（%s）%s · %s\n    发送：%s · 定时：%s' % (
+    st = '✅ 已启用' if t.get('enabled') is not False else '⏸ 已停用'
+    return '🔹 %s\n   ID：%s · %s\n   目标：%s · 发送：%s · 定时：%s' % (
         t.get('name') or t.get('id'),
         t.get('id'),
-        '✅' if t.get('enabled') is not False else '⏸',
+        st,
         tgt_s,
         mode,
         s,
@@ -444,11 +444,13 @@ def cloud_broadcast_cmd(data, content):
         reply(data, '📢 云端暂无广播任务（broadcast/broadcast.json 为空）。')
         return
     if len(parts) < 2:
-        lines = ['📢 【云端广播列表】(%d 条)' % len(tasks)]
+        lines = ['📢 云端广播任务列表（%d 条）' % len(tasks)]
         lines.append('━━━━━━━━━━━━━━━━')
         lines.extend(_fmt_cloud_task(t) for t in tasks)
         lines.append('━━━━━━━━━━━━━━━━')
-        lines.append('发送「云端广播 名称」立即执行（仅超级主人）')
+        lines.append('执行方式：发送「云端广播 任务名 全部/本群」')
+        lines.append('示例：云端广播 全部群欢迎广播 全部')
+        lines.append('提示：执行仅超级主人可用；未指定范围时按任务默认目标发送')
         reply(data, '\n'.join(lines))
         return
     # 执行

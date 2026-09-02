@@ -626,11 +626,49 @@ export class PluginEngine {
         } catch { return null; }
       },
       isSuper: (openid: string) => {
+        // 兼容三种存储形态：对象({id/qqId/openid})、数组、纯字符串；值可能是 openid 也可能是 QQ 号，
+        // 数字型候选值需与当前消息 openid 反查出的 QQ 匹配（同多 bot 用 resolveOpenidByQq 正查兜底）。
         try {
-          const superId = ctx.storage.get('super_master_id');
-          if (!superId) return false;
-          const ids = JSON.parse(superId) as string[];
-          return Array.isArray(ids) && ids.includes(String(openid));
+          const raw = ctx.storage.get('super_master_id');
+          if (!raw) return false;
+          let v: any;
+          try { v = JSON.parse(raw); } catch { v = raw; }
+          const cands: string[] = [];
+          const push = (x: any) => { if (x !== null && x !== undefined && String(x).trim()) cands.push(String(x).trim()); };
+          if (Array.isArray(v)) {
+            for (const m of v) push(typeof m === 'object' ? (m.openid || m.qqId || m.qq || m.id) : m);
+          } else if (typeof v === 'object') {
+            push(v.openid || v.qqId || v.qq || v.id);
+          } else {
+            push(v);
+          }
+          const target = String(openid || '').trim();
+          if (!target) return false;
+          if (cands.includes(target)) return true;
+          const isDigit = (s: string) => /^\d{5,12}$/.test(s);
+          const digitCands = cands.filter(isDigit);
+          if (digitCands.length) {
+            // 消息 openid -> 真实 QQ 反查
+            let qq = '';
+            try {
+              const db = getDb();
+              const r1 = db.prepare("SELECT qq_id FROM group_members WHERE member_openid = ? AND qq_id != '' ORDER BY last_seen DESC LIMIT 1").get(target) as any;
+              qq = r1 ? String(r1.qq_id) : '';
+              if (!qq) {
+                const r2 = db.prepare("SELECT qq_number FROM user_mappings WHERE openid = ? ORDER BY last_updated DESC LIMIT 1").get(target) as any;
+                qq = r2 ? String(r2.qq_number) : '';
+              }
+            } catch {}
+            if (qq && digitCands.includes(qq)) return true;
+            // 正查兜底：数字候选对应的 openid
+            for (const c of digitCands) {
+              try {
+                const resolved = ctx.engine.resolveOpenidByQq(c);
+                if (resolved && resolved === target) return true;
+              } catch {}
+            }
+          }
+          return false;
         } catch { return false; }
       },
       getVariable: (name: string) => {
