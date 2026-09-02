@@ -1,14 +1,15 @@
-// 唱歌 v2.2.1 - 点歌：发送「唱歌 歌名」，先发歌词，再以语音条播放该歌曲（开放平台富媒体语音）
+// 唱歌 v2.3.0 - 点歌：发送「唱歌 歌名」，先发歌词，再以语音条播放该歌曲（开放平台富媒体语音）
 // 语音源修复 v2.2.1：酷我 antiserver 对部分歌曲返回 5 秒版权提示音（"当前歌曲仅在酷我音乐手机端可播放..."），
-//   改为多源级联：① 网易云 player/url（免费歌返回真实 CDN 全曲）→ ② 酷我搜索结果遍历 antiserver 并按 mp3 时长校验（>=20 秒才采用，唱出完整歌曲；不足 20 秒取最长 >=8s 兜底）
-//   ③ 全部失败降级单曲卡片
+//   改为多源级联：① 网易云 player/url（免费歌返回真实 CDN 全曲）→ ② 网易云 outer 直链 → ③ 酷我搜索结果遍历 antiserver 并按 mp3 时长校验（>=20 秒才采用，唱出完整歌曲；不足 20 秒取最长 >=8s 兜底）
+//   ④ 全部失败降级单曲卡片，并明确说明未取到语音源的原因（VIP/无版权/源站限制）
+// 说明：本插件为「点歌」玩法——将歌曲原唱音频下载后以语音条播放，并非 AI 合成唱腔。
 // 新增指令：清唱/听清唱（搜索"歌名 清唱"）、怪唱/听怪唱（搜索"歌名 怪唱"），找不到版本则回退原版
 // 歌词源：网易云 LRC（过滤元信息行）
 module.exports = {
   manifest: {
     id: 'mod-sing',
     name: '唱歌',
-    version: '2.2.1',
+    version: '2.3.0',
     description: '点歌功能：唱歌/点歌/唱首歌 + 歌名，先发歌词再以语音条播放；支持 清唱/怪唱 版本；失败返回单曲试听卡片',
     author: '511742399'
   },
@@ -232,7 +233,7 @@ module.exports = {
       return false;
     },
 
-    // ===== 多源级联获取可播放音频 Buffer（网易云 player/url → 酷我 antiserver 遍历 + 时长校验） =====
+    // ===== 多源级联获取可播放音频 Buffer（网易云 player/url → 网易云 outer 直链 → 酷我 antiserver 遍历 + 时长校验） =====
     fetchPlayable: async function(song) {
       // ① 网易云 player/url（免费歌全曲）
       try {
@@ -242,7 +243,13 @@ module.exports = {
           if (a && this.mp3Duration(a) >= 20) return a;
         }
       } catch(e) {}
-      // ② 酷我 antiserver 遍历：多关键词合并候选，按匹配度排序，下载并校验时长（>=20s 即用，否则取最长 >=8s）
+      // ② 网易云 outer 直链（对多数免费歌可返回全曲重定向；VIP/受限时下载为非 200 或空，自动跳过）
+      try {
+        var outer = 'https://music.163.com/song/media/outer/url?id=' + song.id + '.mp3';
+        var ao = await this.downloadAudio(outer);
+        if (ao && this.mp3Duration(ao) >= 20) return ao;
+      } catch(e) {}
+      // ③ 酷我 antiserver 遍历：多关键词合并候选，按匹配度排序，下载并校验时长（>=20s 即用，否则取最长 >=8s）
       try {
         var cands = [];
         var seen = {};
@@ -361,10 +368,14 @@ module.exports = {
         }
       } catch(e) {}
       var voiceMsg = voiceOk ? '🎤 已在群内语音播放《' + song.name + '》\n' : '';
+      var warnMsg = '';
+      if (!voiceOk) {
+        warnMsg = '⚠️ 未能以语音条播放（该曲多为 VIP / 无版权 / 源站限制，或群内语音接口受限）\n以下为原唱在线试听/搜索入口\n━━━━━━━━━━━━━━\n';
+      }
 
       // 3. 单曲卡片
       var cardMd = '### 🎵 ' + song.name + '\n' +
-        (voiceMsg ? voiceMsg : '') +
+        (voiceMsg ? voiceMsg : warnMsg) +
         '🎤 歌手：' + song.artist + '\n' +
         (song.album ? '💿 专辑：' + song.album + '\n' : '') +
         '⏱ 时长：' + dur + '\n\n' +

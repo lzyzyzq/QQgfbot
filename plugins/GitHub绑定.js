@@ -152,15 +152,19 @@ module.exports = {
       var content = raw.replace(/^\s*(?:<@!?[A-Za-z0-9_-]+>|@\S+)\s*/, '').trim() || raw;
       var lower = content.toLowerCase();
       var m;
+      // 兼容两种语序：绑定GitHub / GitHub绑定 / 绑定gh / gh绑定（对 @机器人 前缀已剥离）
+      var bindAct = content.match(/^(?:绑定github|github绑定|绑定gh|gh绑定)(?:\s+(\S+))?$/i);
 
-      if (lower === '绑定github' || lower === '绑定gh') { bindHelp(data); return; }
-      if (m = lower.match(/^绑定github\s+([^\s]+)$/)) { await doBind(data, m[1]); return; }
-      if (m = lower.match(/^绑定gh\s+([^\s]+)$/)) { await doBind(data, m[1]); return; }
-      if (lower === '我的github' || lower === '查看github') { showBind(data); return; }
-      if (lower === '解绑github' || lower === '解绑gh') { unbind(data); return; }
+      if (lower === '绑定github' || lower === 'github绑定' || lower === '绑定gh' || lower === 'gh绑定') { bindHelp(data); return; }
+      if (bindAct && bindAct[1]) { await doBind(data, bindAct[1]); return; }
+      if (lower === '我的github' || lower === '查看github' || lower === 'github我的') { showBind(data); return; }
+      if (lower === '解绑github' || lower === 'github解绑' || lower === '解绑gh' || lower === 'gh解绑') { unbind(data); return; }
 
       if (!self.methods.isMaster(ctx, authorId)) return;
-      if (lower === 'github绑定列表' || lower === 'gh绑定列表') { ownerList(data); return; }
+      if (lower === 'github绑定列表' || lower === 'gh绑定列表' || lower === '绑定github列表') { ownerList(data); return; }
+
+      // 兜底：消息以 github/gh/绑定 开头但未识别 → 给帮助，避免“无回应”
+      if (/^(github|gh|绑定)/.test(lower) && (content.length <= 24)) { bindHelp(data); return; }
     }
 
     var lid1 = ctx.eventBus.on('message.group', function(data) {
