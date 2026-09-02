@@ -1,0 +1,35 @@
+{
+  "tasks": [
+    {
+      "id": "welcome_all",
+      "name": "全部群欢迎广播（手动）",
+      "enabled": true,
+      "send": "text",
+      "target": "all",
+      "content": "大家好，我是 QQ 机器人 🤖\n广播功能已接入 GitHub 云端广播中心。\n发送「云端广播」可查看本目录中的任务并手动触发。\n-- 当前时间 {time}"
+    },
+    {
+      "id": "api_news",
+      "name": "API 抓取热点（知乎日报）",
+      "enabled": true,
+      "send": "text",
+      "target": "all",
+      "content": "（API 拉取失败时的预设内容）\n当前时间 {time}",
+      "api": {
+        "url": "https://news-at.zhihu.com/api/4/news/latest",
+        "jsonPath": "stories"
+      }
+    },
+    {
+      "file": "daily_notice.json"
+    },
+    {
+      "id": "server_status",
+      "name": "服务器状态卡片（图片广播示例）",
+      "enabled": true,
+      "send": "image",
+      "target": "all",
+      "content": "服务器状态报告\n✅ 服务运行正常\n{time}"
+    }
+  ]
+}

@@ -14,6 +14,13 @@ import {
   deleteScheduleTask,
   toggleScheduleTask,
 } from '../../shared/bot-controls';
+import {
+  BROADCAST_URLS,
+  loadBroadcastCatalog,
+  loadBroadcastTaskById,
+  runBroadcastNow,
+  syncBroadcastSchedules,
+} from '../../core/broadcast';
 import fs from 'fs';
 import path from 'path';
 import net from 'net';
@@ -735,8 +742,7 @@ export function createSystemRoutes(
     res.json({ ok: r.ok });
   });
 
-  router.post('/schedule-tasks/toggle', requireSuperMaster, (req: Request, res: Response) => {
-    const id = String((req.body || {}).id || '');
+  router.post('/schedule-tasks/toggle', requireSuperMaster, (req: Request, res: Response) => {    const id = String((req.body || {}).id || '');
     if (!id) { res.json({ ok: false, error: '缺少 id' }); return; }
     const r = toggleScheduleTask(id);
     if (!r.ok) { res.json({ ok: false, error: r.error }); return; }
@@ -987,6 +993,59 @@ export function createSystemRoutes(
         return;
       }
       res.json({ ok: false, step: '参数', error: '请提供 zip 文件、下载地址（url）或更新类型（kind=patch/full）' });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ================= GitHub 云端广播（broadcast/broadcast.json，多源拉取） =================
+  // 列表：拉取云端目录（含单任务示例与解析错误），供面板展示/群内菜单调用
+  router.get('/broadcast/list', requireSuperMaster, async (_req: Request, res: Response) => {
+    try {
+      const cat = await loadBroadcastCatalog(true);
+      const tasks = cat.tasks.map((t) => ({
+        id: t.id,
+        name: t.name,
+        enabled: t.enabled,
+        send: t.send,
+        target: t.target,
+        groupId: t.groupId || '',
+        groups: t.groups || [],
+        schedule: t.schedule || null,
+        hasContent: !!String(t.content || '').trim(),
+        hasApi: !!(t.api && t.api.url),
+      }));
+      res.json({ ok: cat.ok, source: cat.sourceUrl || '', urls: BROADCAST_URLS, errors: cat.errors, tasks });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // 立即广播（试播）：taskId 必填；target=all/one/group/this/list；dryRun=true 只统计不发送
+  router.post('/broadcast/send', requireSuperMaster, async (req: Request, res: Response) => {
+    try {
+      const taskId = String((req.body || {}).taskId || '').trim();
+      if (!taskId) { res.json({ ok: false, error: '缺少 taskId' }); return; }
+      const t = await loadBroadcastTaskById(taskId);
+      if (!t) {
+        res.json({ ok: false, error: '云端广播任务不存在或目录不可用: ' + taskId });
+        return;
+      }
+      const target = String((req.body || {}).target || 'default');
+      const groupId = String((req.body || {}).groupId || '');
+      const dryRun = (req.body || {}).dryRun === true;
+      const result = await runBroadcastNow(t, { target, groupId, dryRun });
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // 同步定时：把云端带 schedule 的任务登记/更新成本机定时任务（schedule-runner 到点执行）
+  router.post('/broadcast/sync', requireSuperMaster, async (_req: Request, res: Response) => {
+    try {
+      const r = await syncBroadcastSchedules();
+      res.json(r);
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
     }

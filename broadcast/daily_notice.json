@@ -1,0 +1,11 @@
+{
+  "id": "daily_notice",
+  "name": "每日早间图片广播",
+  "enabled": true,
+  "send": "image",
+  "target": "all",
+  "content": "🌅 每日早报\n祝大家一天好心情，工作顺利！\n{time}",
+  "schedule": {
+    "time": "08:30"
+  }
+}

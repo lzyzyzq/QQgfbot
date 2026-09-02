@@ -628,6 +628,27 @@ input[type="file"]{color:var(--text2)}
     </div>
     <div class="table-wrap"><table><thead><tr><th>ID</th><th>类型</th><th>内容</th><th>时间/间隔</th><th>目标群</th><th>机器人</th><th>状态</th><th>操作</th></tr></thead><tbody id="taskList"></tbody></table></div>
   </div>
+  <div class="card">
+    <h3>GitHub 云端广播 <span style="font-size:12px;color:var(--text2)">（broadcast/broadcast.json 多源拉取；支持全部群/单一群/目标群，文本/图片，API 抓内容，定时到点自动广播）</span></h3>
+    <div id="cbStatus" style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:8px"></div>
+    <div class="action-bar" style="gap:6px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="loadCloudBroadcast()">刷新广播目录</button>
+      <button class="btn btn-primary" onclick="syncCloudBroadcast()">同步定时任务</button>
+      <span style="font-size:12px;color:var(--text2)">来源：<code id="cbSource" style="color:var(--accent)">-</code></span>
+      <span style="flex:1"></span>
+      <span style="font-size:12px;color:var(--text2)">试播目标：</span>
+      <select id="cbSendTarget" style="font-size:12px;max-width:130px">
+        <option value="default">任务默认</option>
+        <option value="all">全部群</option>
+        <option value="this">当前群</option>
+        <option value="one">指定群</option>
+      </select>
+      <input id="cbSendGroup" placeholder="群 OpenID（指定群时）" style="font-size:12px;max-width:200px">
+      <span style="font-size:12px;color:var(--text2)"><label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="cbDryRun"> 仅试播（不发送）</label></span>
+    </div>
+    <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>发送</th><th>目标</th><th>定时</th><th>内容</th><th>操作</th></tr></thead><tbody id="cbTaskList"></tbody></table></div>
+    <div id="cbMsg" style="font-size:13px;margin-top:8px;white-space:pre-wrap;color:var(--text2)"></div>
+  </div>
   <div class="card" id="adminMgmtCard" style="display:none">
     <h3>用户管理</h3>
     <div class="form-group" style="max-width:320px">
@@ -2785,7 +2806,7 @@ async function loadSettings(){loadLinkMode();try{const data=await api('/api/syst
   docById('adminList').innerHTML=admins.map(a=>{
     const oids=(openidByQQ[a.qq]||[]);
     const oidCell=oids.length?oids.map(o=>'<div style="font-size:11px;word-break:break-all;color:var(--text2)">'+esc(o.openid.slice(0,12))+'... <button class="btn btn-danger btn-xs" title="解绑该 OpenID" onclick="unbindAdminOpenid(\''+a.qq+'\',\''+o.openid.replace(/'/g,"\\'")+'\')" style="padding:0 4px">×</button></div>').join(''):'<span style="color:var(--text2);font-size:11px">未绑定</span>';
-    return `<tr><td>${esc(a.username)}${a.nickname?(' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>'):''}</td><td title="${a.openid?('OpenID: '+esc(a.openid)):''}">${esc(a.qq||'未绑定')}</td><td>${oidCell}</td><td>${roleLabels[a.role]||a.role}</td><td><button class="btn btn-xs ${a.loginAble?'btn-success':'btn-outline'}" onclick="toggleLogin('${a.username}',${!a.loginAble})">${a.loginAble?'已启用':'已禁用'}</button></td><td>${a.expireAt?new Date(a.expireAt).toLocaleString():'永不过期'}</td><td><button class="btn btn-outline btn-xs" onclick="editPerms('${a.username}')">权限</button></td><td><button class="btn btn-outline btn-xs" onclick="showEditAdmin('${a.username}')">编辑</button><button class="btn btn-outline btn-xs" onclick="changeUserCode('${a.username}')">改码</button><button class="btn btn-danger btn-xs" onclick="delAdmin('${a.username}')">删除</button></td></tr>`}).join('')}catch{};loadMasterBindInfo();loadAuthCodes()}loadSwitches();loadScheduleTasks();loadUpdateRecords();loadUpdateReceiver();}
+    return `<tr><td>${esc(a.username)}${a.nickname?(' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>'):''}</td><td title="${a.openid?('OpenID: '+esc(a.openid)):''}">${esc(a.qq||'未绑定')}</td><td>${oidCell}</td><td>${roleLabels[a.role]||a.role}</td><td><button class="btn btn-xs ${a.loginAble?'btn-success':'btn-outline'}" onclick="toggleLogin('${a.username}',${!a.loginAble})">${a.loginAble?'已启用':'已禁用'}</button></td><td>${a.expireAt?new Date(a.expireAt).toLocaleString():'永不过期'}</td><td><button class="btn btn-outline btn-xs" onclick="editPerms('${a.username}')">权限</button></td><td><button class="btn btn-outline btn-xs" onclick="showEditAdmin('${a.username}')">编辑</button><button class="btn btn-outline btn-xs" onclick="changeUserCode('${a.username}')">改码</button><button class="btn btn-danger btn-xs" onclick="delAdmin('${a.username}')">删除</button></td></tr>`}).join('')}catch{};loadMasterBindInfo();loadAuthCodes()}loadSwitches();loadScheduleTasks();loadUpdateRecords();loadUpdateReceiver();loadCloudBroadcast();}
 async function loadMasterBindInfo(){
   try{
     const m=await api('/api/auth/qq-master');
@@ -3289,7 +3310,55 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
     }catch(e){msg.textContent='❌ 接收失败：'+e.message;msg.style.color='var(--danger)'}
   }
 
-  function restartServer(){
+  let _cbTasks=[];
+async function loadCloudBroadcast(){
+  const st=docById('cbStatus'),tg=docById('cbTaskList'),src=docById('cbSource');
+  if(st)st.textContent='⏳ 正在拉取 GitHub 云端广播目录…';
+  try{
+    const r=await api('/api/system/broadcast/list');
+    _cbTasks=r.tasks||[];
+    if(src)src.textContent=r.source||'-';
+    if(st){
+      if(!r.ok)st.innerHTML='<span style="color:var(--danger)">❌ 云端目录不可用：</span><span style="color:var(--text2)">'+(r.errors||[]).map(esc).join('；')+'</span>';
+      else st.innerHTML='✅ 目录可用：<span style="color:var(--text2)">共 '+(r.tasks||[]).length+' 个任务</span>'+(r.errors&&r.errors.length?('<span style="color:var(--warn)">（部分解析问题：'+(r.errors||[]).map(esc).join('；')+'）</span>'):'');
+    }
+    if(!tg)return;
+    tg.innerHTML=_cbTasks.map(t=>{
+      const tgt=t.target==='all'?'全部群':(t.target==='one'?('单一群 '+(esc(t.groupId||''))):('目标群×'+(t.groups||[]).length));
+      const sched=t.schedule?(t.schedule.time?('每天 '+esc(t.schedule.time)):('每 '+(t.schedule.intervalMin||'')+' 分钟')):'手动';
+      const srcInfo=t.hasApi?'API 抓取':'内容';
+      return `<tr><td>${esc(t.id)}</td><td>${esc(t.name)}</td><td>${t.enabled===false?'<span style="color:var(--text2)">⏸ 停用</span>':'<span style="color:var(--success)">✅</span>'}</td><td>${t.send==='image'?'图片':'文本'}</td><td>${esc(tgt)}</td><td>${esc(sched)}</td><td style="color:var(--text2)">${t.hasApi?'API·':''}${t.hasContent||t.hasApi?'有':'<span style="color:var(--danger)">空</span>'}</td><td><button class="btn btn-primary btn-xs" onclick="sendCloudBroadcast('${esc(t.id)}')">立即广播</button></td></tr>`;
+    }).join('');
+    if(!_cbTasks.length&&tg)tg.innerHTML='<tr><td colspan="8" style="color:var(--text2)">暂无云端广播任务</td></tr>';
+  }catch(e){
+    if(st)st.innerHTML='<span style="color:var(--danger)">❌ 拉取失败：'+esc(e.message||e)+'</span>';
+  }
+}
+async function sendCloudBroadcast(id){
+  const msg=docById('cbMsg');const target=docById('cbSendTarget').value;const gid=docById('cbSendGroup').value.trim();const dryRun=docById('cbDryRun').checked;
+  if(!confirm((dryRun?'试播':'立即广播')+'云端任务 '+id+' ?\n\n（目标：'+docById('cbSendTarget').options[docById('cbSendTarget').selectedIndex].text+(target==='one'&&gid?(' → '+gid):'')+'）'))return;
+  if(msg){msg.textContent=dryRun?'⏳ 试播中…':'⏳ 广播中…（逐群发送，稍候）';msg.style.color='var(--text2)'}
+  try{
+    const r=await api('/api/system/broadcast/send',{method:'POST',body:Object.assign({taskId:id,target,dryRun},gid?{groupId:gid}:{})});
+    if(r.ok){
+      const fail=(r.failed||[]).slice(0,3).join('，');
+      msg.textContent='✅ 「'+r.taskName+'」发送完成：'+r.sent+'/'+r.total+' 群'+(r.message?('（'+r.message+'）'):'')+(fail?('\n未送达：'+fail):'')+(dryRun?'\n（仅试播，未实际发送）':'');
+      msg.style.color='var(--success)';
+    }else{msg.textContent='❌ '+(r.error||r.message||'执行失败');msg.style.color='var(--danger)'}
+  }catch(e){msg.textContent='❌ 广播失败：'+e.message;msg.style.color='var(--danger)'}
+}
+async function syncCloudBroadcast(){
+  const msg=docById('cbMsg');
+  if(msg){msg.textContent='⏳ 正在把云端带定时任务同步为本机定时任务…';msg.style.color='var(--text2)'}
+  try{
+    const r=await api('/api/system/broadcast/sync',{method:'POST'});
+    const acts=(r.detail||[]).map(d=>d.id+'·'+d.name+':'+({add:'已添加',update:'已更新',remove:'已移除',skip:'手动',invalid:'配置错误'}[d.action]||d.action)).join('；');
+    msg.textContent='✅ 同步完成：新增/更新 '+(r.syncCount||0)+' 个，移除 '+(r.removeCount||0)+' 个'+(acts?('\n'+acts):'');
+    msg.style.color='var(--success)';
+    loadScheduleTasks();
+  }catch(e){msg.textContent='❌ 同步失败：'+e.message;msg.style.color='var(--danger)'}
+}
+function restartServer(){
     if(!confirm('确定重启机器人/服务器吗？\n将在本机执行 cd /var/www/php && pm2 restart qqbot。\n仅超级主人可使用，重启期间服务会短暂断开。'))return;
     const msg=docById('restartMsg');
     if(msg){msg.textContent='正在重启服务器，服务恢复后自动刷新页面...';msg.style.color='';}

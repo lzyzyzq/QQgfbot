@@ -31,6 +31,10 @@ export interface PyEngineExtras {
   getVariable?: (name: string) => string | null;
   /** 读本插件在 menu-editor.html 中按 appid 保存的卡片/菜单布局配置（未配置返回 null） */
   getMenuConfig?: (appid: string) => any;
+  /** 云端广播任务列表（broadcast/broadcast.json，多源拉取） */
+  broadcastList?: () => Promise<any>;
+  /** 立即执行云端广播：参数 (taskId, target?, groupId?)，target: all|one/group|this|list */
+  broadcastSend?: (taskId: string, target?: string, groupId?: string) => Promise<any>;
 }
 
 export class PythonRuntime {

@@ -1,5 +1,14 @@
 # 更新日志
 
+## 2026-09-02
+
+### 4.2.59h：GitHub 云端广播中心
+- **broadcast/broadcast.json + 单文件任务**：任务定义托管在 GitHub（支持内联任务与 `{file:xxx.json}` 引用），服务器/面板/群内菜单多源读取（GitHub raw → raw.gitmirror → ghfast.top → 8091）
+- **广播字段**：`send` 文本/图片（图片=渲染卡片发送）、`target` 全部群/单一群/目标群列表、`content` 固定文本（`{time}`/`{image:URL}`）、`api{url,jsonPath}` 从 API 抓内容（失败回退预设文本）、`schedule{time|intervalMin}` 定时
+- **面板「GitHub 云端广播」区块**（系统设置）：刷新目录、立即广播/试播（可临时选全部群/当前群/指定群）、一键「同步定时任务」把云端带 schedule 任务登记成本机定时任务（`gh_` 前缀）
+- **群内（测试.py）**：`云端广播` 查看任务列表；`云端广播 名称 [全部|本群]`（超级主人）立即执行
+- **定时执行**：schedule-runner 新增 `contentType=broadcast`，到点重新拉取云端任务按最新定义广播（图片渲染/文本/@ 目标等复用定时任务既有能力）
+
 ## 2026-09-01
 
 ### 4.2.59g：部署终端新增「拉取 GitHub 项目」

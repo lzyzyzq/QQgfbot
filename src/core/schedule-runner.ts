@@ -5,6 +5,7 @@
 import { getConfig, setConfig, getDb } from '../db/index';
 import { getBotInstance } from './bot';
 import { ScheduleTask, getSwitchState } from '../shared/bot-controls';
+import { loadBroadcastTaskById, broadcastContent } from './broadcast';
 import { renderTextCard } from './card';
 import { createLogger } from '../utils/logger';
 
@@ -346,7 +347,23 @@ async function dispatch(t: ScheduleTask) {
     return;
   }
   let content = contentFor(t);
-  if (t.contentType === 'weather') {
+  let sendAsImage = t.sendType === 'image';
+  if (t.contentType === 'broadcast') {
+    // GitHub 云端广播：到点重新拉取目录拿最新任务定义（含 content/api），失败跳过
+    const bId = String(t.cloudTaskId || '').trim();
+    if (!bId) {
+      runnerLogger.warn(`定时任务 ${t.id} 缺少云端广播任务 cloudTaskId`);
+      return;
+    }
+    const bt = await loadBroadcastTaskById(bId);
+    if (!bt) {
+      runnerLogger.warn(`定时任务 ${t.id} 云端广播任务不存在或目录不可用: ${bId}`);
+      return;
+    }
+    const ct = await broadcastContent(bt);
+    content = ct.text;
+    sendAsImage = bt.send === 'image';
+  } else if (t.contentType === 'weather') {
     const w = await fetchWeatherText(t.city || '北京');
     if (w) content = w;
   } else if (t.contentType === 'morning' || t.contentType === 'evening') {
@@ -368,7 +385,7 @@ async function dispatch(t: ScheduleTask) {
         continue;
       }
       if (text) {
-        if (t.sendType === 'image') {
+        if (sendAsImage) {
           await sendTextImage(bot, gid, text, t);
           runnerLogger.info(`定时任务 ${t.id} 已以图片发送到群 ${gid}`);
         } else {

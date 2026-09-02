@@ -77,10 +77,14 @@ export interface ScheduleTask {
   linkMode?: boolean;
   /** 播报发送方式：text=文字消息（默认），image=将播报文本渲染为图片发送 */
   sendType?: 'text' | 'image';
+  /** contentType='broadcast' 时：GitHub 云端广播任务 id（broadcast/broadcast.json 里的 id） */
+  cloudTaskId?: string;
 }
 
+export const CLOUD_BROADCAST_TYPE = 'broadcast';
+
 const TASK_CFG_KEY = 'schedule_tasks';
-const CONTENT_TYPES = ['chime', 'weather', 'morning', 'evening', 'text', 'plugin'];
+const CONTENT_TYPES = ['chime', 'weather', 'morning', 'evening', 'text', 'plugin', 'broadcast'];
 
 function readTasks(): ScheduleTask[] {
   try {
@@ -152,6 +156,7 @@ export function createScheduleTask(input: Partial<ScheduleTask>): { ok: boolean;
     atUsers: Array.isArray(input.atUsers) && input.atUsers.length ? input.atUsers.map((u) => String(u).trim()).filter(Boolean) : undefined,
     linkMode: typeof input.linkMode === 'boolean' ? input.linkMode : undefined,
     sendType: input.sendType === 'image' ? 'image' : 'text',
+    cloudTaskId: input.contentType === 'broadcast' && input.cloudTaskId ? String(input.cloudTaskId).trim() : undefined,
   };
   const tasks = readTasks();
   tasks.push(task);

@@ -11,6 +11,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import { isNapcatModule, initNapcatPlugin, readNapcatConfig, writeNapcatConfig } from './napcat';
 import { loadAdminRoleByQQ, updateMemberBinding, removeMemberBinding } from '../core/napcat';
 import { currentBotId as getCurrentBotId } from '../core/bot';
+import { loadBroadcastCatalog, loadBroadcastTaskById, runBroadcastNow } from '../core/broadcast';
 import { PythonRuntime } from './python-runtime';
 
 const logger = createLogger('plugin-engine');
@@ -647,6 +648,18 @@ export class PluginEngine {
           }
           return null;
         } catch { return null; }
+      },
+      broadcastList: async () => {
+        try {
+          const cat = await loadBroadcastCatalog(true);
+          return { ok: cat.ok, source: cat.sourceUrl, errors: cat.errors, tasks: cat.tasks.map((t) => ({ id: t.id, name: t.name, enabled: t.enabled, send: t.send, target: t.target, groupId: t.groupId || '', groups: t.groups || [], schedule: t.schedule || null })) };
+        } catch (e: any) { return { ok: false, error: e.message || String(e), tasks: [] }; }
+      },
+      broadcastSend: async (taskId: string, target?: string, groupId?: string) => {
+        const t = await loadBroadcastTaskById(String(taskId || '').trim());
+        if (!t) return { ok: false, error: '云端广播任务不存在或目录不可用: ' + String(taskId || '') };
+        const r = await runBroadcastNow(t, { target: target || 'default', groupId });
+        return r;
       },
     });
 

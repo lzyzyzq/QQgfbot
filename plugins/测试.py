@@ -13,6 +13,7 @@
 #   禁言状态                     → 查询群禁言设置
 #   广播 <内容>                  → 当前群发公告 + 群消息
 #   全体广播 <内容>              → 向全部已收录群广播（仅超级主人）
+#   云端广播                     → 查看 GitHub 云端广播列表；「云端广播 名称 [全部/本群]」立即执行（仅超级主人）
 #   抖音 <分享口令或链接>        → 解析抖音视频无水印链接
 #   重启 / 更新                  → 引导使用「更新系统」或群内直接发送终端命令
 # ------------------------------------------------------------
@@ -134,6 +135,7 @@ def build_menu():
     lines.append('━━━━━━━━━━━━━━━━')
     lines.append('🎤 唱歌    → 发送「唱歌 歌名」')
     lines.append('🔇 禁言    → 发送「禁言 QQ号 分钟」')
+    lines.append('📢 云端广播 → 发送「云端广播」查看/执行 GitHub 云端广播')
     lines.append('📢 广播    → 发送「广播 内容」')
     lines.append('🎮 娱乐    → 发送「娱乐」')
     lines.append('🔧 实用    → 发送「实用」')
@@ -387,7 +389,111 @@ def mute_cmd(data, content):
         reply(data, '🔇 操作失败：%s' % e)
 
 
-# ================= 广播（群公告 + 群消息 / 全体群广播） =================
+# ================= 广播（群公告 + 群消息 / 全体群广播 / GitHub 云端广播） =================
+
+def _fmt_cloud_task(t):
+    """把云端任务格式化为可读描述"""
+    sched = t.get('schedule') or {}
+    s = ''
+    if sched.get('time'):
+        s = '每天 ' + str(sched['time'])
+    elif sched.get('intervalMin'):
+        s = '每 ' + str(sched['intervalMin']) + ' 分钟'
+    if not s:
+        s = '手动'
+    mode = '图片' if t.get('send') == 'image' else '文本'
+    tgt = t.get('target') or 'all'
+    if tgt == 'one':
+        tgt_s = '单一群'
+    elif tgt == 'list':
+        tgt_s = '目标群×%d' % len(t.get('groups') or [])
+    else:
+        tgt_s = '全部群'
+    return '🔹 %s（%s）%s · %s\n    发送：%s · 定时：%s' % (
+        t.get('name') or t.get('id'),
+        t.get('id'),
+        '✅' if t.get('enabled') is not False else '⏸',
+        tgt_s,
+        mode,
+        s,
+    )
+
+
+def cloud_broadcast_cmd(data, content):
+    """云端广播：查看/发送 GitHub 上的广播任务（broadcast/broadcast.json）
+    命令：云端广播               → 查看任务列表
+         云端广播 <名称或id> [全部/本群] [立即]
+    """
+    gid = data.get('groupId') or ''
+    user = (data.get('author') or {}).get('openid') or ''
+    if data.get('type') != 'message.group':
+        reply(data, '📢 云端广播请在群聊中使用。')
+        return
+    parts = content.split()
+    try:
+        r = call('broadcastList')
+    except Exception as e:
+        reply(data, '📢 读取云端广播失败：%s' % e)
+        return
+    if not isinstance(r, dict) or not r.get('ok'):
+        reply(data, '📢 云端广播目录不可用：%s' % (r.get('error') if isinstance(r, dict) else ''))
+        return
+    tasks = r.get('tasks') or []
+    if not tasks:
+        reply(data, '📢 云端暂无广播任务（broadcast/broadcast.json 为空）。')
+        return
+    if len(parts) < 2:
+        lines = ['📢 【云端广播列表】(%d 条)' % len(tasks)]
+        lines.append('━━━━━━━━━━━━━━━━')
+        lines.extend(_fmt_cloud_task(t) for t in tasks)
+        lines.append('━━━━━━━━━━━━━━━━')
+        lines.append('发送「云端广播 名称」立即执行（仅超级主人）')
+        reply(data, '\n'.join(lines))
+        return
+    # 执行
+    try:
+        if not call('isSuper', user):
+            reply(data, '📢 云端广播仅超级主人可用。')
+            return
+    except Exception:
+        pass
+    q = content[len(parts[0]):].strip()
+    m = re.match(r'^(.+?)(?:\s+(全部|本群))?$', q)
+    target = None
+    gid_target = ''
+    name = q.strip()
+    if m:
+        name = (m.group(1) or '').strip()
+        scope = m.group(2)
+        if scope == '本群':
+            target, gid_target = 'this', gid
+        elif scope == '全部':
+            target = 'all'
+    hit = None
+    for t in tasks:
+        if t.get('id') == name or t.get('name') == name:
+            hit = t
+            break
+    if not hit:
+        reply(data, '📢 未找到云端广播「%s」。发送「云端广播」查看列表。' % name)
+        return
+    try:
+        res = call('broadcastSend', hit.get('id'), target or 'default', gid_target)
+    except Exception as e:
+        reply(data, '📢 执行失败：%s' % e)
+        return
+    if not isinstance(res, dict) or not res.get('ok'):
+        reply(data, '📢 执行失败：%s' % ((res or {}).get('error') or '未知错误'))
+        return
+    scope_txt = {'this': '当前群', 'all': '全部群'}.get(target, {'all': '全部群', 'one': '单一群', 'list': '目标群'}.get(hit.get('target'), '全部群'))
+    if res.get('dryRun'):
+        reply(data, '📢 试播「%s」：%s，目标 %s' % (hit.get('name'), res.get('message') or '', scope_txt))
+        return
+    fail = res.get('failed') or []
+    parts_line = '，'.join(fail[:3]) if fail else ''
+    extra = '\n未送达：%s' % parts_line if parts_line else ''
+    reply(data, '✅ 云端广播「%s」完成：%d/%d 群已发送（%s）%s' % (hit.get('name'), res.get('sent') or 0, res.get('total') or 0, scope_txt, extra))
+
 
 def broadcast_cmd(data, content):
     gid = data.get('groupId') or ''
@@ -704,6 +810,9 @@ def on_message(data):
         return
     if content.startswith('禁言') or content.startswith('解禁') or content == '禁言状态' or content.startswith('全群禁言'):
         mute_cmd(data, content)
+        return
+    if content == '云端广播' or content.startswith('云端广播 '):
+        cloud_broadcast_cmd(data, content)
         return
     if content.startswith('广播') or content.startswith('全体广播'):
         broadcast_cmd(data, content)
