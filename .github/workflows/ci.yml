@@ -23,6 +23,6 @@ jobs:
       - name: 类型检查 / 编译
         run: npm run build
 
-      # engine/napcat-repair 等用例依赖已初始化的 data/database（data/ 不入库），全量请本地 npm test
+      # engine/napcat-repair/bot-controls 等用例依赖已初始化的 data/database（data/ 不入库），全量请本地 npm test
       - name: 单元测试（可离线自包含用例）
-        run: npx vitest run src/core/event-bus.test.ts src/shared/bot-controls.test.ts
+        run: npx vitest run src/core/event-bus.test.ts
