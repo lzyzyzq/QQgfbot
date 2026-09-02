@@ -64,11 +64,11 @@
     }
   ],
   "giscus": {
-    "enabled": false,
+    "enabled": true,
     "repo": "lzyzyzq/QQgfbot",
-    "repoId": "",
-    "category": "Announcements",
-    "categoryId": ""
+    "repoId": "R_kgDOULngWw",
+    "category": "General",
+    "categoryId": "DIC_kwDOULngW84DEvUl"
   },
   "generatedAt": "2026-09-02T00:00:00.000Z"
 }
