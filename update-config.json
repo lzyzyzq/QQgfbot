@@ -1,9 +1,14 @@
 {
   "ok": true,
   "version": "4.2.60",
-  "patchUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.60/qqbot-card-editor-patch-4.2.60.zip",
+  "patchUrl": "https://lzyzyzq.github.io/QQgfbot/qqbot-card-editor-patch-4.2.60.zip",
   "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.60/qqbot-card-editor-4.2.60-full.zip",
   "mirrors": [
+    {
+      "name": "GitHub Release 直连",
+      "patchUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.60/qqbot-card-editor-patch-4.2.60.zip",
+      "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.60/qqbot-card-editor-4.2.60-full.zip"
+    },
     {
       "name": "GitHub 加速(ghfast.top)",
       "patchUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.60/qqbot-card-editor-patch-4.2.60.zip",
