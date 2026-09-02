@@ -2,7 +2,7 @@
 
 QQ 机器人平台（基于 QQ 开放平台官方 API + NapCat 双通道），带 Web 管理面板与群内 Python/PHP 插件体系。
 
-> 项目在 4.2.59 基线归档到 GitHub。当前版本：**4.2.59**。
+> 项目在 4.2.59 基线归档到 GitHub。当前版本：**4.2.60**。
 
 ## 版本与下载（GitHub Pages 站点，自动刷新）
 
@@ -73,7 +73,7 @@ npm start          # node dist/server.js 运行
 - **群内「更新系统」插件**：发送「检查更新」→「更新补丁 / 更新全量」（同源切换）
 - **终端直更**（任意服务器）：
   ```
-  cd /var/www/php && wget -O patch-4.2.59.zip <补丁URL> && unzip -o patch-4.2.59.zip && pm2 restart qqbot
+  cd /var/www/php && wget -O patch-4.2.60.zip <补丁URL> && unzip -o patch-4.2.60.zip && pm2 restart qqbot
   ```
 
 ## 下载加速说明（GitHub Pages / 镜像 / AI 服务器自动择优）
