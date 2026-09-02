@@ -58,9 +58,9 @@ jobs:
           PATCH_DIR="$RUNNER_TEMP/patch"
           mkdir -p "$PATCH_DIR"
           if [ -n "$PREV" ]; then
-            FILES="$(git diff --name-only "$PREV" HEAD)"
+            FILES="$(git -c core.quotepath=false diff --name-only "$PREV" HEAD)"
           else
-            FILES="$(git ls-files)"
+            FILES="$(git -c core.quotepath=false ls-files)"
           fi
           echo "$FILES" | while read -r f; do
             if [ -n "$f" ] && [ -f "$f" ]; then mkdir -p "$PATCH_DIR/$(dirname "$f")"; cp "$f" "$PATCH_DIR/$f"; fi
