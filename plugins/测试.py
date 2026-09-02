@@ -706,6 +706,57 @@ def tool_cmd(data, content):
 
 # ================= 抖音解析 =================
 
+# 多引擎解析辅助：宽松提取 JSON 里的视频/标题/封面/作者
+_DY_VIDEO_KEYS = ('video_url', 'videoUrl', 'play_url', 'playUrl', 'play_addr', 'download_addr', 'download_url', 'video', 'down', 'vurl', 'url')
+
+
+def _is_media_url(u):
+    # 跳过分享页/短链回显，只认 CDN 视频直链
+    if 'douyin.com' in u and '.mp4' not in u and 'video/tos' not in u and 'byteoversea' not in u and 'douyinvod' not in u:
+        return False
+    return u.startswith('http')
+
+
+def _find_video(obj, depth=6):
+    if depth < 0:
+        return None
+    if isinstance(obj, dict):
+        for k in _DY_VIDEO_KEYS:
+            v = obj.get(k)
+            if isinstance(v, str) and _is_media_url(v):
+                return v
+        for v in obj.values():
+            r = _find_video(v, depth - 1)
+            if r:
+                return r
+    elif isinstance(obj, list):
+        for v in obj:
+            r = _find_video(v, depth - 1)
+            if r:
+                return r
+    return None
+
+
+def _find_first(obj, keys, depth=4):
+    if depth < 0:
+        return ''
+    if isinstance(obj, dict):
+        for k in keys:
+            v = obj.get(k)
+            if isinstance(v, str) and v:
+                return v
+        for v in obj.values():
+            r = _find_first(v, keys, depth - 1)
+            if r:
+                return r
+    elif isinstance(obj, list):
+        for v in obj:
+            r = _find_first(v, keys, depth - 1)
+            if r:
+                return r
+    return ''
+
+
 def douyin_cmd(data, content):
     # 从分享口令/文本中提取链接
     m = re.search(r'https?://[^\s]+', content)
@@ -732,37 +783,63 @@ def douyin_cmd(data, content):
             resp.close()
         except Exception:
             final = url
-    # 调用第三方解析接口（qjqq.cn 抖音解析，返回无水印视频地址）
-    try:
-        api = 'https://api.qjqq.cn/api/douyin?url=%s' % quote(final)
-        st, body = http_get(api, 12)
-        j = json.loads(body) if st == 200 and body else {}
-        dataj = j.get('data') or {}
-        video = dataj.get('video_url') or dataj.get('videoUrl') or dataj.get('url') or j.get('video_url') or ''
-        title = dataj.get('title') or j.get('title') or '抖音视频'
-        cover = dataj.get('cover') or dataj.get('video_cover') or j.get('cover') or ''
-        author = dataj.get('author') or j.get('author') or ''
-        if video:
-            lines = ['🎵 【抖音解析】%s' % title]
-            if author:
-                lines.append('👤 %s' % author)
-            lines.append('━━━━━━━━━━━━━━━━')
-            lines.append('无水印播放：')
-            lines.append(video)
-            lines.append('')
-            lines.append('发送「测试」返回菜单')
-            if cover:
-                try:
-                    up = call('uploadGroupImage', data.get('groupId') or '', cover)
-                    if up and (up.get('file_info') or up.get('url')):
-                        call('sendGroupImageMessage', data.get('groupId') or '', up.get('file_info') or up.get('url'))
-                except Exception:
-                    pass
-            reply(data, '\n'.join(lines))
-            return
-        raise RuntimeError('接口未返回视频地址')
-    except Exception as e:
-        reply(data, '🎵 解析失败：%s\n可尝试发送原始分享链接重试，或去抖音App查看原视频。' % e)
+    # 调用第三方解析接口，多引擎自动回退（接口不稳定时换下一个）
+    apis = (
+        ('qjqq.cn', 'https://api.qjqq.cn/api/douyin?url=%s' % quote(final)),
+        ('yujn.cn', 'https://api.yujn.cn/api/dy_jx.php?msg=%s' % quote(final)),
+        ('shanhaiyun', 'https://api.shanhaiyun.cn/api/video?url=%s' % quote(final)),
+        ('ooopn.com', 'https://api.ooopn.com/video/douyin/url?url=%s' % quote(final)),
+    )
+    video = title = cover = author = ''
+    errors = []
+    for name, api in apis:
+        try:
+            st, body = http_get(api, 10)
+            if st != 200 or not body:
+                errors.append('%s 无响应' % name)
+                continue
+            try:
+                j = json.loads(body)
+            except Exception:
+                j = None
+            if isinstance(j, (dict, list)):
+                v = _find_video(j)
+                if not v:
+                    v = _find_video(j, 10)
+                if v:
+                    video = v
+                    title = _find_first(j, ('title', 'desc', 'desc_text')) or '抖音视频'
+                    cover = _find_first(j, ('cover', 'cover_url', 'pic', 'video_cover'))
+                    author = _find_first(j, ('author', 'author_name', 'nickname', 'nick'))
+                    break
+                errors.append('%s 未返回视频地址' % name)
+            else:
+                mm = re.search(r'https?://[^\s"\']+', body)
+                if mm:
+                    video = mm.group(0).strip().rstrip('。，,;；')
+                    break
+                errors.append('%s 返回格式异常' % name)
+        except Exception as e:
+            errors.append('%s 错误:%s' % (name, e))
+    if not video:
+        reply(data, '🎵 解析失败：%s\n可尝试发送原始分享链接重试，或去抖音App查看原视频。' % ('；'.join(errors[-3:]) or '接口未返回视频地址'))
+        return
+    lines = ['🎵 【抖音解析】%s' % title]
+    if author:
+        lines.append('👤 %s' % author)
+    lines.append('━━━━━━━━━━━━━━━━')
+    lines.append('无水印播放：')
+    lines.append(video)
+    lines.append('')
+    lines.append('发送「测试」返回菜单')
+    if cover:
+        try:
+            up = call('uploadGroupImage', data.get('groupId') or '', cover)
+            if up and (up.get('file_info') or up.get('url')):
+                call('sendGroupImageMessage', data.get('groupId') or '', up.get('file_info') or up.get('url'))
+        except Exception:
+            pass
+    reply(data, '\n'.join(lines))
 
 
 # ================= 更新/重启串联 =================
@@ -812,7 +889,7 @@ def on_message(data):
     if content.startswith('禁言') or content.startswith('解禁') or content == '禁言状态' or content.startswith('全群禁言'):
         mute_cmd(data, content)
         return
-    if content == '云端广播' or content.startswith('云端广播 '):
+    if content in ('云端广播', '发送云端广播', '查看云端广播') or content.startswith('云端广播 ') or content.startswith('发送云端广播 ') or content.startswith('查看云端广播 '):
         cloud_broadcast_cmd(data, content)
         return
     if content.startswith('广播') or content.startswith('全体广播'):
