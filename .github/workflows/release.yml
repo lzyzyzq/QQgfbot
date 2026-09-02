@@ -75,3 +75,4 @@ jobs:
             ${{ runner.temp }}/qqbot-card-editor-${{ steps.ver.outputs.version }}-full.zip
             ${{ runner.temp }}/qqbot-card-editor-patch-${{ steps.ver.outputs.version }}.zip
           generate_release_notes: true
+          overwrite: true
