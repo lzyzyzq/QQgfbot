@@ -540,6 +540,60 @@ export function createSystemRoutes(
     }
   });
 
+  // 部署终端「拉取 GitHub 项目」：将会话目录源码与远程 Git 仓库强制同步（覆盖本地未提交改动，
+  // 忽略文件如 data/node_modules/dist 不受影响）。mode: pull 仅拉取 / build +npm安装构建 / restart +pm2重启
+  router.post('/git-pull', requireSuperMaster, async (req: Request, res: Response) => {
+    const repo = String((req.body && req.body.repo) || '').trim() || 'https://github.com/lzyzyzq/QQgfbot.git';
+    const branch = String((req.body && req.body.branch) || '').trim() || 'main';
+    const mode = String((req.body && req.body.mode) || '').trim() || 'pull';
+    if (!/^[A-Za-z0-9@._:\/~+-]+$/.test(repo)) {
+      res.json({ ok: true, code: 2, output: '仓库地址不合法（仅支持 http(s)/git@/ssh:// 字符）' });
+      return;
+    }
+    if (!/^[A-Za-z0-9_.\/-]+$/.test(branch)) {
+      res.json({ ok: true, code: 2, output: '分支名不合法' });
+      return;
+    }
+    try {
+      const cwd = terminalCwd;
+      if (!fs.existsSync(cwd)) fs.mkdirSync(cwd, { recursive: true });
+      const sd = `git -c safe.directory=${JSON.stringify(cwd)}`;
+      const qRepo = JSON.stringify(repo);
+      const qBranch = JSON.stringify(branch);
+      const steps: string[] = [];
+      steps.push(`set +e`);
+      steps.push(`echo "=== 目标目录: ${JSON.stringify(cwd)} ==="`);
+      steps.push(`if ! ${sd} rev-parse --git-dir >/dev/null 2>&1; then echo "=== 目录尚无 git，正在初始化 ==="; git init -q; fi`);
+      steps.push(`if [ "$(${sd} remote get-url origin 2>/dev/null)" != ${qRepo} ]; then ${sd} remote set-url origin ${qRepo} 2>/dev/null || ${sd} remote add origin ${qRepo}; echo "=== 远端已指向 ${qRepo} ==="; fi`);
+      steps.push(`${sd} fetch --depth=1 origin ${qBranch}`);
+      steps.push(`${sd} reset --hard origin/${qBranch}`);
+      steps.push(`echo "=== 已同步到分支 ${qBranch} 最新提交 ==="`);
+      steps.push(`${sd} log -1 --format="commit: %h%n%s%n同步时间: %ci"`);
+      if (mode === 'build' || mode === 'restart') {
+        steps.push(`if [ -f package.json ]; then`);
+        steps.push(`  echo "=== 安装依赖（npm ci / npm install）===";`);
+        steps.push(`  if [ -f package-lock.json ]; then npm ci --no-audit --no-fund 2>&1 | tail -4; else npm install --no-audit --no-fund 2>&1 | tail -4; fi`);
+        steps.push(`  echo "=== 编译（tsc → dist）===";`);
+        steps.push(`  npm run build 2>&1 | tail -20`);
+        steps.push(`  echo "=== 精简生产依赖 ===";`);
+        steps.push(`  npm prune --omit=dev 2>&1 | tail -3`);
+        steps.push(`else`);
+        steps.push(`  echo "（当前目录不是 qqbot 源码根，跳过安装/构建）";`);
+        steps.push(`fi`);
+      }
+      if (mode === 'restart') {
+        steps.push(`echo "=== pm2 restart qqbot ===";`);
+        steps.push(`cd ${JSON.stringify(cwd)} && (pm2 restart qqbot 2>&1 || echo "pm2 qqbot 不存在/不可用，请手动重启")`);
+      }
+      steps.push(`echo "=== 完成（退出码 $?）==="`);
+      const timeout = mode === 'pull' ? 180000 : 600000;
+      const r = await runSh(cwd, steps.join('\n'), timeout);
+      res.json({ ok: true, code: r.code, output: r.out || '(无输出)' });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    }
+  });
+
   router.get('/stats', (_req: Request, res: Response) => {
     const mem = process.memoryUsage();
 

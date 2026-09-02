@@ -2,6 +2,11 @@
 
 ## 2026-09-01
 
+### 4.2.59g：部署终端新增「拉取 GitHub 项目」
+- 面板「部署终端」新增 GitHub 项目操作条（默认 https://github.com/lzyzyzq/QQgfbot.git，可改仓库/分支）
+- 三种模式：**仅拉取源码**（git fetch + reset --hard，覆盖本地改动，data/node_modules/dist 不受影响）、**拉取 + 构建**（npm 装依赖 + tsc 编译 + 精简生产依赖）、**拉取构建重启**（自动 pm2 restart qqbot）
+- 目录无 .git 时自动 git init + 关联远端（非空部署目录安全初始化，未跟踪文件保留）；新接口 `POST /api/system/git-pull`（仅超管，拉取超时 180s/构建 600s）
+
 ### 4.2.59f：更新源迁入 GitHub Release（多源自动切换）+ GitHub Actions + README
 - **更新源双主并存**：GitHub Release（主源）→ GitHub 加速镜像（ghfast.top/ghproxy.net）→ 8091 备用源；面板「服务端接收」、群内「更新系统」统一按候选源顺序自动切换下载，无需手动改地址
 - **update-config.json**：新增 `mirrors` 列表（AI 发版统一维护，同版本多源 URL）

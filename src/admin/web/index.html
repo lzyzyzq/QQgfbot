@@ -548,6 +548,15 @@ input[type="file"]{color:var(--text2)}
       <button class="btn btn-warn btn-sm" onclick="termQuick('cd /var/www/php && pm2 restart qqbot')">重启机器人</button>
       <button class="btn btn-outline btn-sm" onclick="termClear()">清屏</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0;padding-top:10px;border-top:1px dashed var(--border)">
+      <span style="font-size:13px;color:var(--text2);font-weight:600">拉取 GitHub 项目</span>
+      <input id="gitRepo" type="text" value="https://github.com/lzyzyzq/QQgfbot.git" style="flex:1;min-width:280px;font-size:12px">
+      <input id="gitBranch" type="text" value="main" style="width:90px;font-size:12px">
+      <button class="btn btn-outline btn-sm" onclick="gitPull('pull')" title="git fetch + reset --hard 到会话目录（覆盖本地未提交改动）">仅拉取源码</button>
+      <button class="btn btn-primary btn-sm" onclick="gitPull('build')" title="拉取后 npm 安装依赖并 tsc 编译">拉取 + 构建</button>
+      <button class="btn btn-warn btn-sm" onclick="gitPull('restart')" title="拉取 + 构建 + pm2 restart qqbot（自动重启）">拉取构建重启</button>
+      <span id="gitPullMsg" style="font-size:12px;color:var(--text2)"></span>
+    </div>
     <div class="term-window">
       <div class="term-out" id="termOut"></div>
       <div class="term-input-row">
@@ -556,7 +565,7 @@ input[type="file"]{color:var(--text2)}
         <button class="btn btn-primary btn-sm" onclick="termExec()">执行</button>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--text2);margin:8px 0 0">仅超级主人可执行；命令在服务器以 <code>sh -c</code> 运行，当前目录为上方会话目录（<code>cd</code> 可在会话内切换）。常用于：<code>unzip -o</code> 解压更新包、<code>pm2 restart qqbot</code> 重启机器人。</p>
+    <p style="font-size:12px;color:var(--text2);margin:8px 0 0">仅超级主人可执行；命令在服务器以 <code>sh -c</code> 运行，当前目录为上方会话目录（<code>cd</code> 可在会话内切换）。常用于：<code>unzip -o</code> 解压更新包、<code>pm2 restart qqbot</code> 重启机器人。「拉取 GitHub 项目」把会话目录源码与 Git 远端强制同步（忽略文件 data/node_modules/dist 不受影响；会覆盖本地未提交改动），QQgfbot 源码在 https://github.com/lzyzyzq/QQgfbot</p>
   </div>
 </div>
 
@@ -1532,6 +1541,21 @@ function termClear(){docById('termOut').innerHTML='';termInited=false;termInit()
 function termQuick(cmd){
   docById('termInput').value=cmd;
   termExec();
+}
+async function gitPull(mode){
+  const msg=docById('gitPullMsg');
+  const repo=(docById('gitRepo').value||'').trim()||'https://github.com/lzyzyzq/QQgfbot.git';
+  const branch=(docById('gitBranch').value||'').trim()||'main';
+  const names={pull:'仅拉取源码',build:'拉取并构建',restart:'拉取构建并重启'};
+  termPrint('$ git-pull ['+branch+'] '+repo+'（'+names[mode]+'）','t-cmd');
+  if(msg){msg.textContent='⏳ '+(mode==='pull'?'拉取中…':'拉取/构建/重启中，耗时较长请耐心等待…');msg.style.color='var(--text2)'}
+  try{
+    const j=await api('/api/system/git-pull',{method:'POST',body:{repo:repo,branch:branch,mode:mode}});
+    if(j.output)termPrint(j.output);
+    termPrint(j.code===0?'✓ 拉取 GitHub 项目完成':'✗ 退出码 '+j.code,'t-ok');
+    if(msg){msg.textContent='';}
+    if(mode==='restart'){pollServerRestart(90,msg);}
+  }catch(e){termPrint('请求失败：'+(e&&e.message||e),'t-err');if(msg){msg.textContent='❌ '+((e&&e.message)||e);msg.style.color='var(--danger)'}}
 }
 async function termExec(){
   const input=docById('termInput');
