@@ -28,6 +28,12 @@ const logger = createLogger('broadcast');
 export interface BroadcastApi {
   url: string;
   jsonPath?: string;
+  /** 数组热点渲染：api.format='list' 时按 TOP 列表输出（取 title/hot/url 常见字段） */
+  format?: string;
+  /** list 模式最多取几条（默认 10） */
+  top?: number;
+  /** list 模式标题里的地域文案（对应 {city} 占位） */
+  city?: string;
 }
 
 export interface BroadcastSchedule {
@@ -46,6 +52,7 @@ export interface BroadcastTask {
   content?: string;
   api?: BroadcastApi;
   schedule?: BroadcastSchedule;
+  city?: string;
   createdAt?: string;
 }
 
@@ -142,13 +149,22 @@ function pushTask(tasks: BroadcastTask[], errors: string[], index: number, raw: 
     content: String(raw.content || ''),
     api: undefined,
     schedule: undefined,
+    city: raw.city ? String(raw.city).trim() : undefined,
     createdAt: raw.createdAt ? String(raw.createdAt) : undefined,
   };
   if (send === 'text' && !task.content && (!raw.api || !raw.api.url)) {
     errors.push(`任务 ${id} 既无 content 也无 api.url，将发送空内容`);
   }
   if (raw.api && typeof raw.api === 'object' && String(raw.api.url || '').trim()) {
-    task.api = { url: String(raw.api.url).trim(), jsonPath: raw.api.jsonPath ? String(raw.api.jsonPath) : undefined };
+    const api = raw.api as any;
+    task.api = {
+      url: String(api.url).trim(),
+      jsonPath: api.jsonPath ? String(api.jsonPath) : undefined,
+      format: api.format === 'list' ? 'list' : undefined,
+      top: Number(api.top) > 0 ? Number(api.top) : undefined,
+      city: api.city ? String(api.city).trim() : undefined,
+    };
+    if (!task.city) task.city = task.api.city || undefined;
   }
   if (raw.schedule && typeof raw.schedule === 'object') {
     const time = String(raw.schedule.time || '').trim();
@@ -342,21 +358,66 @@ function apiToText(body: any, jp?: string): string {
   return String(v);
 }
 
-/** 计算任务广播文本：api.url 优先（失败回退 content）；{time} 替换为北京时间 */
+// ---------- 热点/资讯列表渲染（头条/微博等热门榜 JSON 通用适配） ----------
+const HOT_TITLE_KEYS = ['title', 'Title', 'name', 'Name', 'word', 'Word', 'query', 'Query', 'hotword', 'hotWord', 'HotWord', 'note', 'Note', 'desc', 'Desc', 'content', 'abstract'];
+const HOT_SCORE_KEYS = ['hotValue', 'HotValue', 'num', 'Num', 'hot', 'Hot', 'heat', 'Heat', 'readCount', 'ReadCount', 'score', 'Score', 'hot_num', 'hotscore'];
+const HOT_URL_KEYS = ['url', 'Url', 'URL', 'link', 'Link'];
+
+function hotPick(it: any, keys: string[]): string {
+  if (!it || typeof it !== 'object') return '';
+  for (const k of keys) {
+    const v = it[k];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return '';
+}
+
+function hotScore(it: any): number {
+  const s = hotPick(it, HOT_SCORE_KEYS);
+  const n = parseInt(s, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function renderHotList(arr: any[], top: number | undefined, city: string): string {
+  const n = Math.max(1, Math.min(top || 10, arr.length));
+  const lines = [`【${city || '热点'} TOP ${n}｜${bjNowFull()}】`];
+  for (let i = 0; i < n; i++) {
+    const it = arr[i];
+    if (it == null) continue;
+    const title = hotPick(it, HOT_TITLE_KEYS);
+    if (!title) continue;
+    const score = hotScore(it);
+    const url = hotPick(it, HOT_URL_KEYS);
+    let line = `${i + 1}. ${title}`;
+    if (score > 0) line += `（热度 ${score}）`;
+    if (url && /^https?:\/\//.test(url)) line += `\n   ${url}`;
+    lines.push(line);
+  }
+  return lines.join('\n');
+}
+
+/** 计算任务广播文本：api.url 优先（失败回退 content）；{time}/{city} 替换；format=list 走热点渲染 */
 export async function broadcastContent(t: BroadcastTask): Promise<{ text: string; via: 'content' | 'api' | 'empty'; err?: string }> {
+  const city = String(t.city || t.api?.city || '').trim();
   if (t.api && t.api.url) {
-    const text = await httpText(t.api.url);
+    const url = t.api.url.replace(/\{city\}/g, encodeURIComponent(city || ''));
+    const text = await httpText(url);
     if (text) {
       try {
-        return { text: apiToText(JSON.parse(text), t.api.jsonPath), via: 'api' };
+        const j = JSON.parse(text);
+        const v = lookupValue(j, t.api.jsonPath || '');
+        if (t.api.format === 'list' && Array.isArray(v)) {
+          return { text: renderHotList(v, t.api.top, city), via: 'api' };
+        }
+        return { text: apiToText(v == null ? j : v, ''), via: 'api' };
       } catch {
         return { text: text.slice(0, 3000), via: 'api' };
       }
     }
-    if (t.content) return { text: t.content, via: 'content', err: 'api 拉取失败，已用预设内容' };
+    if (t.content) return { text: t.content.replace(/\{time\}/g, bjNowFull()).replace(/\{city\}/g, city || '本地'), via: 'content', err: 'api 拉取失败，已用预设内容' };
     return { text: '', via: 'empty', err: 'api 拉取失败且无预设内容' };
   }
-  const base = String(t.content || '');
+  const base = String(t.content || '').replace(/\{city\}/g, city || '本地');
   const out = base.replace(/\{time\}/g, bjNowFull());
   return { text: out, via: out.trim() ? 'content' : 'empty' };
 }
@@ -413,12 +474,12 @@ export interface BroadcastSendResult {
 /** 立即广播：按任务目标（可覆盖 this/one/all/list）逐群发送，返回统计 */
 export async function runBroadcastNow(
   t: BroadcastTask,
-  opts: { target?: string; groupId?: string; dryRun?: boolean } = {},
+  opts: { target?: string; groupId?: string; dryRun?: boolean; send?: string } = {},
 ): Promise<BroadcastSendResult> {
   const { text } = await broadcastContent(t);
   let groups: string[] = overrideTargetGroups(t, opts.target, opts.groupId) || taskTargetGroups(t);
   groups = Array.from(new Set(groups));
-  const sendImage = t.send === 'image';
+  const sendImage = (opts.send ? opts.send === 'image' : t.send === 'image');
   const result: BroadcastSendResult = {
     ok: true,
     taskId: t.id,

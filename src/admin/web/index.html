@@ -643,6 +643,12 @@ input[type="file"]{color:var(--text2)}
         <option value="one">指定群</option>
       </select>
       <input id="cbSendGroup" placeholder="群 OpenID（指定群时）" style="font-size:12px;max-width:200px">
+      <span style="font-size:12px;color:var(--text2)">发送方式：</span>
+      <select id="cbSendType" style="font-size:12px;max-width:110px">
+        <option value="default">任务默认</option>
+        <option value="text">文本</option>
+        <option value="image">图片</option>
+      </select>
       <span style="font-size:12px;color:var(--text2)"><label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="cbDryRun"> 仅试播（不发送）</label></span>
     </div>
     <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>ID</th><th>名称</th><th>状态</th><th>发送</th><th>目标</th><th>定时</th><th>内容</th><th>操作</th></tr></thead><tbody id="cbTaskList"></tbody></table></div>
@@ -3334,17 +3340,43 @@ async function loadCloudBroadcast(){
   }
 }
 async function sendCloudBroadcast(id){
-  const msg=docById('cbMsg');const target=docById('cbSendTarget').value;const gid=docById('cbSendGroup').value.trim();const dryRun=docById('cbDryRun').checked;
-  if(!confirm((dryRun?'试播':'立即广播')+'云端任务 '+id+' ?\n\n（目标：'+docById('cbSendTarget').options[docById('cbSendTarget').selectedIndex].text+(target==='one'&&gid?(' → '+gid):'')+'）'))return;
-  if(msg){msg.textContent=dryRun?'⏳ 试播中…':'⏳ 广播中…（逐群发送，稍候）';msg.style.color='var(--text2)'}
+  const msg=docById('cbMsg');const target=docById('cbSendTarget').value;const gid=docById('cbSendGroup').value.trim();
+  const dryRun=docById('cbDryRun').checked;const sendType=docById('cbSendType').value;
+  const sendLabel=({text:'文本',image:'图片'})[sendType]||'任务默认';
+  const targetLabel=docById('cbSendTarget').options[docById('cbSendTarget').selectedIndex].text+(target==='one'&&gid?(' → '+gid):'');
+  if(!confirm((dryRun?'试播':'立即广播')+'云端任务 '+id+' ?\n\n目标：'+targetLabel+'｜发送：'+sendLabel))return;
+  if(msg){msg.textContent=dryRun?'⏳ 试播已提交，正在后台统计…':'⏳ 广播已提交，正在逐群后台发送…（结果自动刷新）';msg.style.color='var(--text2)'}
   try{
-    const r=await api('/api/system/broadcast/send',{method:'POST',body:Object.assign({taskId:id,target,dryRun},gid?{groupId:gid}:{})});
-    if(r.ok){
-      const fail=(r.failed||[]).slice(0,3).join('，');
-      msg.textContent='✅ 「'+r.taskName+'」发送完成：'+r.sent+'/'+r.total+' 群'+(r.message?('（'+r.message+'）'):'')+(fail?('\n未送达：'+fail):'')+(dryRun?'\n（仅试播，未实际发送）':'');
-      msg.style.color='var(--success)';
-    }else{msg.textContent='❌ '+(r.error||r.message||'执行失败');msg.style.color='var(--danger)'}
+    const r=await api('/api/system/broadcast/send',{method:'POST',body:Object.assign({taskId:id,target,dryRun,send:sendType},gid?{groupId:gid}:{})});
+    if(r.ok&&r.started){
+      pollBroadcastJob(r.jobId,msg,dryRun);
+    }else{
+      msg.textContent='❌ '+(r.error||r.message||'执行失败');msg.style.color='var(--danger)';
+    }
   }catch(e){msg.textContent='❌ 广播失败：'+e.message;msg.style.color='var(--danger)'}
+}
+async function pollBroadcastJob(jobId,msg,dryRun){
+  for(let i=0;i<60;i++){
+    await new Promise(r=>setTimeout(r,2500));
+    let j=null;
+    try{j=await api('/api/system/broadcast/job/'+encodeURIComponent(jobId));}catch(e){j=null}
+    if(!j)continue;
+    if(j.status==='running'){
+      if(msg&&i%5===4)msg.textContent='⏳ 正在逐群发送中…（已发 '+(j.sent||0)+'/'+(j.total||0)+' 群）';
+      continue;
+    }
+    if(j.status==='error'){
+      if(msg){msg.textContent='❌ '+(j.error||'任务执行失败');msg.style.color='var(--danger)'}
+      return;
+    }
+    const fail=(j.failed||[]).slice(0,3).join('，');
+    if(msg){
+      msg.textContent='✅ 「'+j.taskName+'」发送完成：'+j.sent+'/'+j.total+' 群'+(j.message?('（'+j.message+'）'):'')+(fail?('\n未送达：'+fail):'')+(dryRun?'\n（仅试播，未实际发送）':'');
+      msg.style.color='var(--success)';
+    }
+    return;
+  }
+  if(msg){msg.textContent='⏳ 广播仍在后台进行（大批量发送较慢），可稍后重新点击「立即广播」查看状态';msg.style.color='var(--text2)'}
 }
 async function syncCloudBroadcast(){
   const msg=docById('cbMsg');

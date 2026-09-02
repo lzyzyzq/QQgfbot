@@ -31,12 +31,16 @@ import multer from 'multer';
 // 部署终端会话当前目录（默认 /var/www/php，面板「部署终端」页面维护，单实例共享）
 let terminalCwd = '/var/www/php';
 
+// 云端广播异步任务（面板「立即广播」后台逐群发送，避免长请求被网关超时断连）
+const broadcastJobStore = new Map<string, any>();
+
 // ================= 服务端更新接收端（AI 发布包一键接收部署，与「更新系统」记录/重启串联） =================
 const updateRecDir = (): string => path.resolve(process.cwd(), 'data', 'database', '更新');
-// 云端更新配置（update-config.json）候选源：GitHub 主仓 raw 直连 → GitHub 加速镜像 → 8091 备用。
-// 后端/面板/群内更新插件统一从这份 json 读「版本/补丁URL/全量URL/镜像/更新内容」。
+// 云端更新配置（update-config.json）候选源：GitHub 主仓 raw 直连 → GitHub 加速镜像 → 8091 备用 → GitHub Pages 门户。
+// 顺序仅为「声明清单」，实际请求前会先 HEAD 测速自动按最快源重排（speedRank），失败仍按序兜底尝试。
 const DEFAULT_AI_CONFIG_URLS = [
   'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/update-config.json',
+  'https://lzyzyzq.github.io/QQgfbot/update-config.json',
   'https://raw.gitmirror.com/lzyzyzq/QQgfbot/main/update-config.json',
   'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json',
 ];
@@ -114,6 +118,33 @@ async function fetchJson(url: string, timeoutMs = 8000): Promise<any> {
   }
 }
 
+// 对候选源做 HEAD 测速：返回「按延迟升序 + 不可用/HEAD 不支持者兜底尾部」的 URL 列表。
+// 服务器在拉补丁/全量/插件时据此先测速择优（GitHub Pages / GitHub Release / 加速镜像 / AI 服务器 8091），
+// 测不出或全失败时仍按原序逐个 GET 兜底，保证任何源挂了都会自动切下一家。
+async function headLatency(url: string, timeoutMs: number): Promise<number | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const start = Date.now();
+  try {
+    const r = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: ctrl.signal, headers: { 'User-Agent': 'qq-bot-update-receiver' } });
+    clearTimeout(timer);
+    if (r.ok) return Date.now() - start;
+    return null;
+  } catch {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+async function speedRank(urls: string[], timeoutMs = 5000): Promise<string[]> {
+  const arr = Array.from(new Set((urls || []).filter((u) => u && String(u).trim())));
+  if (arr.length < 2) return arr;
+  const result = await Promise.all(arr.map(async (u) => ({ u, ms: await headLatency(u, timeoutMs) })));
+  const ok = result.filter((x) => x.ms != null).sort((a, b) => (a.ms as number) - (b.ms as number)).map((x) => x.u);
+  const bad = result.filter((x) => x.ms == null).map((x) => x.u);
+  return ok.concat(bad);
+}
+
 async function fetchBuffer(url: string, timeoutMs = 180000): Promise<Buffer | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -131,9 +162,9 @@ async function fetchBuffer(url: string, timeoutMs = 180000): Promise<Buffer | nu
   }
 }
 
-// 拉取云端更新配置：依次尝试候选 config URL，取第一份可用；解析主源 + mirrors 备用源列表
+// 拉取云端更新配置：对候选源 HEAD 测速择优，再依次取第一份可用；解析主源 + mirrors 备用源列表
 async function fetchAiConfig(): Promise<any> {
-  const urls = aiConfigUrls();
+  const urls = await speedRank(aiConfigUrls());
   const errors: string[] = [];
   for (const u of urls) {
     const j = await fetchJson(u);
@@ -186,11 +217,13 @@ export async function receiveUpdatePackage(opts: {
     let usedUrl = '';
     const urls: string[] = opts.zipUrls && opts.zipUrls.length ? opts.zipUrls : (opts.zipUrl ? [opts.zipUrl] : []);
     if (urls.length > 0) {
-      for (const u of urls) {
+      // 多候选源先 HEAD 测速按最快排序再下载；失败仍逐个兜底
+      const ordered = await speedRank(urls);
+      for (const u of ordered) {
         const b = await fetchBuffer(u);
         if (b) { data = b; usedUrl = u; break; }
       }
-      if (!data) return { ok: false, step: '下载', error: `下载失败（已尝试 ${urls.length} 个源：${urls.join(' → ')}，均不可访问或超时）` };
+      if (!data) return { ok: false, step: '下载', error: `下载失败（已测速并按序尝试 ${ordered.length} 个源：${ordered.join(' → ')}，均不可访问或超时）` };
     } else if (opts.zipBuffer && opts.zipBuffer.length > 0) {
       data = opts.zipBuffer;
     } else {
@@ -1021,7 +1054,8 @@ export function createSystemRoutes(
     }
   });
 
-  // 立即广播（试播）：taskId 必填；target=all/one/group/this/list；dryRun=true 只统计不发送
+  // 立即广播（试播）：taskId 必填；target=all/one/group/this/list；send=text/image 覆盖任务默认；dryRun=true 只统计不发送。
+  // 采用异步任务：立即返回 jobId，面板轮询 /broadcast/job/:jobId 拿逐群发送结果，避免大批量广播撑爆网关导致 Failed to fetch。
   router.post('/broadcast/send', requireSuperMaster, async (req: Request, res: Response) => {
     try {
       const taskId = String((req.body || {}).taskId || '').trim();
@@ -1034,11 +1068,32 @@ export function createSystemRoutes(
       const target = String((req.body || {}).target || 'default');
       const groupId = String((req.body || {}).groupId || '');
       const dryRun = (req.body || {}).dryRun === true;
-      const result = await runBroadcastNow(t, { target, groupId, dryRun });
-      res.json(result);
+      const send = String((req.body || {}).send || 'default');
+      const jobId = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      broadcastJobStore.set(jobId, { status: 'running', jobId, taskId, taskName: t.name, started: Date.now(), updated: Date.now() });
+      void (async () => {
+        try {
+          const result = await runBroadcastNow(t, { target, groupId, dryRun, send: send === 'default' ? undefined : send });
+          broadcastJobStore.set(jobId, { status: 'done', jobId, updated: Date.now(), finished: Date.now(), ...result });
+        } catch (e: any) {
+          broadcastJobStore.set(jobId, {
+            status: 'error', jobId, updated: Date.now(), finished: Date.now(),
+            ok: false, taskId, taskName: t.name, send: '', text: '', target: [], total: 0, sent: 0, failed: [],
+            error: (e && e.message) ? e.message : String(e),
+          });
+        }
+      })();
+      res.status(202).json({ ok: true, started: true, jobId, taskId, message: dryRun ? '试播任务已提交，稍候查结果' : '广播任务已提交，逐群后台发送中（可稍后点「立即广播」旁的刷新查看结果）' });
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
     }
+  });
+
+  // 广播任务进度/结果查询
+  router.get('/broadcast/job/:jobId', requireSuperMaster, async (req: Request, res: Response) => {
+    const job = broadcastJobStore.get(String(req.params.jobId || ''));
+    if (!job) { res.json({ ok: false, error: '任务不存在或已过期' }); return; }
+    res.json(job);
   });
 
   // 同步定时：把云端带 schedule 的任务登记/更新成本机定时任务（schedule-runner 到点执行）

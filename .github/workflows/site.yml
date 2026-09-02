@@ -1,0 +1,53 @@
+name: Auto Refresh Pages (版本/补丁/插件列表)
+
+# 让站点「版本列表 / 补丁列表 / 插件下载」一直保持最新并自动提交回 GitHub：
+#   - 每次 push main / push v* tag / Release 发布完成 都会重新生成；
+#   - 每天 UTC 03:17 兜底刷新一次（即使手动补挂 Release 资产也保证同步）；
+#   - 生成产物（releases.json/releases.html/downloads.html）若与上次不同则自动 commit 回 main，
+#     Pages（main 分支 / root）随之自动重建。
+# 说明：本工作流用 GITHUB_TOKEN 提交的 commit 不会再次触发工作流，无递归循环。
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ['Release Build']
+    types: [completed]
+  schedule:
+    - cron: '17 3 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    name: 生成站点数据并自动提交
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码（含 tags）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 生成 releases.json / releases.html / downloads.html
+        run: node scripts/site-gen.mjs
+
+      - name: 自动提交变化到 main
+        run: |
+          CHANGED="$(git status --porcelain -- releases.json releases.html downloads.html)"
+          if [ -z "$CHANGED" ]; then
+            echo "站点数据无变化，跳过提交"
+            exit 0
+          fi
+          git config user.name "qqgfbot-site[bot]"
+          git config user.email "site-bot@users.noreply.github.com"
+          git add releases.json releases.html downloads.html
+          git commit -m "chore(site): 自动刷新版本/补丁/插件列表（$(date -u +%Y-%m-%dT%H:%MZ)）"
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main
+          echo "已自动提交并推送站点数据更新"

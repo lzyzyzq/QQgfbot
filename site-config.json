@@ -1,0 +1,34 @@
+{
+  "portal": {
+    "title": "QQgfbot 插件拉取更新端",
+    "description": "QQ 机器人平台版本列表 / 补丁列表 / 插件下载 / 评论区",
+    "owner": "lzyzyzq",
+    "repo": "QQgfbot",
+    "repoUrl": "https://github.com/lzyzyzq/QQgfbot",
+    "pagesUrl": "https://lzyzyzq.github.io/QQgfbot",
+    "siBase": "https://8091-6f61dc7363389b7a.monkeycode-ai.online",
+    "mirrors": [
+      { "name": "GitHub 加速(ghfast.top)", "prefix": "https://ghfast.top/" },
+      { "name": "GitHub 加速(ghproxy.net)", "prefix": "https://ghproxy.net/" }
+    ]
+  },
+  "giscus": {
+    "enabled": false,
+    "repo": "lzyzyzq/QQgfbot",
+    "repoId": "",
+    "category": "Announcements",
+    "categoryId": ""
+  },
+  "plugins": [
+    {
+      "file": "douyin-scraper.zip",
+      "name": "抖音视频下载爬虫",
+      "desc": "抖音解析多引擎自动回退（qjqq/yujn/shanhaiyun/ooopn），群内发送链接即可解析下载"
+    },
+    {
+      "file": "qqbot-dev-docs.zip",
+      "name": "开发与使用文档包",
+      "desc": "Python/PHP 插件开发文档、NapCat 兼容层、终端开发与使用文档合集"
+    }
+  ]
+}

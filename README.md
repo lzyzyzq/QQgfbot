@@ -4,6 +4,13 @@ QQ 机器人平台（基于 QQ 开放平台官方 API + NapCat 双通道），�
 
 > 项目在 4.2.59 基线归档到 GitHub。当前版本：**4.2.59**。
 
+## 版本与下载（GitHub Pages 站点，自动刷新）
+
+- [版本列表 / 补丁列表](https://lzyzyzq.github.io/QQgfbot/releases.html)：每个 Release 版本的补丁包、全量包与加速镜像/备用源一键下载
+- [补丁 / 插件下载](https://lzyzyzq.github.io/QQgfbot/downloads.html)：插件与文档包（GitHub Pages 与 8091 双通道）
+- 各页底部附 Giscus 评论区（评论存 GitHub Discussions，见 `docs/GitHub自动发布与站点维护.md`）
+- 页面由 `scripts/site-gen.mjs` 生成，GitHub Actions（`site.yml`：push main / 发 tag / Release 发布 / 每日定时）自动刷新并提交回 main
+
 ## 功能总览
 
 - **QQ 官方 API 机器人** + **NapCat 协议接入**，本地运行
@@ -22,7 +29,9 @@ QQ 机器人平台（基于 QQ 开放平台官方 API + NapCat 双通道），�
 | `docs/` | 开发与使用文档（Python 插件开发文档、终端开发与使用文档等） |
 | `update-config.json` | 云端更新配置（版本/下载地址/镜像列表/更新内容），**发版时更新** |
 | `broadcast/` | GitHub 云端广播任务定义（`broadcast.json` 目录 + 单文件任务，面板/群内「云端广播」读取） |
-| `scripts/` | 部署辅助脚本 |
+| `releases.json` / `releases.html` / `downloads.html` | GitHub Pages 站点自动生成的版本/补丁/插件列表（勿手改） |
+| `site-config.json` | 站点配置（镜像清单、Giscus 评论 ID、插件下载清单） |
+| `scripts/` | 部署辅助脚本；`site-gen.mjs` 为站点生成脚本（被 `site.yml` 调用） |
 | `deploy*.sh` | 服务器部署脚本（armbian/nginx 等） |
 
 ## 本地开发
@@ -42,43 +51,45 @@ npm start          # node dist/server.js 运行
 | `ci.yml` | push main / PR | 类型检查 + 编译 + 41 项单元测试 |
 | `release.yml` | push `v*` tag | 自动构建补丁包与全量包 zip，上传到对应 GitHub Release |
 | `manual-build.yml` | 手动触发 | 选择 tag（留空=最新 v*）构建并附加全量包（可选补丁） |
+| `site.yml` | push main / `v*` tag / Release 发布 / 每日定时 / 手动 | 自动刷新站点版本/补丁/插件列表并提交回 main（GitHub Pages 实时更新） |
 
 构建产物的 node_modules 为 **GitHub 官方 ubuntu runner（x64）** 下 `npm prune --omit=dev` 的生产依赖，适合 x64 Linux 服务器；
 **ARM 服务器**（如树莓派/部分 armbian 盒子）建议在设备本地打包，或拉取源码后自行 `npm ci --omit=dev && npm run build`。
 
 ## 更新发布流程（AI / 开发者维护）
 
-1. 修改代码 → `npm run build` → `npm test` 通过 → git push
+1. 修改代码 → `npm run build` → `npm test` 通过 → git push（`site.yml` 自动刷新站点列表）
 2. 按需提升 `package.json` version → 同步更新 `update-config.json`：
    - `version`：新版本号
    - `patchUrl` / `fullUrl`：`https://github.com/lzyzyzq/QQgfbot/releases/download/<tag>/qqbot-card-editor-patch-<版本>.zip` 等
-   - `mirrors`：GitHub 加速镜像（ghfast/ghproxy 等）+ 8091 备用源，保留同版本 URL
-   - `changeLog`：本轮更新内容（每行一条）
-3. `git tag v<版本>` 并 push → `release.yml` 自动构建并挂载 zip 到 Release
-4. 服务器端/面板即可接收：
+   - `mirrors`：GitHub 加速镜像（ghfast/ghproxy 等）+ 8091 备用源 + GitHub Pages 门户，保留同版本 URL
+   - `changeLog`：本轮更新内容（每行一条，站点与"检查更新"自动展示）
+3. `git tag v<版本>` 并 push → `release.yml` 自动构建挂载 zip → `site.yml` 自动把新版本刷进站点版本列表
+4. 服务器端/面板即可接收（会自动对 GitHub Pages / GitHub Release / 加速镜像 / 8091 测速择优下载）：
 
 ### 服务器如何更新（三选一，共用 update-config.json）
 
-- **面板「服务端接收」**：系统设置 → 更新系统配置 → 服务端接收 →「接收补丁包 / 接收全量包」（云端源自动按 主源→加速镜像→备用源 切换）
+- **面板「服务端接收」**：系统设置 → 更新系统配置 → 服务端接收 →「接收补丁包 / 接收全量包」（对 GitHub Release / GitHub Pages / 加速镜像 / 8091 自动测速择优下载，失败自动切源）
 - **群内「更新系统」插件**：发送「检查更新」→「更新补丁 / 更新全量」（同源切换）
 - **终端直更**（任意服务器）：
   ```
   cd /var/www/php && wget -O patch-4.2.59.zip <补丁URL> && unzip -o patch-4.2.59.zip && pm2 restart qqbot
   ```
 
-## 下载加速说明（GitHub 在国内网络环境）
+## 下载加速说明（GitHub Pages / 镜像 / AI 服务器自动择优）
 
-GitHub Release 直连/`raw.githubusercontent.com` 在国内可能慢或不通，更新链路默认按序自动切换：
+服务器端拉取 `update-config.json`、补丁包、全量包前会先对各候选源 **HEAD 测速**，**哪边快先用哪边**，全部不可用再按序兜底切换：
 
-1. **GitHub Release 主源**：`https://github.com/lzyzyzq/QQgfbot/releases/download/<tag>/<zip>`
-2. **GitHub 加速镜像**（`update-config.json` 的 `mirrors` 中列出，可随时增删）：
+1. **GitHub Pages 门户**：`https://lzyzyzq.github.io/QQgfbot/update-config.json`（全球 CDN，更新配置/插件直接由 Pages 提供）
+2. **GitHub Release 主源**：`https://github.com/lzyzyzq/QQgfbot/releases/download/<tag>/<zip>`
+3. **GitHub 加速镜像**（`update-config.json` 的 `mirrors` 中列出，可随时增删）：
    - `https://ghfast.top/https://github.com/...`
    - `https://ghproxy.net/https://github.com/...`
-3. **8091 备用源**（当前开发预览服务器）
+4. **8091 备用源**（AI 开发服务器，与 Release 资产同文件）
 
+> 测速逻辑在 `src/admin/routes/system.ts`（`speedRank`/`headLatency`），对每个源超时 5 秒自动跳过；
 > 公共加速服务（ghfast/ghproxy 等）由第三方提供，域名可能变化或不可用；
-> 若全部失效，可在面板「更新配置远程地址」或 `update-config.json` 中自行维护可用镜像。
-> 服务器在无法直连 `raw.githubusercontent.com` 时，`update-config.json` 读取也会自动尝试 `raw.gitmirror.com` 与 8091 镜像。
+> 可在面板「更新配置远程地址」或 `update-config.json` 中自行维护可用镜像清单。
 
 ## 授权说明
 
