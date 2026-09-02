@@ -591,6 +591,18 @@ input[type="file"]{color:var(--text2)}
     <div class="form-group"><label>更新配置远程地址（可选；本机更新系统插件优先从这里拉取更新配置）</label><input id="cfgUpdateConfigUrl" type="text" placeholder="https://3000-xxxx.monkeycode-ai.online/api/bot/php-bridge/update-config"><p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">留空=使用本机配置。想在云端面板统一维护版本号/下载地址/更新内容、由另一台服务器执行更新时，在该服务器面板填云端面板的 update-config 地址（版本号/URL/更新内容只在本机生效，本机拉取不到时自动回退本机配置）</p></div>
     <div class="form-group" style="margin-top:12px"><button class="btn btn-primary" onclick="saveUpdateConfig()">保存更新配置</button> <button class="btn btn-outline" onclick="recordUpdateNow()">记录本次更新</button> <button class="btn btn-outline" onclick="loadUpdateRecords()">刷新升级列表</button> <span id="updMsg" style="font-size:13px;color:var(--text2)"></span></div>
     <div id="updateRecordsBox" style="margin-top:12px"></div>
+    <div class="form-group" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:12px"><label style="font-weight:bold">服务端接收（AI 发布包 → 一键接收部署；与「更新系统」记录/重启串联）</label>
+      <div id="recvStatus" style="font-size:13px;color:var(--text2);margin-bottom:8px;line-height:1.8"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary btn-xs" onclick="receiveUpdate('patch')">接收补丁包</button>
+        <button class="btn btn-primary btn-xs" onclick="receiveUpdate('full')">接收全量包</button>
+        <span style="font-size:12px;color:var(--text2)">或上传本地 zip：</span>
+        <input type="file" id="receiveZipFile" accept=".zip" style="font-size:12px;max-width:220px">
+        <button class="btn btn-outline btn-xs" onclick="receiveUploadZip()">上传 zip 接收</button>
+        <button class="btn btn-outline btn-xs" onclick="loadUpdateReceiver()">刷新</button>
+      </div>
+      <div id="recvMsg" style="font-size:13px;margin-top:8px;white-space:pre-wrap;color:var(--text2)"></div>
+    </div>
     <div class="form-group" style="margin-top:12px"><button class="btn btn-primary" onclick="saveSystemConfig()">保存全部设置</button> <button class="btn btn-warn" onclick="restartServer()">重启服务器</button> <span id="restartMsg" style="font-size:13px;color:var(--text2)"></span></div>
     <div id="masterBindInfo" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.8"></div>
     <div id="cfgMsg" style="font-size:13px;color:var(--text2);margin-top:8px"></div>
@@ -2749,7 +2761,7 @@ async function loadSettings(){loadLinkMode();try{const data=await api('/api/syst
   docById('adminList').innerHTML=admins.map(a=>{
     const oids=(openidByQQ[a.qq]||[]);
     const oidCell=oids.length?oids.map(o=>'<div style="font-size:11px;word-break:break-all;color:var(--text2)">'+esc(o.openid.slice(0,12))+'... <button class="btn btn-danger btn-xs" title="解绑该 OpenID" onclick="unbindAdminOpenid(\''+a.qq+'\',\''+o.openid.replace(/'/g,"\\'")+'\')" style="padding:0 4px">×</button></div>').join(''):'<span style="color:var(--text2);font-size:11px">未绑定</span>';
-    return `<tr><td>${esc(a.username)}${a.nickname?(' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>'):''}</td><td title="${a.openid?('OpenID: '+esc(a.openid)):''}">${esc(a.qq||'未绑定')}</td><td>${oidCell}</td><td>${roleLabels[a.role]||a.role}</td><td><button class="btn btn-xs ${a.loginAble?'btn-success':'btn-outline'}" onclick="toggleLogin('${a.username}',${!a.loginAble})">${a.loginAble?'已启用':'已禁用'}</button></td><td>${a.expireAt?new Date(a.expireAt).toLocaleString():'永不过期'}</td><td><button class="btn btn-outline btn-xs" onclick="editPerms('${a.username}')">权限</button></td><td><button class="btn btn-outline btn-xs" onclick="showEditAdmin('${a.username}')">编辑</button><button class="btn btn-outline btn-xs" onclick="changeUserCode('${a.username}')">改码</button><button class="btn btn-danger btn-xs" onclick="delAdmin('${a.username}')">删除</button></td></tr>`}).join('')}catch{};loadMasterBindInfo();loadAuthCodes()}loadSwitches();loadScheduleTasks();loadUpdateRecords()}
+    return `<tr><td>${esc(a.username)}${a.nickname?(' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>'):''}</td><td title="${a.openid?('OpenID: '+esc(a.openid)):''}">${esc(a.qq||'未绑定')}</td><td>${oidCell}</td><td>${roleLabels[a.role]||a.role}</td><td><button class="btn btn-xs ${a.loginAble?'btn-success':'btn-outline'}" onclick="toggleLogin('${a.username}',${!a.loginAble})">${a.loginAble?'已启用':'已禁用'}</button></td><td>${a.expireAt?new Date(a.expireAt).toLocaleString():'永不过期'}</td><td><button class="btn btn-outline btn-xs" onclick="editPerms('${a.username}')">权限</button></td><td><button class="btn btn-outline btn-xs" onclick="showEditAdmin('${a.username}')">编辑</button><button class="btn btn-outline btn-xs" onclick="changeUserCode('${a.username}')">改码</button><button class="btn btn-danger btn-xs" onclick="delAdmin('${a.username}')">删除</button></td></tr>`}).join('')}catch{};loadMasterBindInfo();loadAuthCodes()}loadSwitches();loadScheduleTasks();loadUpdateRecords();loadUpdateReceiver();}
 async function loadMasterBindInfo(){
   try{
     const m=await api('/api/auth/qq-master');
@@ -3186,6 +3198,62 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
       html+='</div>';
       box.innerHTML=html;
     }catch(e){box.innerHTML='<span style="color:var(--danger);font-size:13px">读取升级列表失败: '+e.message+'</span>'}
+  }
+
+  let _recvAi=null;
+  async function loadUpdateReceiver(){
+    const st=docById('recvStatus');const msg=docById('recvMsg');
+    try{
+      const r=await api('/api/system/update-receive/info');
+      _recvAi=r.ai||null;
+      if(st){
+        let h='解压根目录：<b>'+(r.rootDir||'')+'</b>　当前版本：<b>'+(r.currentVersion||'（未记录）')+'</b>';
+        if(r.ai&&r.ai.version){
+          const lines=String(r.ai.changeLog||'').split('\n').filter(Boolean);
+          h+='<br>AI 端最新：<b>v'+esc(r.ai.version)+'</b>　补丁：<span style="word-break:break-all">'+esc(r.ai.patchUrl||'-')+'</span><br>更新内容：<span style="color:var(--text)">'+esc(lines.slice(0,3).join('；'))+(lines.length>3?' …':(lines.length?'':'（无）'))+'</span>';
+        }
+        st.innerHTML=h;
+      }
+      if(msg)msg.textContent='';
+    }catch(e){if(st)st.innerHTML='<span style="color:var(--danger);font-size:13px">接收端信息读取失败（需超级主人）：'+esc(e&&e.message||e)+'</span>'}
+  }
+  async function receiveUpdate(kind){
+    const msg=docById('recvMsg');if(!msg)return;
+    if(!_recvAi){try{await loadUpdateReceiver()}catch(e){}}
+    if(!_recvAi||!_recvAi.patchUrl){msg.textContent='❌ 无法获取 AI 端下载地址（update-config.json 拉取失败）。请检查上方「更新配置远程地址」，或先在上方手动填好补丁/全量下载地址。';msg.style.color='var(--danger)';return;}
+    const url=kind==='full'?_recvAi.fullUrl:_recvAi.patchUrl;
+    const name=kind==='full'?'全量包':'补丁包';
+    msg.textContent='⏳ 正在接收 '+name+'（'+url+'）…\n下载 → 校验 → 解压 → 记录 → 重启，请稍候（全量包较大可能需要 1-2 分钟）';msg.style.color='var(--text2)';
+    try{
+      const r=await api('/api/system/update-receive',{method:'POST',body:{url}});
+      if(r.ok){
+        let t='✅ 接收完成：'+name+' v'+r.version+' 已解压到 '+r.root+'\n已写入更新记录（共 '+(r.records?r.records.length:0)+' 条），当前版本：v'+r.currentVersion;
+        if(r.restart&&r.restart.ok)t+='\n🔄 已执行 pm2 restart qqbot，等待服务恢复…';
+        else t+='\n⚠️ 未自动重启（pm2 qqbot 不存在/不在本机）。若需重启请手动执行：\ncd '+(r.root||'')+' && pm2 restart qqbot';
+        msg.textContent=t;msg.style.color='var(--success)';
+        loadUpdateReceiver();loadUpdateRecords();
+      }else{
+        const recvStepS=String(r.step||'');const recvErrS=String(r.error||'');
+        msg.textContent='❌ 接收失败（'+recvStepS+'）：'+recvErrS+((recvStepS.indexOf('校验')>=0)?'\n\n若服务器未安装 unzip，请执行：apt-get install -y unzip':'');
+        msg.style.color='var(--danger)';
+      }
+    }catch(e){msg.textContent='❌ 接收失败：'+e.message;msg.style.color='var(--danger)'}
+  }
+  async function receiveUploadZip(){
+    const msg=docById('recvMsg');const fi=docById('receiveZipFile');
+    if(!fi||!fi.files||!fi.files[0]){if(msg){msg.textContent='请先选择要接收的 zip 文件';msg.style.color='var(--danger)'}return;}
+    const form=new FormData();form.append('file',fi.files[0]);
+    msg.textContent='⏳ 正在上传并接收 '+fi.files[0].name+' …';msg.style.color='var(--text2)';
+    try{
+      const r=await api('/api/system/update-receive',{method:'POST',body:form});
+      if(r.ok){
+        let t='✅ 接收完成：'+r.kind+' v'+r.version+'（'+r.fileName+'）已解压到 '+r.root+'\n已写入更新记录（共 '+(r.records?r.records.length:0)+' 条），当前版本：v'+r.currentVersion;
+        if(r.restart&&r.restart.ok)t+='\n🔄 已执行 pm2 restart qqbot，等待服务恢复…';
+        else t+='\n⚠️ 未自动重启（pm2 qqbot 不存在/不在本机）。若需重启请手动执行：\ncd '+(r.root||'')+' && pm2 restart qqbot';
+        msg.textContent=t;msg.style.color='var(--success)';
+        loadUpdateReceiver();loadUpdateRecords();
+      }else{msg.textContent='❌ 接收失败（'+(r.step||'')+'）：'+(r.error||'');msg.style.color='var(--danger)'}
+    }catch(e){msg.textContent='❌ 接收失败：'+e.message;msg.style.color='var(--danger)'}
   }
 
   function restartServer(){

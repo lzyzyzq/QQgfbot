@@ -19,9 +19,173 @@ import path from 'path';
 import net from 'net';
 import { spawn } from 'child_process';
 import os from 'os';
+import multer from 'multer';
 
 // 部署终端会话当前目录（默认 /var/www/php，面板「部署终端」页面维护，单实例共享）
 let terminalCwd = '/var/www/php';
+
+// ================= 服务端更新接收端（AI 发布包一键接收部署，与「更新系统」记录/重启串联） =================
+const updateRecDir = (): string => path.resolve(process.cwd(), 'data', 'database', '更新');
+const DEFAULT_AI_CONFIG_URL = 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json';
+const aiConfigUrl = (): string => cfgSafe('update.config_url') || DEFAULT_AI_CONFIG_URL;
+
+// getConfig 容错：面板进程已 initDb 正常读取；无 db 上下文（如外部调用接收函数）时返回空，不抛错
+export function cfgSafe(key: string): string {
+  try { return getConfig(key) || ''; } catch { return ''; }
+}
+
+// 解压根目录：优先 config update.receive_root，留空=面板运行目录（服务器部署时通常即 /var/www/php）
+const receiverRoot = (): string => path.resolve(cfgSafe('update.receive_root') || process.cwd());
+
+function fmtTime(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  const now = new Date(d.getTime() + (8 * 60 + d.getTimezoneOffset()) * 60000);
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+}
+
+// 追加更新记录 + 更新当前版本（与群内「更新系统」插件/面板「记录本次更新」同一记录文件）
+export function appendUpdateRecord(version: string, type: string, content: string, dir?: string): { records: any[]; currentVersion: string } {
+  const recDir = dir || updateRecDir();
+  if (!fs.existsSync(recDir)) fs.mkdirSync(recDir, { recursive: true });
+  const recFile = path.join(recDir, '记录.json');
+  const stateFile = path.join(recDir, '状态.json');
+  let records: any[] = [];
+  if (fs.existsSync(recFile)) {
+    const j = JSON.parse(fs.readFileSync(recFile, 'utf-8') || '[]');
+    if (Array.isArray(j)) records = j;
+  }
+  const time = fmtTime(new Date());
+  records.push({ type, version, time, content });
+  fs.writeFileSync(recFile, JSON.stringify(records, null, 2), 'utf-8');
+  fs.writeFileSync(stateFile, JSON.stringify({ version, updatedAt: time }, null, 2), 'utf-8');
+  return { records, currentVersion: version };
+}
+
+export function runSh(cwd: string, cmd: string, timeoutMs = 30000): Promise<{ code: number; out: string }> {
+  return new Promise((resolve) => {
+    let out = '';
+    try {
+      const child = spawn('sh', ['-c', cmd], { cwd, env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'] });
+      const timer = setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* noop */ } }, timeoutMs);
+      child.stdout!.on('data', (d: Buffer) => {
+        out += d.toString();
+        if (out.length > 200000) { try { child.kill('SIGKILL'); } catch { /* noop */ } }
+      });
+      child.stderr!.on('data', (d: Buffer) => { out += d.toString(); });
+      child.on('error', (e: Error) => { clearTimeout(timer); resolve({ code: 127, out: out + '\n' + e.message }); });
+      child.on('close', (code: number | null) => { clearTimeout(timer); resolve({ code: code ?? -1, out }); });
+    } catch (e: any) {
+      resolve({ code: 127, out: String((e && e.message) || e) });
+    }
+  });
+}
+
+async function fetchJson(url: string, timeoutMs = 8000): Promise<any> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'qq-bot-update-receiver' } });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchBuffer(url: string, timeoutMs = 180000): Promise<Buffer | null> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'qq-bot-update-receiver' } });
+    if (!r.ok || !r.body) { clearTimeout(timer); return null; }
+    const chunks: Buffer[] = [];
+    for await (const c of r.body as any) chunks.push(Buffer.from(c));
+    clearTimeout(timer);
+    if (chunks.length === 0) return null;
+    return Buffer.concat(chunks);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAiConfig(): Promise<any> {
+  const remote = await fetchJson(aiConfigUrl());
+  if (remote && remote.ok) {
+    return {
+      ok: true,
+      version: String(remote.version || ''),
+      patchUrl: String(remote.patchUrl || ''),
+      fullUrl: String(remote.fullUrl || ''),
+      changeLog: String(remote.changeLog || ''),
+    };
+  }
+  return null;
+}
+
+export async function receiveUpdatePackage(opts: {
+  zipBuffer?: Buffer;
+  zipUrl?: string;
+  zipName: string;
+  changeLog?: string;
+  root?: string;      // 解压根目录（默认 update.receive_root 或面板运行目录）
+  dataDir?: string;   // 更新记录目录（默认 面板运行目录/data/database/更新），测试可隔离
+}): Promise<any> {
+  const root = opts.root || receiverRoot();
+  const recDir = opts.dataDir || updateRecDir();
+  const zipTmp = path.join(os.tmpdir(), `qqbot-recv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.zip`);
+  try {
+    // 1. 得到 zip 内容（URL 下载 或 本地上传）
+    let data: Buffer | null = null;
+    if (opts.zipUrl) {
+      data = await fetchBuffer(opts.zipUrl);
+      if (!data) return { ok: false, step: '下载', error: '下载失败（地址不可访问或超时）' };
+    } else if (opts.zipBuffer && opts.zipBuffer.length > 0) {
+      data = opts.zipBuffer;
+    } else {
+      return { ok: false, step: '参数', error: '缺少 zip 文件或下载地址' };
+    }
+    // zip 魔数校验
+    if (data.length < 4 || data[0] !== 0x50 || data[1] !== 0x4b) {
+      return { ok: false, step: '校验', error: '不是有效的 ZIP 文件' };
+    }
+    fs.writeFileSync(zipTmp, data);
+    // 2. 版本与类型：从文件名提取（如 qqbot-card-editor-patch-4.2.59.zip）
+    const m = String(opts.zipName).match(/(\d+(?:\.\d+){1,3})/);
+    const version = m ? m[1] : (cfgSafe('update.version') || '4.2.59');
+    const kind = /full|全量/i.test(String(opts.zipName)) ? '全量包' : '补丁包';
+    // 3. 压缩包完整性校验
+    const t = await runSh(root, `unzip -t ${JSON.stringify(zipTmp)}`);
+    if (t.code !== 0) {
+      return { ok: false, step: '校验', error: `压缩包校验失败（服务器未安装 unzip 或文件损坏）：\n${t.out.slice(0, 300)}` };
+    }
+    // 4. 解压到部署根目录（覆盖式，与群内「更新补丁/更新全量」一致）
+    const u = await runSh(root, `unzip -o ${JSON.stringify(zipTmp)}`);
+    if (u.code !== 0) {
+      return { ok: false, step: '解压', error: `解压失败：\n${u.out.slice(0, 300)}` };
+    }
+    // 5. 记录版本 + 更新内容（写 记录.json / 状态.json，群内「更新记录」与「检查更新」立即可见）
+    const content = (opts.changeLog && opts.changeLog.trim()) || cfgSafe('update.changelog') || '';
+    const rec = appendUpdateRecord(version, `服务端接收-${kind}`, content || `接收更新包：${String(opts.zipName)}`, recDir);
+    // 6. 重启机器人（pm2 restart qqbot；部署根=面板运行目录）
+    const restartCwd = opts.root || process.cwd();
+    const rcmd = `cd ${JSON.stringify(restartCwd)} && pm2 restart qqbot`;
+    const r = await runSh(restartCwd, rcmd, 15000);
+    return {
+      ok: true,
+      kind,
+      version,
+      fileName: String(opts.zipName),
+      root,
+      applied: true,
+      records: rec.records,
+      currentVersion: rec.currentVersion,
+      restart: { ok: r.code === 0, output: r.out.slice(0, 300) },
+    };
+  } finally {
+    try { if (fs.existsSync(zipTmp)) fs.unlinkSync(zipTmp); } catch { /* noop */ }
+  }
+}
 
 // 检测目标端口是否已被其他进程占用（排除服务自身当前端口）
 function portInUse(p: number, currentPort: number): Promise<boolean> {
@@ -221,24 +385,10 @@ export function createSystemRoutes(
   // 更新系统：手动补记本次更新（用于手动部署后把版本写入升级列表与当前版本）
   router.post('/record-update', requireSuperMaster, (_req: Request, res: Response) => {
     try {
-      const dir = path.resolve(process.cwd(), 'data', 'database', '更新');
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      const recFile = path.join(dir, '记录.json');
-      const stateFile = path.join(dir, '状态.json');
-      let records: any[] = [];
-      if (fs.existsSync(recFile)) {
-        const j = JSON.parse(fs.readFileSync(recFile, 'utf-8') || '[]');
-        if (Array.isArray(j)) records = j;
-      }
       const version = (getConfig('update.version') || '4.2.59').trim();
       const changelog = getConfig('update.changelog') || '';
-      const now = new Date(Date.now() + (8 * 60 + new Date().getTimezoneOffset()) * 60000);
-      const fmt = (n: number) => String(n).padStart(2, '0');
-      const time = `${now.getFullYear()}-${fmt(now.getMonth() + 1)}-${fmt(now.getDate())} ${fmt(now.getHours())}:${fmt(now.getMinutes())}:${fmt(now.getSeconds())}`;
-      records.push({ type: '手动记录', version, time, content: changelog });
-      fs.writeFileSync(recFile, JSON.stringify(records, null, 2), 'utf-8');
-      fs.writeFileSync(stateFile, JSON.stringify({ version, updatedAt: time }, null, 2), 'utf-8');
-      res.json({ ok: true, records, currentVersion: version });
+      const rec = appendUpdateRecord(version, '手动记录', changelog);
+      res.json({ ok: true, records: rec.records, currentVersion: version });
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -659,6 +809,60 @@ export function createSystemRoutes(
       res.json({ groups: out, orphanUsers });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 服务端接收端：接收端信息（部署根/当前版本/AI 端最新配置），供前端「服务端接收」区块展示
+  router.get('/update-receive/info', requireSuperMaster, async (_req: Request, res: Response) => {
+    try {
+      const root = receiverRoot();
+      const dir = updateRecDir();
+      let currentVersion = '';
+      if (fs.existsSync(path.join(dir, '状态.json'))) {
+        const s = JSON.parse(fs.readFileSync(path.join(dir, '状态.json'), 'utf-8') || '{}');
+        currentVersion = String(s.version || '');
+      }
+      const ai = await fetchAiConfig();
+      res.json({
+        ok: true,
+        rootDir: root,
+        panelDir: process.cwd(),
+        currentVersion,
+        recordFile: path.join(dir, '记录.json'),
+        aiUrl: aiConfigUrl(),
+        ai,
+      });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  const receiverUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 400 * 1024 * 1024 } });
+  // 服务端接收：一键接收并部署更新包（body.url=远程 zip 直链 或 multipart file=本地上传 zip）
+  // 与群内「更新系统」插件串联：同一记录文件 + 当前版本 + 覆盖式解压 + pm2 restart qqbot
+  router.post('/update-receive', requireSuperMaster, receiverUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const file = (req as any).file as { buffer: Buffer; originalname: string } | undefined;
+      const bodyUrl = String((req.body && req.body.url) || '').trim();
+      if (file && !bodyUrl) {
+        const result = await receiveUpdatePackage({ zipBuffer: file.buffer, zipName: file.originalname || 'update.zip' });
+        res.json(result);
+        return;
+      }
+      if (bodyUrl) {
+        if (!/^https?:\/\//i.test(bodyUrl)) {
+          res.json({ ok: false, step: '参数', error: '下载地址需为 http/https 链接' });
+          return;
+        }
+        const zipName = decodeURIComponent(bodyUrl.split('?')[0].split('/').pop() || 'update.zip');
+        const ai = await fetchAiConfig();
+        const result = await receiveUpdatePackage({ zipUrl: bodyUrl, zipName, changeLog: ai ? ai.changeLog : '' });
+        res.json(result);
+        return;
+      }
+      res.json({ ok: false, step: '参数', error: '请提供 zip 文件或下载地址' });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
     }
   });
 
