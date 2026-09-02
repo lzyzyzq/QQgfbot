@@ -34,8 +34,8 @@ external_plugins:
     framework: QX Bot（非 QQgfbot 格式，仅分发存档）
     note: 原包内含 bs4 等 Python 依赖；如在 QX Bot 使用按包内「依赖复制说明」放置
     download:
-      - https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/%E6%8A%96%E9%9F%B3%E7%88%AC%E8%99%AB.zip
-      - https://8091-6f61dc7363389b7a.monkeycode-ai.online/抖音爬虫.zip
+      - https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/douyin-scraper.zip
+      - https://8091-6f61dc7363389b7a.monkeycode-ai.online/douyin-scraper.zip
 
 # 面板配置位置
 admin:
