@@ -238,7 +238,52 @@ def build_tool_menu():
     return '\n'.join(lines)
 
 
-# ================= 唱歌（网易云：歌词 + 富媒体语音条） =================
+# ================= 唱歌（多源：网易云全曲 → 酷狗免费源回退） =================
+
+def _kugou_audio(keyword):
+    """酷狗免费音源回退：搜歌取 hash → playInfo 拿直链（免费歌整首；会员歌大概率无 url 返回 None）"""
+    try:
+        u = 'http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=%s&page=1&pagesize=3&showtype=1' % quote(keyword)
+        st, body = http_get(u, 8)
+        if st != 200 or not body:
+            return None
+        j = json.loads(body)
+        infos = ((j.get('data') or {}).get('info')) or []
+        hashes = []
+        for it in infos[:3]:
+            h = it.get('hash') or ''
+            if h:
+                hashes.append((h, it.get('songname') or '', it.get('singername') or ''))
+        for h, name, singer in hashes:
+            try:
+                u2 = 'http://m.kugou.com/app/i/getSongInfo.php?cmd=playInfo&hash=%s' % quote(h)
+                st2, b2 = http_get(u2, 8)
+                if st2 == 200:
+                    k = json.loads(b2)
+                    kd = k.get('data') or {}
+                    url = kd.get('url') or ''
+                    if url and str(url).startswith('http'):
+                        return {
+                            'url': str(url),
+                            'title': kd.get('songName') or name or keyword,
+                            'artist': kd.get('singerName') or singer or '未知歌手',
+                        }
+            except Exception:
+                continue
+    except Exception:
+        return None
+    return None
+
+
+def _voice_send(data, gid, audio_url):
+    try:
+        up = call('uploadGroupVoice', gid, audio_url, 'song.mp3')
+        if up and (up.get('file_info') or up.get('url')):
+            return bool(call('sendGroupVoiceMessage', gid, up.get('file_info') or up.get('url')))
+    except Exception:
+        pass
+    return False
+
 
 def sing(data, gid, keyword):
     q = quote(keyword)
@@ -297,17 +342,17 @@ def sing(data, gid, keyword):
         except Exception:
             continue
     if not audio_url:
-        reply(data, '🎵 《%s》· %s 无版权或需VIP，暂无法语音播放，换一首试试~' % (song['name'], song['artist']))
-        return
+        # 网易云拿不到（无版权/需VIP）→ 酷狗免费源回退
+        ku = _kugou_audio(keyword)
+        if not ku:
+            reply(data, '🎵 《%s》· %s 无版权或需VIP，试了多个音源都拿不到音频，换一首试试~\n提示：QQ/酷狗等平台有免费试听片段，但公开接口常不稳定。' % (song['name'], song['artist']))
+            return
+        audio_url = ku['url']
+        song['name'] = ku['title']
+        song['artist'] = ku['artist']
+        reply(data, '🎵 《%s》· %s 网易云需会员，已切酷狗免费源演唱（可能为试听片段）…' % (song['name'], song['artist']))
 
-    voice_ok = False
-    try:
-        up = call('uploadGroupVoice', gid, audio_url, 'song.mp3')
-        if up and (up.get('file_info') or up.get('url')):
-            r = call('sendGroupVoiceMessage', gid, up.get('file_info') or up.get('url'))
-            voice_ok = bool(r)
-    except Exception:
-        voice_ok = False
+    voice_ok = _voice_send(data, gid, audio_url)
 
     if voice_ok:
         reply(data, '🎤 已语音播放《%s》· %s\n发送「测试」返回菜单' % (song['name'], song['artist']))
