@@ -1,0 +1,44 @@
+# QQgfbot 菜单/配置（YAML）
+# ------------------------------------------------------------------
+# 目的：把群内「菜单项 ↔ 指令/外部资源」集中写成 yaml 便于维护。
+# QQgfbot 群内菜单两种来源：
+#   1) 面板「插件管理 → 测试.py → 后台编辑器(menu-editor)」按机器人(APPID) 保存的布局配置（最终生效来源）
+#   2) 测试.py 内置菜单 build_menu()（未配置布局时的兜底）
+# 因此要真正出现在你群里：优先在面板后台编辑器添加/调整菜单项；这里 yaml 是权威记录与配置备份。
+# ------------------------------------------------------------------
+
+project: QQgfbot
+version: 4.2.59
+default_bot_menu: 测试.py
+
+menu:
+  # —— 主菜单/娱乐/工具等面板后台编辑器里可自行增减 ——
+  items:
+    - label: 测试菜单
+      value: 测试
+    - label: 抖音爬虫          # 单链接无水印解析（菜单别名，指令前缀「抖音爬虫」同义于「抖音」）
+      value: 抖音爬虫 <抖音分享口令或链接>
+      note: 仅解析群成员主动发送的单条抖音分享；解析接口 qjqq.cn
+    - label: 抖音
+      value: 抖音 <分享口令或链接>
+    - label: 云端广播          # GitHub 云端广播中心（broadcast/broadcast.json）
+      value: 云端广播
+      note: 发送「云端广播」查看列表；「云端广播 名称 全部/本群」仅超级主人可立即执行
+    - label: 更新
+      value: 更新
+
+# 外部插件托管（QQgfbot 插件体系仅 .js/.py/.php；QX Bot 插件无法在 QQgfbot 直接运行，
+# 仅在此登记下载入口。需要执行请改用对应框架，或移植为 QQgfbot py 插件）
+external_plugins:
+  - name: 抖音爬虫.zip
+    framework: QX Bot（非 QQgfbot 格式，仅分发存档）
+    note: 原包内含 bs4 等 Python 依赖；如在 QX Bot 使用按包内「依赖复制说明」放置
+    download:
+      - https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/%E6%8A%96%E9%9F%B3%E7%88%AC%E8%99%AB.zip
+      - https://8091-6f61dc7363389b7a.monkeycode-ai.online/抖音爬虫.zip
+
+# 面板配置位置
+admin:
+  menu_editor: 系统设置 → 插件管理 → 测试.py → 后台编辑器（menu-editor.html）
+  cloud_broadcast: 系统设置 → GitHub 云端广播
+  deployment_terminal: 系统设置 → 部署终端（拉取 GitHub 项目 / 服务端接收补丁）
