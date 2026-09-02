@@ -472,48 +472,90 @@ class Canvas {
 // 以下函数独立于 PHP_HELPERS_LOADED 之外，始终可用
 
 if (!function_exists('更新配置')) {
-// 更新配置：从面板后端读取（版本/补丁URL/全量URL/更新内容）。失败返回空数组
-// 支持远程配置源：本地配置的 configUrl（更新配置远程地址）非空时，优先从该地址
-// 拉取更新配置（用于在云端面板统一维护更新参数，家庭/生产服务器执行更新）。
+// 更新配置：版本/补丁URL/全量URL/更新内容。
+// 数据来源（多源自动回退）：
+//   1) 面板桥接配置（本机 db：update.* + update.config_url）
+//   2) 云端 update-config.json（候选：configUrl(可多个) → GitHub raw(lzyzyzq/QQgfbot) → GitHub 加速镜像 → 8091 备用）
+//      云端优先，拉取失败回退本机配置。
+// 返回额外带 patchUrls/fullUrls（主源 + 全部镜像，去重），供下载时主源失败自动切换。
 function 更新配置() {
-  $r = __php_bridge_get('update-config');
-  if (!is_array($r) || empty($r['ok'])) return array('version' => '', 'patchUrl' => '', 'fullUrl' => '', 'changeLog' => '');
-  $cfg = array(
-    'version' => (string)($r['version'] ?? ''),
-    'patchUrl' => (string)($r['patchUrl'] ?? ''),
-    'fullUrl' => (string)($r['fullUrl'] ?? ''),
-    'changeLog' => (string)($r['changeLog'] ?? ''),
+  $bridge = __php_bridge_get('update-config');
+  $local = array(
+    'version' => (string)($bridge['version'] ?? ''),
+    'patchUrl' => (string)($bridge['patchUrl'] ?? ''),
+    'fullUrl' => (string)($bridge['fullUrl'] ?? ''),
+    'changeLog' => (string)($bridge['changeLog'] ?? ''),
+    'configUrl' => trim((string)($bridge['configUrl'] ?? '')),
   );
-  $remote = trim((string)($r['configUrl'] ?? ''));
-  if ($remote !== '' && function_exists('curl_init')) {
-    $ch = curl_init((string)$remote);
-    curl_setopt_array($ch, array(
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_TIMEOUT => 10,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_SSL_VERIFYPEER => false,
-      CURLOPT_SSL_VERIFYHOST => false,
-      CURLOPT_USERAGENT => 'qq-bot-php-plugin-updater',
-    ));
-    $body = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($body !== false && $code < 400) {
-      $j = json_decode((string)$body, true);
-      if (is_array($j) && !empty($j['ok'])) {
-        $rcfg = array(
-          'version' => (string)($j['version'] ?? ''),
-          'patchUrl' => (string)($j['patchUrl'] ?? ''),
-          'fullUrl' => (string)($j['fullUrl'] ?? ''),
-          'changeLog' => (string)($j['changeLog'] ?? ''),
-        );
-        if ($rcfg['version'] !== '' || $rcfg['patchUrl'] !== '' || $rcfg['fullUrl'] !== '') $cfg = $rcfg;
-      }
+  $cfg = $local;
+  $cfg['sourceUrl'] = '';
+  $cfg['patchUrls'] = array();
+  $cfg['fullUrls'] = array();
+
+  $urls = array();
+  if ($cfg['configUrl'] !== '') {
+    foreach (preg_split('/[\s,]+/', $cfg['configUrl']) as $u) { $u = trim($u); if ($u !== '') $urls[] = $u; }
+  }
+  foreach (array(
+    'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/update-config.json',
+    'https://raw.gitmirror.com/lzyzyzq/QQgfbot/main/update-config.json',
+    'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json',
+  ) as $u) $urls[] = $u;
+
+  foreach (array_unique($urls) as $u) {
+    $txt = 抓取文本($u);
+    if ($txt === '') continue;
+    $j = json_decode($txt, true);
+    if (!is_array($j) || empty($j['ok'])) continue;
+    $v = trim((string)($j['version'] ?? ''));
+    $p = trim((string)($j['patchUrl'] ?? ''));
+    $f = trim((string)($j['fullUrl'] ?? ''));
+    if ($v === '' && $p === '' && $f === '') continue;
+    if ($v !== '') $cfg['version'] = $v;
+    if ($p !== '') $cfg['patchUrl'] = $p;
+    if ($f !== '') $cfg['fullUrl'] = $f;
+    if (trim((string)($j['changeLog'] ?? '')) !== '') $cfg['changeLog'] = trim((string)$j['changeLog']);
+    $cfg['sourceUrl'] = $u;
+    $mir = is_array($j['mirrors'] ?? null) ? $j['mirrors'] : array();
+    $add = function (&$arr, $v) { $v = trim((string)$v); if ($v !== '' && !in_array($v, $arr, true)) $arr[] = $v; };
+    $add($cfg['patchUrls'], $cfg['patchUrl']);
+    $add($cfg['fullUrls'], $cfg['fullUrl']);
+    foreach ($mir as $m) {
+      if (!is_array($m)) continue;
+      $add($cfg['patchUrls'], $m['patchUrl'] ?? '');
+      $add($cfg['fullUrls'], $m['fullUrl'] ?? '');
     }
+    // 兜底本机配置地址也纳入候选
+    $add($cfg['patchUrls'], $local['patchUrl']);
+    $add($cfg['fullUrls'], $local['fullUrl']);
+    break;
+  }
+  if (count($cfg['patchUrls']) === 0) {
+    $cfg['patchUrls'] = $cfg['patchUrl'] !== '' ? array($cfg['patchUrl']) : array();
+    $cfg['fullUrls'] = $cfg['fullUrl'] !== '' ? array($cfg['fullUrl']) : array();
   }
   return $cfg;
 }
 function update_config() { return 更新配置(); }
+
+// 抓取远程文本（返回 '' 表示失败）；curl 超时 10s，跟随重定向，忽略 SSL 证书校验
+function 抓取文本($url) {
+  if ((string)$url === '' || !function_exists('curl_init')) return '';
+  $ch = curl_init((string)$url);
+  curl_setopt_array($ch, array(
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 10,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_SSL_VERIFYHOST => false,
+    CURLOPT_USERAGENT => 'qq-bot-php-plugin-updater',
+  ));
+  $body = curl_exec($ch);
+  $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  curl_close($ch);
+  if ($body === false || $code >= 400) return '';
+  return (string)$body;
+}
 
 // 是否超级主人：openid 属于 admin.json 超主，或超主 QQ 名下的任一 OpenID
 function 是否超主($openid) {

@@ -1,8 +1,25 @@
 {
   "ok": true,
   "version": "4.2.59",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.59.zip",
-  "fullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.59-full.zip",
-  "changeLog": "新增「测试」Python 多功能菜单插件 v0.2：唱歌(网易云真实版权音频)/禁言/广播/娱乐/实用/抖音解析/更新引导\n面板 py 插件全链路：上传、在线编辑热重载、卡片菜单布局编辑器支持 .py\n新增开发文档：Python 插件开发文档、终端开发与使用文档（qqbot-dev-docs.zip）\n插件列表类型标签统一为 js/py/扩展名（去掉 PY·/文件· 前缀）\n移除 mqqapi 外显链接：群消息不支持渲染，全部菜单改为纯文本指令\n唱歌修复：改用网易云 enhance/player/url 真实播放地址（320k→128k），无版权/需VIP 明确提示\n管理面板新增「部署终端」页（默认 /var/www/php，含 pm2 状态/重启按钮）\n群内终端更新：直接发送 cd /var/www/php && wget -O patch-4.2.59.zip <URL> && unzip -o patch-4.2.59.zip && pm2 restart qqbot",
+  "patchUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/qqbot-card-editor-patch-4.2.59.zip",
+  "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/qqbot-card-editor-4.2.59-full.zip",
+  "mirrors": [
+    {
+      "name": "GitHub 加速(ghfast.top)",
+      "patchUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/qqbot-card-editor-patch-4.2.59.zip",
+      "fullUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/qqbot-card-editor-4.2.59-full.zip"
+    },
+    {
+      "name": "GitHub 加速(ghproxy.net)",
+      "patchUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/qqbot-card-editor-patch-4.2.59.zip",
+      "fullUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/qqbot-card-editor-4.2.59-full.zip"
+    },
+    {
+      "name": "8091 备用源",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.59.zip",
+      "fullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.59-full.zip"
+    }
+  ],
+  "changeLog": "服务端接收端多源化：更新源迁入 GitHub Release（主源）→ GitHub 加速镜像（ghfast/ghproxy）→ 8091 备用，主源失败自动切换；面板/群内插件统一从 update-config.json 读版本/下载地址/镜像/更新内容\n管理面板新增「部署终端」页 +「服务端接收」区块（接收补丁包/全量包/上传 zip，自动校验/覆盖解压/写记录/重启）\n移除 mqqapi 外显链接；唱歌改网易云真实版权音频\npy 插件全链路（上传/热重载/布局配置）+ 新增 Python 插件开发文档/终端开发文档（qqbot-dev-docs.zip）\n群内更新可直接发：cd /var/www/php && wget -O patch-4.2.59.zip <补丁URL> && unzip -o patch-4.2.59.zip && pm2 restart qqbot",
   "configUrl": ""
 }

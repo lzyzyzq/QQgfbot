@@ -26,8 +26,22 @@ let terminalCwd = '/var/www/php';
 
 // ================= 服务端更新接收端（AI 发布包一键接收部署，与「更新系统」记录/重启串联） =================
 const updateRecDir = (): string => path.resolve(process.cwd(), 'data', 'database', '更新');
-const DEFAULT_AI_CONFIG_URL = 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json';
-const aiConfigUrl = (): string => cfgSafe('update.config_url') || DEFAULT_AI_CONFIG_URL;
+// 云端更新配置（update-config.json）候选源：GitHub 主仓 raw 直连 → GitHub 加速镜像 → 8091 备用。
+// 后端/面板/群内更新插件统一从这份 json 读「版本/补丁URL/全量URL/镜像/更新内容」。
+const DEFAULT_AI_CONFIG_URLS = [
+  'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/update-config.json',
+  'https://raw.gitmirror.com/lzyzyzq/QQgfbot/main/update-config.json',
+  'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json',
+];
+// 更新配置 JSON 候选地址（去重）：先本机配置 update.config_url（可逗号分隔多个），否则用默认清单
+function aiConfigUrls(): string[] {
+  const urls: string[] = [];
+  const cfg = cfgSafe('update.config_url').split(',').map((s: string) => s.trim()).filter(Boolean);
+  for (const u of [...cfg, ...DEFAULT_AI_CONFIG_URLS]) {
+    if (u && urls.indexOf(u) < 0) urls.push(u);
+  }
+  return urls;
+}
 
 // getConfig 容错：面板进程已 initDb 正常读取；无 db 上下文（如外部调用接收函数）时返回空，不抛错
 export function cfgSafe(key: string): string {
@@ -94,52 +108,82 @@ async function fetchJson(url: string, timeoutMs = 8000): Promise<any> {
 }
 
 async function fetchBuffer(url: string, timeoutMs = 180000): Promise<Buffer | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'qq-bot-update-receiver' } });
-    if (!r.ok || !r.body) { clearTimeout(timer); return null; }
+    if (!r.ok || !r.body) return null;
     const chunks: Buffer[] = [];
     for await (const c of r.body as any) chunks.push(Buffer.from(c));
-    clearTimeout(timer);
     if (chunks.length === 0) return null;
     return Buffer.concat(chunks);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
+// 拉取云端更新配置：依次尝试候选 config URL，取第一份可用；解析主源 + mirrors 备用源列表
 async function fetchAiConfig(): Promise<any> {
-  const remote = await fetchJson(aiConfigUrl());
-  if (remote && remote.ok) {
-    return {
-      ok: true,
-      version: String(remote.version || ''),
-      patchUrl: String(remote.patchUrl || ''),
-      fullUrl: String(remote.fullUrl || ''),
-      changeLog: String(remote.changeLog || ''),
-    };
+  const urls = aiConfigUrls();
+  const errors: string[] = [];
+  for (const u of urls) {
+    const j = await fetchJson(u);
+    if (j && j.ok) {
+      const sources: { name: string; patchUrl: string; fullUrl: string }[] = [];
+      const push = (name: string, patchUrl: any, fullUrl: any) => {
+        const p = String(patchUrl || '').trim();
+        const f = String(fullUrl || '').trim();
+        if (p || f) sources.push({ name, patchUrl: p, fullUrl: f });
+      };
+      push('主源（GitHub Release）', j.patchUrl, j.fullUrl);
+      const mirrors = Array.isArray(j.mirrors) ? j.mirrors : [];
+      for (const m of mirrors) {
+        if (m) push(String((m as any).name || '备用源'), (m as any).patchUrl, (m as any).fullUrl);
+      }
+      if (sources.length === 0) { errors.push(u + '：未找到下载地址'); continue; }
+      const prim = sources[0];
+      return {
+        ok: true,
+        sourceUrl: u,
+        errors,
+        version: String(j.version || ''),
+        changeLog: String(j.changeLog || ''),
+        patchUrl: prim.patchUrl,
+        fullUrl: prim.fullUrl,
+        sources,
+      };
+    }
+    errors.push(u + '：不可用');
   }
-  return null;
+  return { ok: false, sourceUrl: '', errors };
 }
 
 export async function receiveUpdatePackage(opts: {
   zipBuffer?: Buffer;
   zipUrl?: string;
-  zipName: string;
+  zipUrls?: string[];  // 多候选下载地址：按序尝试，取第一个可下载的源（GitHub 主源失败自动切加速镜像/备用源）
+  zipName?: string;
   changeLog?: string;
   root?: string;      // 解压根目录（默认 update.receive_root 或面板运行目录）
   dataDir?: string;   // 更新记录目录（默认 面板运行目录/data/database/更新），测试可隔离
 }): Promise<any> {
   const root = opts.root || receiverRoot();
   const recDir = opts.dataDir || updateRecDir();
+  if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
   const zipTmp = path.join(os.tmpdir(), `qqbot-recv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.zip`);
   try {
-    // 1. 得到 zip 内容（URL 下载 或 本地上传）
+    // 1. 得到 zip 内容（多候选 URL 下载 或 本地上传）
     let data: Buffer | null = null;
-    if (opts.zipUrl) {
-      data = await fetchBuffer(opts.zipUrl);
-      if (!data) return { ok: false, step: '下载', error: '下载失败（地址不可访问或超时）' };
+    let usedUrl = '';
+    const urls: string[] = opts.zipUrls && opts.zipUrls.length ? opts.zipUrls : (opts.zipUrl ? [opts.zipUrl] : []);
+    if (urls.length > 0) {
+      for (const u of urls) {
+        const b = await fetchBuffer(u);
+        if (b) { data = b; usedUrl = u; break; }
+      }
+      if (!data) return { ok: false, step: '下载', error: `下载失败（已尝试 ${urls.length} 个源：${urls.join(' → ')}，均不可访问或超时）` };
     } else if (opts.zipBuffer && opts.zipBuffer.length > 0) {
       data = opts.zipBuffer;
     } else {
@@ -150,10 +194,15 @@ export async function receiveUpdatePackage(opts: {
       return { ok: false, step: '校验', error: '不是有效的 ZIP 文件' };
     }
     fs.writeFileSync(zipTmp, data);
+    // 文件名：优先取实际下载 URL 的文件名（源/镜像文件名一致），无则用入参
+    let zipName = String(opts.zipName || '');
+    if ((!zipName || zipName === 'update.zip') && usedUrl) {
+      try { zipName = decodeURIComponent(usedUrl.split('?')[0].split('/').pop() || zipName); } catch { /* noop */ }
+    }
     // 2. 版本与类型：从文件名提取（如 qqbot-card-editor-patch-4.2.59.zip）
-    const m = String(opts.zipName).match(/(\d+(?:\.\d+){1,3})/);
+    const m = zipName.match(/(\d+(?:\.\d+){1,3})/);
     const version = m ? m[1] : (cfgSafe('update.version') || '4.2.59');
-    const kind = /full|全量/i.test(String(opts.zipName)) ? '全量包' : '补丁包';
+    const kind = /full|全量/i.test(zipName) ? '全量包' : '补丁包';
     // 3. 压缩包完整性校验
     const t = await runSh(root, `unzip -t ${JSON.stringify(zipTmp)}`);
     if (t.code !== 0) {
@@ -166,7 +215,7 @@ export async function receiveUpdatePackage(opts: {
     }
     // 5. 记录版本 + 更新内容（写 记录.json / 状态.json，群内「更新记录」与「检查更新」立即可见）
     const content = (opts.changeLog && opts.changeLog.trim()) || cfgSafe('update.changelog') || '';
-    const rec = appendUpdateRecord(version, `服务端接收-${kind}`, content || `接收更新包：${String(opts.zipName)}`, recDir);
+    const rec = appendUpdateRecord(version, `服务端接收-${kind}`, content || `接收更新包：${zipName}`, recDir);
     // 6. 重启机器人（pm2 restart qqbot；部署根=面板运行目录）
     const restartCwd = opts.root || process.cwd();
     const rcmd = `cd ${JSON.stringify(restartCwd)} && pm2 restart qqbot`;
@@ -175,7 +224,8 @@ export async function receiveUpdatePackage(opts: {
       ok: true,
       kind,
       version,
-      fileName: String(opts.zipName),
+      fileName: zipName,
+      usedUrl,
       root,
       applied: true,
       records: rec.records,
@@ -829,7 +879,7 @@ export function createSystemRoutes(
         panelDir: process.cwd(),
         currentVersion,
         recordFile: path.join(dir, '记录.json'),
-        aiUrl: aiConfigUrl(),
+        aiUrls: aiConfigUrls(),
         ai,
       });
     } catch (e: any) {
@@ -838,7 +888,11 @@ export function createSystemRoutes(
   });
 
   const receiverUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 400 * 1024 * 1024 } });
-  // 服务端接收：一键接收并部署更新包（body.url=远程 zip 直链 或 multipart file=本地上传 zip）
+  // 服务端接收：一键接收并部署更新包
+  //  - multipart file=本地上传 zip
+  //  - body.url=手动指定远程 zip 直链（单源）
+  //  - body.kind=patch|full（无 url/file 时）：从云端 update-config 自动取全部候选源，
+  //    GitHub Release 主源失败自动切换加速镜像/备用源，直到下载成功
   // 与群内「更新系统」插件串联：同一记录文件 + 当前版本 + 覆盖式解压 + pm2 restart qqbot
   router.post('/update-receive', requireSuperMaster, receiverUpload.single('file'), async (req: Request, res: Response) => {
     try {
@@ -856,11 +910,29 @@ export function createSystemRoutes(
         }
         const zipName = decodeURIComponent(bodyUrl.split('?')[0].split('/').pop() || 'update.zip');
         const ai = await fetchAiConfig();
-        const result = await receiveUpdatePackage({ zipUrl: bodyUrl, zipName, changeLog: ai ? ai.changeLog : '' });
+        const result = await receiveUpdatePackage({ zipUrl: bodyUrl, zipName, changeLog: ai && ai.ok ? ai.changeLog : '' });
         res.json(result);
         return;
       }
-      res.json({ ok: false, step: '参数', error: '请提供 zip 文件或下载地址' });
+      const kindRaw = String((req.body && req.body.kind) || '').toLowerCase();
+      const isFull = kindRaw === 'full' || /full|全量/.test(kindRaw);
+      if (kindRaw) {
+        const ai = await fetchAiConfig();
+        if (!ai || !ai.ok || !ai.sources.length) {
+          const errs = (ai && ai.errors && ai.errors.length ? ai.errors : []).join('；');
+          res.json({ ok: false, step: '配置', error: `无法拉取云端更新配置${errs ? '（' + errs + '）' : ''}。请在「更新系统配置」填好下载地址或检查网络。` });
+          return;
+        }
+        const urls = ai.sources.map((s: any) => (isFull ? s.fullUrl : s.patchUrl)).filter(Boolean);
+        if (urls.length === 0) {
+          res.json({ ok: false, step: '配置', error: `云端更新配置中未找到${isFull ? '全量包' : '补丁包'}下载地址` });
+          return;
+        }
+        const result = await receiveUpdatePackage({ zipUrls: urls, zipName: '', changeLog: ai.changeLog });
+        res.json(result);
+        return;
+      }
+      res.json({ ok: false, step: '参数', error: '请提供 zip 文件、下载地址（url）或更新类型（kind=patch/full）' });
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
     }

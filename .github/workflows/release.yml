@@ -1,0 +1,77 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 构建补丁包与全量包并挂载到 GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 版本号
+        id: ver
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "pkgver=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: 安装依赖并构建
+        run: |
+          npm ci
+          npm run build
+
+      - name: 精简 node_modules 为生产依赖
+        run: npm prune --omit=dev
+
+      # ---- 全量包：源码 + 编译产物 + 生产依赖（不含运行数据/临时产物/压缩包）----
+      - name: 打包全量 zip
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          cd "$GITHUB_WORKSPACE"
+          zip -qr "$RUNNER_TEMP/qqbot-card-editor-${VERSION}-full.zip" . \
+            -x '*.git/*' '.github/*' 'data/*' '*.zip' '*.pid' '*.webp' \
+            'backup_plugins_*/*' '.monkeycode*/*' '.tmp/*' '.tmp-update-*' \
+            'plugins/.tmp/*' 'test-messages.log' '_tmp_shot.webp' \
+            'stats-card-preview.png' '*.db' '.env'
+
+      # ---- 补丁包：上一版本 tag 至当前修改的文件 + 完整 dist（dist 不入库，整体覆盖式打进补丁）----
+      # 首个 tag 无 PREV 时取全部受控文件（git ls-files），等价于"去依赖全量"，保证补丁可独立覆盖。
+      - name: 打包补丁 zip
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          cd "$GITHUB_WORKSPACE"
+          PREV="$(git tag -l 'v*' --sort=-v:refname | grep -v '^v'"$VERSION"'$' | head -1)"
+          PATCH_DIR="$RUNNER_TEMP/patch"
+          mkdir -p "$PATCH_DIR"
+          if [ -n "$PREV" ]; then
+            FILES="$(git diff --name-only "$PREV" HEAD)"
+          else
+            FILES="$(git ls-files)"
+          fi
+          echo "$FILES" | while read -r f; do
+            if [ -n "$f" ] && [ -f "$f" ]; then mkdir -p "$PATCH_DIR/$(dirname "$f")"; cp "$f" "$PATCH_DIR/$f"; fi
+          done
+          cp -r dist "$PATCH_DIR/dist"
+          (cd "$PATCH_DIR" && zip -qr "$RUNNER_TEMP/qqbot-card-editor-patch-${VERSION}.zip" .)
+
+      - name: 上传资源到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ runner.temp }}/qqbot-card-editor-${{ steps.ver.outputs.version }}-full.zip
+            ${{ runner.temp }}/qqbot-card-editor-patch-${{ steps.ver.outputs.version }}.zip
+          generate_release_notes: true

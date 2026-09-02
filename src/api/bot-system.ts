@@ -849,8 +849,8 @@ router.get('/php-bridge/update-config', (req: Request, res: Response) => {
   res.json({
     ok: true,
     version: getConfig('update.version') || '4.2.59',
-    patchUrl: getConfig('update.patch_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.59.zip',
-    fullUrl: getConfig('update.full_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.59-full.zip',
+    patchUrl: getConfig('update.patch_url') || 'https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/qqbot-card-editor-patch-4.2.59.zip',
+    fullUrl: getConfig('update.full_url') || 'https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.59/qqbot-card-editor-4.2.59-full.zip',
     changeLog: getConfig('update.changelog') || '',
     configUrl: getConfig('update.config_url') || '',
   });

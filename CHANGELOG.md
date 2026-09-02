@@ -2,6 +2,13 @@
 
 ## 2026-09-01
 
+### 4.2.59f：更新源迁入 GitHub Release（多源自动切换）+ GitHub Actions + README
+- **更新源双主并存**：GitHub Release（主源）→ GitHub 加速镜像（ghfast.top/ghproxy.net）→ 8091 备用源；面板「服务端接收」、群内「更新系统」统一按候选源顺序自动切换下载，无需手动改地址
+- **update-config.json**：新增 `mirrors` 列表（AI 发版统一维护，同版本多源 URL）
+- **更新配置拉取多源**：`update.config_url` 留空时默认依次拉取 GitHub raw → raw.gitmirror.com → 8091（php 插件/Node 接收端/面板一致）
+- **GitHub Actions**：`ci.yml`（push/PR 编译+测试）、`release.yml`（push v* tag 自动构建补丁/全量 zip 挂 Release）、`manual-build.yml`（手动触发打包附加）
+- 代码归档 GitHub：lzyzyzq/QQgfbot（仓库级身份 QQgfbot），README 含加速下载与发布流程说明
+
 ### 4.2.59e：服务端更新接收端（AI 发布包一键接收部署）
 - **面板新增「服务端接收」区块**（系统设置 → 更新系统配置 下方）：显示解压根目录/当前版本/AI 端最新配置
 - **接收补丁包 / 接收全量包**：自动从云端 update-config.json 取下载地址 → 下载 → zip 校验 → 覆盖式解压到部署根 → 写更新记录（记录.json/状态.json）→ `pm2 restart qqbot`

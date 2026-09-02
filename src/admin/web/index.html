@@ -588,10 +588,10 @@ input[type="file"]{color:var(--text2)}
     <div class="form-group"><label>补丁包下载地址</label><input id="cfgUpdatePatchUrl" type="text" placeholder="https://.../qqbot-card-editor-patch-4.2.59.zip"></div>
     <div class="form-group"><label>全量包下载地址</label><input id="cfgUpdateFullUrl" type="text" placeholder="https://.../qqbot-card-editor-4.2.59-full.zip"></div>
     <div class="form-group"><label>更新内容说明（群内更新完成后回复此内容，每行一条）</label><textarea id="cfgUpdateChangeLog" rows="4" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px;font-family:inherit"></textarea></div>
-    <div class="form-group"><label>更新配置远程地址（可选；本机更新系统插件优先从这里拉取更新配置）</label><input id="cfgUpdateConfigUrl" type="text" placeholder="https://3000-xxxx.monkeycode-ai.online/api/bot/php-bridge/update-config"><p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">留空=使用本机配置。想在云端面板统一维护版本号/下载地址/更新内容、由另一台服务器执行更新时，在该服务器面板填云端面板的 update-config 地址（版本号/URL/更新内容只在本机生效，本机拉取不到时自动回退本机配置）</p></div>
+    <div class="form-group"><label>更新配置远程地址（可选；本机更新系统插件/服务端接收从这里拉取云端更新配置）</label><input id="cfgUpdateConfigUrl" type="text" placeholder="https://3000-xxxx.monkeycode-ai.online/api/bot/php-bridge/update-config"><p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">留空=默认依次拉取 GitHub raw（lzyzyzq/QQgfbot）→ GitHub 加速镜像 → 8091 备用 的 update-config.json（AI 发版统一维护版本/下载地址/镜像列表/更新内容）。手动填地址（可用逗号分隔多个）可优先指定某源；全部拉取失败时自动回退本机面板「更新系统配置」</p></div>
     <div class="form-group" style="margin-top:12px"><button class="btn btn-primary" onclick="saveUpdateConfig()">保存更新配置</button> <button class="btn btn-outline" onclick="recordUpdateNow()">记录本次更新</button> <button class="btn btn-outline" onclick="loadUpdateRecords()">刷新升级列表</button> <span id="updMsg" style="font-size:13px;color:var(--text2)"></span></div>
     <div id="updateRecordsBox" style="margin-top:12px"></div>
-    <div class="form-group" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:12px"><label style="font-weight:bold">服务端接收（AI 发布包 → 一键接收部署；与「更新系统」记录/重启串联）</label>
+    <div class="form-group" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:12px"><label style="font-weight:bold">服务端接收（AI 发布包 → 一键接收部署；云端配置源默认 GitHub + 加速镜像 + 8091 多源自动切换；与「更新系统」记录/重启串联）</label>
       <div id="recvStatus" style="font-size:13px;color:var(--text2);margin-bottom:8px;line-height:1.8"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-primary btn-xs" onclick="receiveUpdate('patch')">接收补丁包</button>
@@ -3208,9 +3208,15 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
       _recvAi=r.ai||null;
       if(st){
         let h='解压根目录：<b>'+(r.rootDir||'')+'</b>　当前版本：<b>'+(r.currentVersion||'（未记录）')+'</b>';
-        if(r.ai&&r.ai.version){
+        if(r.ai&&r.ai.ok&&r.ai.version){
+          const n=(r.ai.sources&&r.ai.sources.length)||0;
+          const names=(r.ai.sources||[]).map(function(s){return s.name}).join(' → ')||'';
+          h+='<br>AI 更新配置源：<span style="word-break:break-all;color:var(--text2)">'+esc(r.ai.sourceUrl||'')+'</span>';
+          h+='<br>AI 端最新：<b>v'+esc(r.ai.version)+'</b>　候选下载源：<b>'+n+'</b> 个（'+(names?esc(names):'')+'，主源失败自动切换下一源）';
           const lines=String(r.ai.changeLog||'').split('\n').filter(Boolean);
-          h+='<br>AI 端最新：<b>v'+esc(r.ai.version)+'</b>　补丁：<span style="word-break:break-all">'+esc(r.ai.patchUrl||'-')+'</span><br>更新内容：<span style="color:var(--text)">'+esc(lines.slice(0,3).join('；'))+(lines.length>3?' …':(lines.length?'':'（无）'))+'</span>';
+          h+='<br>更新内容：<span style="color:var(--text)">'+esc(lines.slice(0,3).join('；'))+(lines.length>3?' …':(lines.length?'':'（无）'))+'</span>';
+        }else if(r.ai&&!r.ai.ok){
+          h+='<br><span style="color:var(--danger)">云端更新配置拉取失败：</span><span style="word-break:break-all;color:var(--text2)">'+esc((r.ai.errors||[]).join('；')||'未知错误')+'</span>';
         }
         st.innerHTML=h;
       }
@@ -3219,15 +3225,18 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
   }
   async function receiveUpdate(kind){
     const msg=docById('recvMsg');if(!msg)return;
-    if(!_recvAi){try{await loadUpdateReceiver()}catch(e){}}
-    if(!_recvAi||!_recvAi.patchUrl){msg.textContent='❌ 无法获取 AI 端下载地址（update-config.json 拉取失败）。请检查上方「更新配置远程地址」，或先在上方手动填好补丁/全量下载地址。';msg.style.color='var(--danger)';return;}
-    const url=kind==='full'?_recvAi.fullUrl:_recvAi.patchUrl;
     const name=kind==='full'?'全量包':'补丁包';
-    msg.textContent='⏳ 正在接收 '+name+'（'+url+'）…\n下载 → 校验 → 解压 → 记录 → 重启，请稍候（全量包较大可能需要 1-2 分钟）';msg.style.color='var(--text2)';
+    if(!_recvAi){try{await loadUpdateReceiver()}catch(e){}}
+    if(!_recvAi||!_recvAi.ok){
+      const errs=(_recvAi&&_recvAi.errors&&_recvAi.errors.length)?('（'+_recvAi.errors.join('；')+'）'):'';
+      msg.textContent='❌ 无法拉取云端更新配置'+errs+'。\n请检查上方「更新配置远程地址」与服务器网络；或直接在上方手动填好补丁/全量下载地址后，把地址粘贴到「上传/URL 接收」的方式使用。';msg.style.color='var(--danger)';return;
+    }
+    msg.textContent='⏳ 正在接收 '+name+' …\n将按候选源顺序自动选择可用下载源（GitHub 主源 → 加速镜像 → 备用源）→ 校验 → 解压 → 记录 → 重启，请稍候（全量包较大可能需要 1-2 分钟）';msg.style.color='var(--text2)';
     try{
-      const r=await api('/api/system/update-receive',{method:'POST',body:{url}});
+      const r=await api('/api/system/update-receive',{method:'POST',body:{kind:kind}});
       if(r.ok){
         let t='✅ 接收完成：'+name+' v'+r.version+' 已解压到 '+r.root+'\n已写入更新记录（共 '+(r.records?r.records.length:0)+' 条），当前版本：v'+r.currentVersion;
+        if(r.usedUrl)t+='\n实际下载源：'+r.usedUrl;
         if(r.restart&&r.restart.ok)t+='\n🔄 已执行 pm2 restart qqbot，等待服务恢复…';
         else t+='\n⚠️ 未自动重启（pm2 qqbot 不存在/不在本机）。若需重启请手动执行：\ncd '+(r.root||'')+' && pm2 restart qqbot';
         msg.textContent=t;msg.style.color='var(--success)';

@@ -1,0 +1,88 @@
+name: Manual Build & Attach
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 目标 Release tag（留空=最新的 v* tag；tag 不存在会自动创建 Release）
+        required: false
+        default: ''
+      include_patch:
+        description: 是否同时构建补丁包（对比上一版本 tag）
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 手动构建并附加到 Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖并构建
+        run: |
+          npm ci
+          npm run build
+
+      - name: 精简 node_modules 为生产依赖
+        run: npm prune --omit=dev
+
+      - name: 确定目标 tag
+        id: tag
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="$(git tag -l 'v*' --sort=-v:refname | head -1)"; fi
+          if [ -z "$TAG" ]; then TAG="v$(node -p "require('./package.json').version")"; fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: 打包全量 zip
+        run: |
+          VERSION="${{ steps.tag.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          cd "$GITHUB_WORKSPACE"
+          zip -qr "$RUNNER_TEMP/qqbot-card-editor-${VERSION}-full.zip" . \
+            -x '*.git/*' '.github/*' 'data/*' '*.zip' '*.pid' '*.webp' \
+            'backup_plugins_*/*' '.monkeycode*/*' '.tmp/*' '.tmp-update-*' \
+            'plugins/.tmp/*' 'test-messages.log' '_tmp_shot.webp' \
+            'stats-card-preview.png' '*.db' '.env'
+          echo "FULL_ZIP=$RUNNER_TEMP/qqbot-card-editor-${VERSION}-full.zip" >> "$GITHUB_ENV"
+
+      - name: 打包补丁 zip（可选）
+        if: ${{ inputs.include_patch }}
+        run: |
+          VERSION="${{ steps.tag.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          cd "$GITHUB_WORKSPACE"
+          PREV="$(git tag -l 'v*' --sort=-v:refname | grep -v '^v'"$VERSION"'$' | head -1)"
+          PATCH_DIR="$RUNNER_TEMP/patch"
+          mkdir -p "$PATCH_DIR"
+          if [ -n "$PREV" ]; then
+            FILES="$(git diff --name-only "$PREV" HEAD)"
+          else
+            FILES="$(git ls-files)"
+          fi
+          echo "$FILES" | while read -r f; do
+            if [ -n "$f" ] && [ -f "$f" ]; then mkdir -p "$PATCH_DIR/$(dirname "$f")"; cp "$f" "$PATCH_DIR/$f"; fi
+          done
+          cp -r dist "$PATCH_DIR/dist"
+          (cd "$PATCH_DIR" && zip -qr "$RUNNER_TEMP/qqbot-card-editor-patch-${VERSION}.zip" .)
+          echo "PATCH_ZIP=$RUNNER_TEMP/qqbot-card-editor-patch-${VERSION}.zip" >> "$GITHUB_ENV"
+
+      - name: 附加资源到 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes
+          gh release upload "$TAG" "$FULL_ZIP" --clobber
+          if [ -n "$PATCH_ZIP" ]; then gh release upload "$TAG" "$PATCH_ZIP" --clobber; fi

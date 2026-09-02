@@ -150,10 +150,10 @@ if ($消息 === '更新' || $消息 === '更新菜单' || $消息 === '返回更
 // 执行更新（补丁/全量）
 if (前缀($消息, '更新补丁') || 前缀($消息, '更新全量')) {
   $isPatch = 前缀($消息, '更新补丁');
-  $url = $isPatch ? $cfg['patchUrl'] : $cfg['fullUrl'];
+  $urls = $isPatch ? $cfg['patchUrls'] : $cfg['fullUrls'];
   $kind = $isPatch ? '补丁包' : '全量包';
 
-  if ($url === '') {
+  if (count($urls) === 0) {
     文字($at . "\n未配置" . $kind . "下载地址。请在管理面板「系统设置 → 更新系统配置」中填写更新包地址。");
     exit(0);
   }
@@ -166,11 +166,15 @@ if (前缀($消息, '更新补丁') || 前缀($消息, '更新全量')) {
     exit(0);
   }
 
-  文字($at . "\n⏳ 正在下载" . $kind . " v" . $版本 . " …");
+  文字($at . "\n⏳ 正在下载" . $kind . " v" . $版本 . "（" . count($urls) . " 个候选源，主源失败自动切换）…");
 
   $zip = 更新数据目录() . '/update-' . ($isPatch ? 'patch' : 'full') . '.zip';
-  if (!下载文件($url, $zip)) {
-    文字($at . "\n❌ 下载失败，请检查更新包地址是否可访问。");
+  $dlUrl = '';
+  foreach ($urls as $u) {
+    if (下载文件($u, $zip)) { $dlUrl = $u; break; }
+  }
+  if ($dlUrl === '') {
+    文字($at . "\n❌ 下载失败（候选源均不可用：\n" . implode("\n", $urls) . "）。");
     exit(0);
   }
   $root = 更新根目录();
