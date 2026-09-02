@@ -44,14 +44,14 @@ jobs:
 
       - name: 自动提交变化到 main
         run: |
-          CHANGED="$(git status --porcelain -- releases.json releases.html downloads.html)"
+          CHANGED="$(git status --porcelain -- index.html releases.json releases.html downloads.html)"
           if [ -z "$CHANGED" ]; then
             echo "站点数据无变化，跳过提交"
             exit 0
           fi
           git config user.name "qqgfbot-site[bot]"
           git config user.email "site-bot@users.noreply.github.com"
-          git add releases.json releases.html downloads.html
+          git add index.html releases.json releases.html downloads.html
           git commit -m "chore(site): 自动刷新版本/补丁/插件列表（$(date -u +%Y-%m-%dT%H:%MZ)）"
           git fetch origin main
           git rebase origin/main || true

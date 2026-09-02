@@ -182,6 +182,31 @@ function updateBox() {
     <a class="btn" href="${esc(data.configUrl)}">从 GitHub Pages 获取更新配置</a></p></div>`;
 }
 
+function homeBody() {
+  const quick = releases.length ? `<div class="box"><h2>历史版本</h2>
+    <table><thead><tr><th>版本</th><th>下载</th><th></th></tr></thead><tbody>` +
+    releases.map((r) => `<tr><td><b>${esc(r.version)}</b>${r.isCurrent ? ' <span class="tag tag-cur">当前</span>' : ''}<br>${esc(r.date || '')}</td>
+      <td><a class="btn btn-main" href="${esc(r.patch.main)}">补丁包</a><a class="btn" href="${esc(r.full.main)}">全量包</a></td>
+      <td><a class="btn" href="releases.html">全部镜像与备用源</a></td></tr>`).join('') +
+    `</tbody></table></div>` : '';
+  const srcs = (portal.mirrors || []).map((m) => `<tr><td>${esc(m.name)}</td><td><code>${esc(m.prefix)}…</code></td></tr>`).join('');
+  const welcome = `<div class="box"><h2>欢迎使用「${esc(data.site)}」更新门户</h2>
+    <p>这里是 ${esc(data.site)}（QQgfbot 4.x）的版本 / 补丁 / 插件下载与留言板。服务器与群内「更新系统」会自动对下列通道 HEAD 测速，快源优先、失败逐个兜底。</p>
+    <p style="margin-top:10px"><a class="btn btn-main" href="releases.html">版本列表 / 补丁列表</a>
+    <a class="btn btn-main" href="downloads.html">补丁 / 插件下载</a>
+    <a class="btn" href="${esc(portal.repoUrl)}">GitHub 仓库</a>
+    <a class="btn" href="${esc(portal.repoUrl)}/blob/main/README.md">项目说明（README）</a></p></div>`;
+  const sources = `<div class="box"><h2>更新源 / 下载通道（自动择优）</h2>
+    <table><thead><tr><th>通道</th><th>地址</th></tr></thead><tbody>
+    <tr><td>GitHub Pages（主源，全球 CDN）</td><td><a class="btn btn-main" href="${esc(portal.pagesUrl)}/update-config.json">update-config.json</a><a class="btn" href="${esc(portal.pagesUrl)}">门户首页</a></td></tr>
+    <tr><td>GitHub Release 直连</td><td><a class="btn" href="${esc(portal.repoUrl)}/releases">Release 页面</a></td></tr>
+    ${srcs}
+    <tr><td>AI 服务器（8091 备用源，临时预览域名）</td><td><code>${esc(portal.siBase)}/…</code></td></tr>
+    </tbody></table></div>`;
+  return welcome + updateBox() + quick + pluginBox() + sources;
+}
+
+fs.writeFileSync(path.join(ROOT, 'index.html'), page('首页', '', homeBody(), true), 'utf-8');
 fs.writeFileSync(path.join(ROOT, 'releases.html'), page('版本与补丁列表', '', updateBox() + versionTable(), true), 'utf-8');
 fs.writeFileSync(path.join(ROOT, 'downloads.html'), page('补丁与插件下载', '', updateBox() + pluginBox() + versionTable(), true), 'utf-8');
 

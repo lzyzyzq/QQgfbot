@@ -2,13 +2,15 @@
 
 QQ 机器人平台（基于 QQ 开放平台官方 API + NapCat 双通道），带 Web 管理面板与群内 Python/PHP 插件体系。
 
+> 说明：站点首页是自动生成的 [index.html](https://lzyzyzq.github.io/QQgfbot/) 更新门户（标题「空空爱追剧」），本文件是项目说明文档，仓库首页展示。
 > 项目在 4.2.59 基线归档到 GitHub。当前版本：**4.2.60**。
 
 ## 版本与下载（GitHub Pages 站点，自动刷新）
 
+- [首页更新门户](https://lzyzyzq.github.io/QQgfbot/)：空空爱追剧 · 当前版本 / 更新内容 / 下载导航 / 留言板
 - [版本列表 / 补丁列表](https://lzyzyzq.github.io/QQgfbot/releases.html)：每个 Release 版本的补丁包、全量包与加速镜像/备用源一键下载
 - [补丁 / 插件下载](https://lzyzyzq.github.io/QQgfbot/downloads.html)：插件与文档包（GitHub Pages 与 8091 双通道）
-- 各页底部附 Giscus 评论区（评论存 GitHub Discussions，见 `docs/GitHub自动发布与站点维护.md`）
+- 首页与各列表页底部附 Giscus 评论区（评论存 GitHub Discussions，GitHub 登录可见/可评，见 `docs/GitHub自动发布与站点维护.md`）
 - 页面由 `scripts/site-gen.mjs` 生成，GitHub Actions（`site.yml`：push main / 发 tag / Release 发布 / 每日定时）自动刷新并提交回 main
 
 ## 功能总览
