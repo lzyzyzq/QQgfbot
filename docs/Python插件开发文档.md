@@ -113,15 +113,16 @@ call('sendGroupMessage', gid, text).get('id')   # 返回值可继续用
 
 ## 6. 外显文字（mqqapi 链接）
 
-官方「文字外显」格式，点击即回填指令到输入框（不自动发送、不引用原消息）：
+官方「文字外显」格式，本意是点击文字后回填指令到输入框：
 
 ```python
-def inline(text, cmd):
-    return '[%s](mqqapi://aio/%%69nlinecmd?command=%s&enter=false&reply=false)' % (text, quote(cmd, safe=''))
+'[文字](mqqapi://aio/%%69nlinecmd?command=%s&enter=false&reply=false)' % quote(cmd, safe='')
 ```
 
-- `%69` = 字母 `i`（`inlinecmd`），`command` 需 URL 编码（中文/空格会乱码）。
-- 链接型菜单项（跳转网页）直接用标准 markdown 链接 `[文字](https://...)`。
+**注意：实测群消息纯文本回复不会渲染 mqqapi 外显链接，会按原文显示 `[文字](mqqapi://...)`，因此插件菜单一律使用纯文本指令说明，不使用外显链接**（参考 `plugins/测试.py` v0.2）。
+
+- 网页链接（`https://`）在官方 Markdown 消息中可显示为可点击链接，但在纯文本消息中同样按原文显示，仅用于 Markdown 卡片。
+- 菜单类输出统一写成：`功能名 → 发送「指令」`。
 
 ## 7. 面板操作
 

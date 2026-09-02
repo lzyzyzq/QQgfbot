@@ -1,12 +1,12 @@
 # coding: utf-8
 # ============================================================
-# 测试 v0.1 - 多功能菜单 Python 插件（单文件）
+# 测试 v0.2 - 多功能菜单 Python 插件（单文件）
 # ------------------------------------------------------------
 # 命令（群聊/私聊均可，功能均基于 QQ 官方开放平台 API）：
-#   测试 / 测试菜单 / 菜单      → 多功能菜单（外显文字链接）
+#   测试 / 测试菜单 / 菜单      → 多功能菜单
 #   娱乐                         → 娱乐子菜单（骰子/猜拳/猜数字/运势/笑话）
 #   实用                         → 实用子菜单（天气/二维码/计算/时间/随机数）
-#   唱歌 <歌名> / 清唱 / 怪唱    → 网易云搜歌，先发歌词再以语音条播放
+#   唱歌 <歌名> / 清唱 / 怪唱    → 网易云搜歌，先发歌词再以语音条播放完整版权音频
 #   禁言 <QQ或openid> <分钟>     → 群成员禁言（官方 mute）
 #   解禁 <QQ或openid>            → 解除禁言
 #   全群禁言 开/关               → 全体禁言/解除
@@ -16,8 +16,9 @@
 #   抖音 <分享口令或链接>        → 解析抖音视频无水印链接
 #   重启 / 更新                  → 引导使用「更新系统」或群内直接发送终端命令
 # ------------------------------------------------------------
-# 外显文字链接格式：
-#   [外显文字](mqqapi://aio/%69nlinecmd?command=指令&enter=false&reply=false)
+# v0.2 变更：移除 mqqapi 外显文字链接（群消息不支持渲染，改为纯文本指令说明）；
+#           唱歌改用网易云真实播放地址接口（enhance/player/url，320k→128k），
+#           无版权/需VIP 明确提示，不再播放无版权替代音频。
 # ============================================================
 
 import sys
@@ -88,11 +89,6 @@ call._seq = 1
 
 # ================= 工具 =================
 
-def inline(text, cmd):
-    """生成 mqqapi 外显文字链接"""
-    return '[%s](mqqapi://aio/%%69nlinecmd?command=%s&enter=false&reply=false)' % (text, quote(cmd, safe=''))
-
-
 def send_group(data, gid, text):
     try:
         call('sendGroupMessage', gid, text)
@@ -144,20 +140,6 @@ def build_menu():
     lines.append('🎵 抖音    → 发送「抖音 分享口令」')
     lines.append('🔄 更新    → 发送「更新」')
     lines.append('━━━━━━━━━━━━━━━━')
-    lines.append('点下方按钮直达：')
-    btns = [
-        inline('🎤 点歌', '唱歌'),
-        inline('🔇 禁言', '禁言'),
-        inline('📢 广播', '广播'),
-        inline('🎮 娱乐', '娱乐'),
-        inline('🔧 实用', '实用'),
-        inline('🎵 抖音', '抖音'),
-        inline('🔄 更新', '更新'),
-    ]
-    lines.append('　'.join(btns[:3]))
-    lines.append('　'.join(btns[3:6]))
-    lines.append(btns[6])
-    lines.append('')
     lines.append('发送「主菜单」返回主菜单')
     return '\n'.join(lines)
 
@@ -201,19 +183,12 @@ def layout_menu(cfg, botId):
     lines.append('以下菜单项来自后台「插件卡片 · 后台编辑器」')
     lines.append('可在管理面板编辑布局后发送「测试」刷新')
     lines.append('━━━━━━━━━━━━━━━━')
-    row = []
-    for i, (lbl, v) in enumerate(items):
-        t = v if (v.startswith('http://') or v.startswith('https://')) else v
+    for lbl, v in items:
         if v.startswith('http://') or v.startswith('https://'):
-            row.append('[%s](%s)' % (lbl, v))
+            lines.append('%s → %s' % (lbl, v))
         else:
-            row.append(inline(lbl, v))
-        if (i + 1) % 3 == 0:
-            lines.append('　'.join(row))
-            row = []
-    if row:
-        lines.append('　'.join(row))
-    lines.append('')
+            lines.append('%s → 发送「%s」' % (lbl, v))
+    lines.append('━━━━━━━━━━━━━━━━')
     lines.append('发送「主菜单」返回')
     return '\n'.join(lines)
 
@@ -244,15 +219,6 @@ def build_fun_menu():
     lines.append('🍀 今日运势')
     lines.append('😂 讲个笑话')
     lines.append('━━━━━━━━━━━━━━━━')
-    btns = [
-        inline('🎲 掷骰子', '掷骰子'),
-        inline('✊ 猜拳', '石头剪刀布'),
-        inline('🔢 猜数字', '猜数字'),
-        inline('🍀 运势', '今日运势'),
-        inline('😂 笑话', '讲个笑话'),
-    ]
-    lines.append('　'.join(btns[:3]))
-    lines.append('　'.join(btns[3:]))
     return '\n'.join(lines)
 
 
@@ -266,15 +232,6 @@ def build_tool_menu():
     lines.append('🕐 时间')
     lines.append('🎲 随机数 <最小值> <最大值>')
     lines.append('━━━━━━━━━━━━━━━━')
-    btns = [
-        inline('🌤 天气', '天气'),
-        inline('▦ 二维码', '二维码'),
-        inline('🔢 计算', '计算'),
-        inline('🕐 时间', '时间'),
-        inline('🎲 随机数', '随机数'),
-    ]
-    lines.append('　'.join(btns[:3]))
-    lines.append('　'.join(btns[3:]))
     return '\n'.join(lines)
 
 
@@ -323,8 +280,23 @@ def sing(data, gid, keyword):
     except Exception:
         pass
 
-    # 语音条：开放平台富媒体语音（BotAPI 端下载 mp3 并分片上传）
-    audio_url = 'https://music.163.com/song/media/outer/url?id=%s.mp3' % sid
+    # 语音条：先用网易云真实播放地址接口取音频 URL（无版权/需VIP 时 url 为空，320k→128k 依次尝试）
+    audio_url = ''
+    for br in (320000, 128000):
+        try:
+            st3, b3 = http_get('https://music.163.com/api/song/enhance/player/url?id=%s&ids=%%5B%s%%5D&br=%s' % (sid, sid, br))
+            if st3 == 200:
+                j3 = json.loads(b3)
+                u = (j3.get('data') or [{}])[0].get('url')
+                if u:
+                    audio_url = u
+                    break
+        except Exception:
+            continue
+    if not audio_url:
+        reply(data, '🎵 《%s》· %s 无版权或需VIP，暂无法语音播放，换一首试试~' % (song['name'], song['artist']))
+        return
+
     voice_ok = False
     try:
         up = call('uploadGroupVoice', gid, audio_url, 'song.mp3')
@@ -337,11 +309,7 @@ def sing(data, gid, keyword):
     if voice_ok:
         reply(data, '🎤 已语音播放《%s》· %s\n发送「测试」返回菜单' % (song['name'], song['artist']))
     else:
-        md = '### 🎵 %s\n🎤 %s\n\n▶️ [立即试听](%s)\n\n---\n发送「测试」返回菜单' % (song['name'], song['artist'], audio_url)
-        try:
-            call('sendMarkdownGroup', gid, md)
-        except Exception:
-            reply(data, '🎵 《%s》· %s\n▶️ 试听：%s' % (song['name'], song['artist'], audio_url))
+        reply(data, '🎵 《%s》· %s\n▶️ 试听：%s' % (song['name'], song['artist'], audio_url))
 
 
 # ================= 禁言（官方群禁言 API） =================
@@ -494,7 +462,7 @@ def fun_cmd(data, content):
     if content.startswith('石头剪刀布'):
         p = content.replace('石头剪刀布', '').strip()
         if not p:
-            reply(data, '✊ 玩法：发送「石头剪刀布 石头/剪刀/布」\n' + inline('石头', '石头剪刀布 石头') + '　' + inline('剪刀', '石头剪刀布 剪刀') + '　' + inline('布', '石头剪刀布 布'))
+            reply(data, '✊ 玩法：发送「石头剪刀布 石头」/「石头剪刀布 剪刀」/「石头剪刀布 布」')
             return
         bot = random.choice(['石头', '剪刀', '布'])
         win = {'石头': '剪刀', '剪刀': '布', '布': '石头'}
@@ -675,8 +643,6 @@ def douyin_cmd(data, content):
             lines.append('无水印播放：')
             lines.append(video)
             lines.append('')
-            lines.append(inline('📥 打开视频', '抖音 ' + url))
-            lines.append('')
             lines.append('发送「测试」返回菜单')
             if cover:
                 try:
@@ -703,8 +669,6 @@ def update_cmd(data, content):
     lines.append('   cd /var/www/php && wget -O full.zip <全量URL> && unzip -o full.zip && pm2 restart qqbot')
     lines.append('（仅超级主人，替换 <URL> 为下载地址）')
     lines.append('━━━━━━━━━━━━━━━━')
-    btns = [inline('🔄 更新菜单', '更新'), inline('🔄 重启', '重启')]
-    lines.append('　'.join(btns))
     reply(data, '\n'.join(lines))
 
 
