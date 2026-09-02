@@ -649,8 +649,100 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         });
       }
 
+      // ---------- 处理 .php 文件（与启动扫描一致注册为 php 插件，执行由 php-plugin 桥负责） ----------
+      if (ext === '.php') {
+        let code: string;
+        try {
+          code = fs.readFileSync(file.path, 'utf-8');
+        } catch (e) {
+          return sendError(500, 'Failed to read uploaded file', e);
+        }
+        const fileName = pluginName.endsWith('.php') ? pluginName : pluginName + '.php';
+        const safeBase = path.basename(fileName, '.php');
+        if (!safeBase || /[\\/:*?"<>|]/.test(safeBase)) {
+          return sendError(400, 'Invalid plugin name');
+        }
+        const existingId = engine.findPluginByName(safeBase);
+        if (existingId && !overwrite) {
+          return sendError(409, `Plugin "${pluginName}" already exists. Use overwrite=true to replace.`);
+        }
+        try {
+          if (existingId && overwrite) await engine.deletePlugin(existingId);
+          const destPath = path.join(pluginsDir, fileName);
+          fs.writeFileSync(destPath, code, 'utf-8');
+          const db = getDb();
+          const id = 'php-' + safeBase;
+          let desc = description || 'PHP 插件';
+          const m = code.slice(0, 800).match(/@description\s+(.+)/);
+          if (m) desc = m[1].trim();
+          db.prepare(
+            `INSERT INTO plugins (id, name, description, code, enabled, version, type, source_path, approved, owner)
+             VALUES (?, ?, ?, '', 1, '1.0.0', 'php', ?, ?, 'system')
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = COALESCE(excluded.description, description),
+               source_path = excluded.source_path, approved = 1`
+          ).run(id, fileName, desc, destPath, isSuper ? 1 : 0);
+          approvalStore.add(fileName, uploadedBy);
+          if (isSuper) approvalStore.approve(fileName, req.adminUser?.username || 'system');
+          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          return res.status(201).json({
+            ok: true,
+            name: fileName,
+            id,
+            message: 'PHP plugin uploaded and registered successfully'
+          });
+        } catch (e) {
+          return sendError(400, 'Failed to register PHP plugin: ' + (e as Error)?.message, e);
+        }
+      }
+
+      // ---------- 处理 .yaml/.yml 文件（菜单/配置/资源型插件：可查看可编辑，不执行代码） ----------
+      if (ext === '.yaml' || ext === '.yml') {
+        let code: string;
+        try {
+          code = fs.readFileSync(file.path, 'utf-8');
+        } catch (e) {
+          return sendError(500, 'Failed to read uploaded file', e);
+        }
+        const fileName = pluginName + ext;
+        const safeBase = path.basename(fileName, ext);
+        if (!safeBase || /[\\/:*?"<>|]/.test(safeBase)) {
+          return sendError(400, 'Invalid plugin name');
+        }
+        const existingId = engine.findPluginByName(fileName);
+        if (existingId && !overwrite) {
+          return sendError(409, `Plugin "${fileName}" already exists. Use overwrite=true to replace.`);
+        }
+        try {
+          if (existingId && overwrite) await engine.deletePlugin(existingId);
+          const destPath = path.join(pluginsDir, fileName);
+          fs.writeFileSync(destPath, code, 'utf-8');
+          const db = getDb();
+          const id = 'file-' + safeBase;
+          let desc = description || 'YAML 配置/菜单资源插件';
+          const m = code.slice(0, 500).match(/^(?:#\s*)?(?:name|description)\s*:\s*(.+)$/m);
+          if (m) desc = m[1].trim().slice(0, 100);
+          db.prepare(
+            `INSERT INTO plugins (id, name, description, code, enabled, version, type, source_path, has_webui, approved, owner)
+             VALUES (?, ?, ?, '', 0, '1.0.0', 'file', ?, 0, ?, 'system')
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = COALESCE(excluded.description, description),
+               source_path = excluded.source_path, approved = 1`
+          ).run(id, fileName, desc, destPath, isSuper ? 1 : 0);
+          approvalStore.add(fileName, uploadedBy);
+          if (isSuper) approvalStore.approve(fileName, req.adminUser?.username || 'system');
+          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          return res.status(201).json({
+            ok: true,
+            name: fileName,
+            id,
+            message: 'YAML plugin uploaded and registered successfully (resource/config, not executable)'
+          });
+        } catch (e) {
+          return sendError(400, 'Failed to register YAML plugin: ' + (e as Error)?.message, e);
+        }
+      }
+
       // 不支持的类型
-      return sendError(400, 'Only .js, .mjs, .py or .zip files are supported');
+      return sendError(400, 'Only .js, .mjs, .py, .php, .yaml, .yml or .zip files are supported');
     } catch (err: any) {
       return sendError(500, 'Internal server error during upload', err);
     }
