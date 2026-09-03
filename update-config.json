@@ -1,30 +1,30 @@
 {
   "ok": true,
-  "version": "4.2.61",
-  "patchUrl": "https://lzyzyzq.github.io/QQgfbot/qqbot-card-editor-patch-4.2.61.zip",
-  "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.61/qqbot-card-editor-4.2.61-full.zip",
+  "version": "4.2.62",
+  "patchUrl": "https://lzyzyzq.github.io/QQgfbot/qqbot-card-editor-patch-4.2.62.zip",
+  "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.62/qqbot-card-editor-4.2.62-full.zip",
   "mirrors": [
     {
       "name": "GitHub Release 直连",
-      "patchUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.61/qqbot-card-editor-patch-4.2.61.zip",
-      "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.61/qqbot-card-editor-4.2.61-full.zip"
+      "patchUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.62/qqbot-card-editor-patch-4.2.62.zip",
+      "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.62/qqbot-card-editor-4.2.62-full.zip"
     },
     {
       "name": "GitHub 加速(ghfast.top)",
-      "patchUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.61/qqbot-card-editor-patch-4.2.61.zip",
-      "fullUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.61/qqbot-card-editor-4.2.61-full.zip"
+      "patchUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.62/qqbot-card-editor-patch-4.2.62.zip",
+      "fullUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.62/qqbot-card-editor-4.2.62-full.zip"
     },
     {
       "name": "GitHub 加速(ghproxy.net)",
-      "patchUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.61/qqbot-card-editor-patch-4.2.61.zip",
-      "fullUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.61/qqbot-card-editor-4.2.61-full.zip"
+      "patchUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.62/qqbot-card-editor-patch-4.2.62.zip",
+      "fullUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.62/qqbot-card-editor-4.2.62-full.zip"
     },
     {
       "name": "8091 备用源",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.61.zip",
-      "fullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.61-full.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.62.zip",
+      "fullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.62-full.zip"
     }
   ],
-  "changeLog": "新增「充值积分系统」插件（充值系统.js v1.0.0）：群内我要充值<金额>下单 / 查积分 / 我的订单 / 付款完成<单号>，主人「确认充值 单号」人工确认到账加积分（微信/支付宝经营收款码，本地持久化积分并暴露 add/deduct 供其它功能扣费）\n新增「GitHub绑定」插件（GitHub绑定.js v1.0.0）：绑定GitHub <用户名> 公开API校验 / 我的GitHub / 解绑GitHub / GitHub绑定列表（主人）\n站点首页切换为自定义中文门户 index.html（空空爱追剧，随发版自动刷新版本并带评论区）",
+  "changeLog": "修复 GitHub绑定：触发词同时兼容「绑定GitHub/绑定gh/GitHub绑定/gh绑定」两种语序；补充我的GitHub/查看GitHub/解绑等同义触发；对无法解析的 github/gh 相关消息不再静默，弹出使用帮助\n修复 唱歌：新增网易云 outer 直链语音源回退（对多数免费歌可直接取全曲），语音源全部不可用时在卡片上明示原因（VIP/无版权/源站限制），避免只丢一个原唱试听链接让用户困惑",
   "configUrl": ""
 }
