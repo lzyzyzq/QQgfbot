@@ -4,6 +4,10 @@ data/
 web/dist/
 web/node_modules/
 android/
+tools/ai-sing-server/.venv/
+tools/ai-sing-server/jobs/
+tools/ai-sing-server/models/
+tools/ai-sing-server/__pycache__/
 *.db
 *.log
 .env

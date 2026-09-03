@@ -21,6 +21,7 @@ QQ 机器人平台（基于 QQ 开放平台官方 API + NapCat 双通道），�
 - **GitHub 云端广播中心**：`broadcast/broadcast.json` 定义广播任务（文本/图片、全部群/单一群/目标群、固定文本或 API 抓内容、每天时间/间隔定时），面板与群内「云端广播」命令均可查看与执行，`broadcast/README.md` 见任务格式
 - **GitHub 绑定**（`plugins/GitHub绑定.js`）：群内「绑定GitHub 用户名」把 QQ 绑定到 GitHub 账号（公开 API 校验），供公开流水挂名/昵称展示
 - **充值积分系统**（`plugins/充值系统.js`）：群内「我要充值 / 查积分 / 我的订单」，付款后「付款完成 单号」，主人「确认充值 单号」人工放行到账（配合微信/支付宝经营收款码）；积分以 `ctx.storage` 持久化并暴露 add/deduct 方法供其它功能扣费
+- **AI 唱歌**（`plugins/AI唱歌.js` + `tools/ai-sing-server/`）：群内「AI唱 歌名」→ 调本地 RVC 换声服务（纯 CPU/ARM 也可跑，20 秒片段约 1-4 分钟）→ 语音条发回；音色模型 `.pth` 放入换声服务 models 目录即用
 - **更新发布链路**：更新包经 `update-config.json`（多源）发布，服务器端 / 面板「服务端接收」/ 群内「更新系统」统一消费
 
 ## 目录结构
