@@ -22,7 +22,7 @@
 
 改代码后服务器接收更新不再固定顺序，而是对候选源做 HEAD 测速、**哪边快先用哪边**，全部失败才按序兜底：
 
-- 拉取 `update-config.json`（检查更新）：GitHub raw 直连 → **GitHub Pages** → gitmirror 镜像 → **AI 服务器 8091**
+- 拉取 `update-config.json`（检查更新）：**GitHub Pages**（lzyzyzq.github.io/QQgfbot）→ GitHub raw 直连 → gitmirror 镜像 → **AI 服务器 8091**
 - 下载补丁/全量包：主源(GitHub Release) → ghfast/ghproxy 加速镜像 → 8091 备用源 → 其中可用即测速排序
 - `update-config.json` 里 `mirrors` 可自行增删，服务器无需改代码
 
