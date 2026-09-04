@@ -8,6 +8,7 @@ import { collectGroupStats } from './group-stats';
 import { applyPhpTemplate } from './php-footer';
 import { isNapcatEnabled, callNapcatAction, groupOpenidToGroupNumber, memberOpenidToQQ, openidToQQ } from './napcat';
 import { noteSelfSend } from './self-echo';
+import { isUnreachableGroupError, markGroupUnreachable } from './group-reach';
 import https from 'https';
 import { AsyncLocalStorage } from 'async_hooks';
 
@@ -230,6 +231,10 @@ export class BotCore {
   // 机器人发送消息的运行记录（写入 system_logs，供运行记录页面判断机器人是否回复）
   private recordBotSend(target: string, type: string, summary: string, ok: boolean, errMsg: string = '') {
     try {
+      // 主动群消息返回 11255/群已注销：登记该群不可达，定时任务/广播自动停发，避免每整点反复失败刷屏
+      if (!ok && type.indexOf('群') === 0 && errMsg && isUnreachableGroupError(errMsg)) {
+        markGroupUnreachable(target, this.getBotId(), errMsg);
+      }
       addSystemLog(ok ? 'info' : 'error', 'send', `机器人回复[${type}] ${ok ? '发送成功' : '发送失败'}`, (summary || '').substring(0, 300) + (errMsg ? ` | ${errMsg}` : ''), '', target, this.getBotId());
     } catch {}
   }

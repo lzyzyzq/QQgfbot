@@ -6,6 +6,7 @@ import { createLogger } from '../utils/logger';
 import { getConfig, getDb, setUserMapping, addSystemLog } from '../db/index';
 import { recordGroupActivity } from '../api/groups';
 import { isSelfEcho } from './self-echo';
+import { reviveGroupUnreachable } from './group-reach';
 import nacl from 'tweetnacl';
 
 const logger = createLogger('webhook');
@@ -200,6 +201,8 @@ export class WebhookManager {
           } catch (e: any) { logger.warn(`bind group_number failed: ${e.message}`); }
         }
         recordMember(gid, authorId, qqId, d.author?.username || '', this.botId);
+        // 能收到该群消息说明群可达：若此前因主动消息 11255/群已注销被登记停发，这里自动恢复
+        reviveGroupUnreachable(gid);
         // 收录消息中被 @ 的用户（<@!openid> / <@openid>），使其 OpenID 可被查询/对账
         try {
           const atRe = /<@!?([A-Za-z0-9_\-]+)>/g;

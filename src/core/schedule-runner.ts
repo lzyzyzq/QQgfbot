@@ -7,6 +7,7 @@ import { getBotInstance } from './bot';
 import { ScheduleTask, getSwitchState } from '../shared/bot-controls';
 import { loadBroadcastTaskById, broadcastContent } from './broadcast';
 import { renderTextCard, renderChimeCard } from './card';
+import { isGroupUnreachable } from './group-reach';
 import { createLogger } from '../utils/logger';
 
 const runnerLogger = createLogger('schedule-runner');
@@ -394,6 +395,15 @@ async function dispatch(t: ScheduleTask) {
   runnerLogger.info(`定时任务触发: id=${t.id} type=${t.type} contentType=${t.contentType} time=${t.time || '-'} botId=${t.botId || '按群归属'} groups=${groups.length} images=${images.length} plugin=${t.pluginName || '-'} at=${Array.isArray(t.atUsers) ? t.atUsers.length : 0} linkMode=${t.linkMode === undefined ? '全局' : t.linkMode}`);
   for (const gid of groups) {
     try {
+      // 已登记不可达的群（主动消息 11255/群已注销）跳过发送，避免每个整点反复失败刷屏
+      if (isGroupUnreachable(gid)) {
+        const dk = 'dead:' + gid;
+        if (lastFire[dk] !== bjNow().ymd) {
+          lastFire[dk] = bjNow().ymd;
+          runnerLogger.info(`定时任务 ${t.id} 群 ${gid} 已登记不可达，跳过发送`);
+        }
+        continue;
+      }
       const bot = botForTask(t, gid);
       if (!bot) continue;
       if (t.contentType === 'plugin') {
@@ -411,7 +421,10 @@ async function dispatch(t: ScheduleTask) {
           runnerLogger.info(`定时任务 ${t.id} 已以图片发送到群 ${gid}`);
         } else {
           sendBroadcastText(bot, gid, text, t)
-            .then(() => runnerLogger.info(`定时任务 ${t.id} 已发送到群 ${gid}`))
+            .then((ok) => {
+              if (ok) runnerLogger.info(`定时任务 ${t.id} 已发送到群 ${gid}`);
+              else runnerLogger.warn(`定时任务 ${t.id} 发送群 ${gid} 失败（详见运行记录）`);
+            })
             .catch((err: any) => runnerLogger.warn(`定时任务 ${t.id} 发送群 ${gid} 失败: ${err && err.message ? err.message : err}`));
         }
       }
