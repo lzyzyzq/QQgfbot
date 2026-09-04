@@ -1,5 +1,5 @@
 // ============================================================
-// GitHub绑定 v1.0.0 - 群内把 QQ/OpenID 绑定到 GitHub 用户名（轻量验证）
+// GitHub绑定 v1.0.1 - 群内把 QQ/OpenID 绑定到 GitHub 用户名（轻量验证）
 // ------------------------------------------------------------
 // 普通用户命令：
 //   绑定GitHub <用户名>       → 绑定（例：绑定GitHub lzyzyzq）
@@ -7,15 +7,39 @@
 //   解绑GitHub                → 解绑
 // 主人命令：
 //   GitHub绑定列表            → 查看全部绑定（OpenID → GitHub）
+// v1.0.1 修复：QQ 会往「绑定」等词中间插空格/不可见字符拆分（如 "GitHub绑 定 xxx"），
+//   解析改为先清除空白后容错匹配；无法识别的 github/gh/绑定 开头消息一律给帮助（不再被主人权限拦截静默）。
 // 说明：用户名存在性用 GitHub 公开 API 校验（无需仓库 token，也不入库任何密钥）；
 //   绑定结果存 ctx.storage：ghbind_<openid>=用户名（正向），ghbinv_<小写名>=openid（反向）。
 //   本绑定供「公开流水挂名 / 昵称展示 / 授权标签」等场景使用。
 // ============================================================
+
+// 命令解析：清除所有空白/不可见字符后容错识别，容忍 QQ 在关键词中间插入空格或零宽字符
+function parseCmd(content) {
+  var compact = String(content || '').replace(/[\s\u00a0\u200b\u200c\u200d\ufeff\u2060\u3000]+/g, '');
+  var cl = compact.toLowerCase();
+  var verbs = ['github绑定', '绑定github', 'gh绑定', '绑定gh'];
+  var verb = null;
+  for (var i = 0; i < verbs.length; i++) {
+    if (cl.indexOf(verbs[i]) === 0) { verb = verbs[i]; break; }
+  }
+  if (verb) {
+    var rest = compact.slice(verb.length);
+    if (!rest) return { kind: 'bindhelp' };
+    if (rest.toLowerCase() === '列表') return { kind: 'list' };
+    return { kind: 'bind', param: rest };
+  }
+  if (cl === '我的github' || cl === '查看github' || cl === 'github我的') return { kind: 'show' };
+  if (cl === '解绑github' || cl === 'github解绑' || cl === '解绑gh' || cl === 'gh解绑') return { kind: 'unbind' };
+  if (cl === 'github绑定列表' || cl === 'gh绑定列表' || cl === '绑定github列表') return { kind: 'list' };
+  return { kind: 'none', text: String(content || '') };
+}
+
 module.exports = {
   manifest: {
     id: 'gh-bind',
     name: 'GitHub绑定',
-    version: '1.0.0',
+    version: '1.0.1',
     description: '绑定GitHub：OpenID/QQ 绑定到 GitHub 用户名；我的GitHub / 解绑GitHub / GitHub绑定列表',
     author: '511742399'
   },
@@ -150,21 +174,18 @@ module.exports = {
       if (!authorId) return;
       var raw = (data.content || '').trim();
       var content = raw.replace(/^\s*(?:<@!?[A-Za-z0-9_-]+>|@\S+)\s*/, '').trim() || raw;
-      var lower = content.toLowerCase();
-      var m;
-      // 兼容两种语序：绑定GitHub / GitHub绑定 / 绑定gh / gh绑定（对 @机器人 前缀已剥离）
-      var bindAct = content.match(/^(?:绑定github|github绑定|绑定gh|gh绑定)(?:\s+(\S+))?$/i);
-
-      if (lower === '绑定github' || lower === 'github绑定' || lower === '绑定gh' || lower === 'gh绑定') { bindHelp(data); return; }
-      if (bindAct && bindAct[1]) { await doBind(data, bindAct[1]); return; }
-      if (lower === '我的github' || lower === '查看github' || lower === 'github我的') { showBind(data); return; }
-      if (lower === '解绑github' || lower === 'github解绑' || lower === '解绑gh' || lower === 'gh解绑') { unbind(data); return; }
-
-      if (!self.methods.isMaster(ctx, authorId)) return;
-      if (lower === 'github绑定列表' || lower === 'gh绑定列表' || lower === '绑定github列表') { ownerList(data); return; }
-
-      // 兜底：消息以 github/gh/绑定 开头但未识别 → 给帮助，避免“无回应”
-      if (/^(github|gh|绑定)/.test(lower) && (content.length <= 24)) { bindHelp(data); return; }
+      var r = parseCmd(content);
+      if (r.kind === 'bindhelp') { bindHelp(data); return; }
+      if (r.kind === 'bind') { await doBind(data, r.param); return; }
+      if (r.kind === 'show') { showBind(data); return; }
+      if (r.kind === 'unbind') { unbind(data); return; }
+      if (r.kind === 'list') {
+        if (self.methods.isMaster(ctx, authorId)) { ownerList(data); return; }
+        reply(data, 'GitHub 绑定列表仅主人可见。');
+        return;
+      }
+      // 兜底：消息以 github/gh/绑定 开头但未识别 → 给帮助，避免“无回应”（不分权限，人人可见）
+      if (/^(github|gh|绑定)/.test(r.text.toLowerCase()) && content.length <= 24) { bindHelp(data); return; }
     }
 
     var lid1 = ctx.eventBus.on('message.group', function(data) {
@@ -174,7 +195,7 @@ module.exports = {
       try { handle(data); } catch(e) { ctx.logger.error('GitHub绑定异常：' + (e && e.message || e)); }
     });
     self._listenerIds = [lid1, lid2];
-    ctx.logger.info('GitHub绑定 v1.0.0 已启用（绑定GitHub <用户名> / 我的GitHub / 解绑GitHub）');
+    ctx.logger.info('GitHub绑定 v1.0.1 已启用（绑定GitHub <用户名> / 我的GitHub / 解绑GitHub）');
   },
 
   onDisable: function(ctx) {
@@ -183,5 +204,6 @@ module.exports = {
       this._listenerIds = null;
     }
     ctx.logger.info('GitHub绑定已禁用');
-  }
+  },
+  parseCmd: parseCmd
 };
