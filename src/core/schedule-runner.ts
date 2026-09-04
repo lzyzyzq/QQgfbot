@@ -6,7 +6,7 @@ import { getConfig, setConfig, getDb } from '../db/index';
 import { getBotInstance } from './bot';
 import { ScheduleTask, getSwitchState } from '../shared/bot-controls';
 import { loadBroadcastTaskById, broadcastContent } from './broadcast';
-import { renderTextCard } from './card';
+import { renderTextCard, renderChimeCard } from './card';
 import { createLogger } from '../utils/logger';
 
 const runnerLogger = createLogger('schedule-runner');
@@ -245,6 +245,22 @@ async function sendTextImage(bot: any, gid: string, text: string, t: ScheduleTas
   await bot.sendGroupMessage(gid, text);
 }
 
+// 整点报时（chime）图片发送：渲染大时间居中卡片，失败回退文字
+async function sendChimeImage(bot: any, gid: string, t: ScheduleTask): Promise<void> {
+  try {
+    const buf = await renderChimeCard();
+    if (buf.length < 128) return;
+    const up = await bot.uploadGroupImageBuffer(gid, buf, 'chime.png');
+    if (up && (up.file_info || up.url)) {
+      await bot.sendGroupImageMessage(gid, up.file_info || up.url);
+      return;
+    }
+  } catch (err: any) {
+    runnerLogger.warn(`定时任务 ${t.id} 整点报时图片渲染/发送群 ${gid} 失败，回退文字: ${err && err.message ? err.message : err}`);
+  }
+  await bot.sendGroupMessage(gid, contentFor(t));
+}
+
 function contentFor(t: ScheduleTask): string {
   const n = bjNow();
   if (t.contentType === 'chime') return `⏰ 整点报时\n${n.full}`;
@@ -382,6 +398,11 @@ async function dispatch(t: ScheduleTask) {
       if (!bot) continue;
       if (t.contentType === 'plugin') {
         await callPluginBroadcast(t, gid);
+        continue;
+      }
+      if (t.contentType === 'chime' && sendAsImage) {
+        await sendChimeImage(bot, gid, t);
+        runnerLogger.info(`定时任务 ${t.id} 整点报时已以图片发送到群 ${gid}`);
         continue;
       }
       if (text) {

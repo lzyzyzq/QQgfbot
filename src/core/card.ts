@@ -744,3 +744,40 @@ export async function renderTextCard(data: TextCardData): Promise<Buffer> {
 </svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
+
+// 整点报时（chime）专属大时间卡片：banner 标题 + 居中超大当前时间，避免与正文重复
+export async function renderChimeCard(): Promise<Buffer> {
+  const W = 760;
+  const H = 440;
+  const BANNER = 120;
+  const PAD_X = 40;
+  const d = new Date(Date.now() + 8 * 3600 * 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const weeks = ['日', '一', '二', '三', '四', '五', '六'];
+  const ymd = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  const week = '星期' + weeks[d.getUTCDay()];
+  const dateStr = `${ymd}  ${week}`;
+  const clock = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+
+  const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="${W}" height="${H}" rx="24" fill="#0f172a"/>
+  <rect x="0" y="0" width="${W}" height="${BANNER}" fill="url(#cBg)"/>
+  <circle cx="${W - 52}" cy="20" r="90" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="22"/>
+  <circle cx="${W - 40}" cy="108" r="50" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="14"/>
+  <text x="40" y="60" font-family="${FONT}" font-size="32" font-weight="bold" fill="#ffffff">整点报时</text>
+  <text x="42" y="90" font-family="${FONT}" font-size="13" letter-spacing="3" fill="rgba(255,255,255,.7)">SCHEDULED BROADCAST</text>
+  <rect x="${PAD_X}" y="${BANNER + 12}" width="${W - 2 * PAD_X}" height="${H - BANNER - 56}" rx="14" fill="#111c30"/>
+  <text x="${W / 2}" y="212" font-family="${FONT}" font-size="32" font-weight="bold" fill="#9db0d0" text-anchor="middle">${escSvg(dateStr)}</text>
+  <text x="${W / 2}" y="352" font-family="${FONT}" font-size="130" font-weight="bold" fill="#ffffff" text-anchor="middle" letter-spacing="2">${escSvg(clock)}</text>
+  <rect x="40" y="${H - 34}" width="54" height="20" rx="10" fill="#334155"/>
+  <text x="67" y="${H - 20}" font-family="${FONT}" font-size="12" font-weight="bold" fill="#7dd3fc" text-anchor="middle">PHP</text>
+  <text x="${W - PAD_X}" y="${H - 14}" font-family="${FONT}" font-size="13" fill="#64748b" text-anchor="end">QQ机器人 · ${escSvg(bjTime())} · 北京时间（UTC+8）</text>
+</svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
