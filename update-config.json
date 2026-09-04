@@ -1,30 +1,30 @@
 {
   "ok": true,
-  "version": "4.2.63",
-  "patchUrl": "https://lzyzyzq.github.io/QQgfbot/qqbot-card-editor-patch-4.2.63.zip",
-  "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.63/qqbot-card-editor-4.2.63-full.zip",
+  "version": "4.2.64",
+  "patchUrl": "https://lzyzyzq.github.io/QQgfbot/qqbot-card-editor-patch-4.2.64.zip",
+  "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-4.2.64-full.zip",
   "mirrors": [
     {
       "name": "GitHub Release 直连",
-      "patchUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.63/qqbot-card-editor-patch-4.2.63.zip",
-      "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.63/qqbot-card-editor-4.2.63-full.zip"
+      "patchUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-patch-4.2.64.zip",
+      "fullUrl": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-4.2.64-full.zip"
     },
     {
       "name": "GitHub 加速(ghfast.top)",
-      "patchUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.63/qqbot-card-editor-patch-4.2.63.zip",
-      "fullUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.63/qqbot-card-editor-4.2.63-full.zip"
+      "patchUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-patch-4.2.64.zip",
+      "fullUrl": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-4.2.64-full.zip"
     },
     {
       "name": "GitHub 加速(ghproxy.net)",
-      "patchUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.63/qqbot-card-editor-patch-4.2.63.zip",
-      "fullUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.63/qqbot-card-editor-4.2.63-full.zip"
+      "patchUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-patch-4.2.64.zip",
+      "fullUrl": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-4.2.64-full.zip"
     },
     {
       "name": "8091 备用源",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.63.zip",
-      "fullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.63-full.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.64.zip",
+      "fullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.64-full.zip"
     }
   ],
-  "changeLog": "修复 定时任务·整点报时 图片卡片：去掉正文里与顶栏重复的「整点报时」标题，时间改为大号水平居中展示（HH:MM:SS + 日期·星期），作为卡片主视觉；图片渲染/发送失败自动回退文字播报",
+  "changeLog": "修复 GitHub绑定：兼容 QQ 在「绑定」词中间插入空格/零宽字符的拆分（如「GitHub绑 定 xxx」也能识别为绑定命令并给出结果）；无法识别的 github/gh/绑定 开头消息一律弹出使用帮助（此前帮助被主人权限拦截，普通成员仍会无回应）",
   "configUrl": ""
 }
