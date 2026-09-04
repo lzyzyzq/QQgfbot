@@ -689,6 +689,57 @@ router.get('/php-bridge/group-members', async (req: Request, res: Response) => {
   }
 });
 
+// 群成员权限：后台标注 role（group_members.role）+ 实时群主对照。
+// 供 PHP「终端命令/升级」授权使用：role IN (owner/admin/super) 或实时 owner_member_openid 匹配 → 可执行。
+// 群主实时查询带 60s 缓存，避免每次消息都打 QQ 群信息接口。
+const groupOwnerCache = new Map<string, { openid: string; at: number }>();
+function ownerCacheKey(botId: string, groupOpenid: string) {
+  return (botId || 'default') + '::' + groupOpenid;
+}
+router.get('/php-bridge/group-member-auth', async (req: Request, res: Response) => {
+  if (!isLocal(req)) { rejectNonLocal(res); return; }
+  const groupOpenid = String((req.query.group_openid as string) || '');
+  const memberOpenid = String((req.query.member_openid as string) || '');
+  if (!groupOpenid || !memberOpenid) { res.status(400).json({ ok: false, error: 'group_openid & member_openid required' }); return; }
+  try {
+    const botId = String((req.query.bot_id as string) || '');
+    const db = getDb();
+    let role = '';
+    try {
+      const row = db.prepare('SELECT role FROM group_members WHERE group_id = ? AND member_openid = ?').get(groupOpenid, memberOpenid) as any;
+      if (row && row.role) role = String(row.role);
+    } catch {}
+    const key = ownerCacheKey(botId, groupOpenid);
+    let ownerOpenid = '';
+    const cached = groupOwnerCache.get(key);
+    if (cached && Date.now() - cached.at < 60000) {
+      ownerOpenid = cached.openid;
+    } else {
+      try {
+        const bot = (botId && getBotInstance(botId)) || getBot();
+        const info = await bot.getGroupInfo(groupOpenid);
+        if (info && info.owner_member_openid) {
+          ownerOpenid = String(info.owner_member_openid);
+          groupOwnerCache.set(key, { openid: ownerOpenid, at: Date.now() });
+        }
+      } catch {}
+    }
+    const roleOk = role === 'owner' || role === 'admin' || role === 'super';
+    const realtimeOwner = ownerOpenid !== '' && ownerOpenid === memberOpenid;
+    res.json({
+      ok: true,
+      group_openid: groupOpenid,
+      member_openid: memberOpenid,
+      role,
+      role_ok: roleOk,
+      realtime_owner: realtimeOwner,
+      allowed: roleOk || realtimeOwner,
+    });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // 群详情：本地绑定信息（群名/群号），未绑定群号返回空
 router.get('/php-bridge/group-detail', (req: Request, res: Response) => {
   if (!isLocal(req)) { rejectNonLocal(res); return; }

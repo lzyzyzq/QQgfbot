@@ -563,6 +563,83 @@ function 是否超主($openid) {
 }
 function is_master($openid) { return 是否超主($openid); }
 
+// 群内授权查询：后台标注 role（group_members.role）+ 实时群主对照。
+// 返回 array('role','role_ok','realtime_owner','allowed')，查询失败返回 null。
+function 群内授权($groupOpenid, $memberOpenid) {
+  if ((string)$groupOpenid === '' || (string)$memberOpenid === '') return null;
+  $r = __php_bridge_get('group-member-auth', array(
+    'group_openid' => (string)$groupOpenid,
+    'member_openid' => (string)$memberOpenid,
+    'bot_id' => __php_bridge_bot_id(),
+  ));
+  return (is_array($r) && !empty($r['ok'])) ? $r : null;
+}
+function group_auth($g, $m) { return 群内授权($g, $m); }
+
+// 是否群管理（群主/群管理，后台标注 owner/admin/super 或实时群主）
+function 是否群管理($groupOpenid, $memberOpenid) {
+  $a = 群内授权($groupOpenid, $memberOpenid);
+  if ($a === null) return false;
+  return !empty($a['allowed']);
+}
+function is_group_admin($g, $m) { return 是否群管理($g, $m); }
+
+// 终端命令授权：超级主人 或 群主/群管理
+function 终端授权($groupOpenid, $memberOpenid) {
+  if (是否超主($memberOpenid)) return true;
+  return 是否群管理($groupOpenid, $memberOpenid);
+}
+function terminal_allowed($g, $m) { return 终端授权($g, $m); }
+
+// 执行终端命令：把整条命令交给 bash 执行（2>&1 合并输出），成功返回 array('code','lines')。
+// 安全说明：仅调用方已通过 终端授权() 校验时才允许执行；本函数不做白名单过滤（任意命令能力）。
+function 执行终端命令($cmd, $timeout = 55) {
+  if (!function_exists('exec')) return array('code' => -1, 'lines' => array('❌ 服务器未启用 PHP exec，无法执行终端命令。'));
+  $timeout = max(3, min(90, (int)$timeout));
+  $lines = array();
+  $code = 0;
+  $pre = "cd " . escapeshellarg(更新根目录()) . " 2>/dev/null; ";
+  @exec('timeout ' . $timeout . ' bash -c ' . escapeshellarg($pre . (string)$cmd) . ' 2>&1', $lines, $code);
+  return array('code' => (int)$code, 'lines' => $lines);
+}
+function exec_terminal($cmd, $timeout = 55) { return 执行终端命令($cmd, $timeout); }
+
+// 终端输出截断：完整输出优先；超长时截取 重点错误行 + 末尾 keepTail 行。
+// $maxChars 单条消息字符预算（含 at 与标题时外部自行留余）。
+// 返回 array('text','truncated')
+function 截断终端输出($lines, $maxChars = 3800, $keepTail = 30) {
+  $all = array();
+  foreach ((array)$lines as $l) $all[] = rtrim((string)$l, "\r");
+  while (count($all) > 0 && end($all) === '') array_pop($all);
+  $text = implode("\n", $all);
+  if ($text === '') return array('text' => '✅ 命令执行完成（无输出）', 'truncated' => false);
+  if (mb_strlen($text, 'UTF-8') <= $maxChars) return array('text' => $text, 'truncated' => false);
+  // 优先收集错误/警告行（含 error/❌/fail/denied/refused/Exception/错误/失败/找不到/无法）
+  $err = array();
+  foreach ($all as $l) {
+    if (preg_match('/error|❌|fail(ed)?|denied|refused|exception|错误|失败|找不到|无法|没有那个|No such|cannot|warning/i', $l)) $err[] = $l;
+  }
+  $head = array();
+  $budget = $maxChars;
+  $grab = function ($src, &$dst) use (&$budget) {
+    foreach ($src as $l) {
+      $add = mb_strlen($l, 'UTF-8') + 1;
+      if ($budget - $add < 40) break;
+      $dst[] = $l; $budget -= $add;
+    }
+  };
+  $head[] = '⚠️ 输出过长（' . count($all) . ' 行），已截取：';
+  $budget -= mb_strlen($head[0], 'UTF-8');
+  if (count($err) > 0) $grab($err, $head);
+  if ($budget > 200) {
+    $head[] = '…';
+    $budget -= 2;
+    $grab(array_slice($all, -1 * (int)$keepTail), $head);
+  }
+  return array('text' => implode("\n", $head), 'truncated' => true);
+}
+function truncate_terminal($lines, $maxChars = 3800, $keepTail = 30) { return 截断终端输出($lines, $maxChars, $keepTail); }
+
 // 下载文件：二进制下载到本地路径，成功返回 true。
 // $timeout 单次下载超时秒数（默认 30，避免长任务拖垮 PHP 插件进程预算 120s 导致"没回应"）。
 // $errRef 可传入变量名：下载失败时回填原因（curl 错误/HTTP 状态码/文件大小）
