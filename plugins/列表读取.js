@@ -6,7 +6,7 @@
 //   版本列表             → GitHub 全部 Release 版本列表（版本+日期+补丁/全量包名）
 //   插件列表             → 插件与文档包下载列表（releases.json plugins）
 //   广播列表             → GitHub 云端广播任务清单（broadcast/broadcast.json）
-// 数据源按顺序自动切换：GitHub Pages → raw.githubusercontent.com → AI 服务器 8091。
+// 数据源：AI 服务器 8091 唯一（GitHub 不再作机器人内容源，代码仓库仍照常同步）。
 // ============================================================
 module.exports = {
   manifest: {
@@ -43,13 +43,11 @@ module.exports = {
   onEnable: function(ctx) {
     var self = this;
 
-    var PAGES = 'https://lzyzyzq.github.io/QQgfbot';
-    var RAW = 'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main';
     var SI = 'https://8091-6f61dc7363389b7a.monkeycode-ai.online';
     var SRC = {
-      config: [PAGES + '/update-config.json', RAW + '/update-config.json', SI + '/update-config.json'],
-      releases: [PAGES + '/releases.json', RAW + '/releases.json', SI + '/releases.json'],
-      broadcast: [PAGES + '/broadcast/broadcast.json', RAW + '/broadcast/broadcast.json', SI + '/broadcast/broadcast.json']
+      config: [SI + '/update-config.json'],
+      releases: [SI + '/releases.json'],
+      broadcast: [SI + '/broadcast/broadcast.json']
     };
 
     async function fetchText(url, timeoutMs) {
@@ -89,7 +87,7 @@ module.exports = {
     // ========== 更新内容 ==========
     function updateContent(data) {
       return fetchFirstJson(SRC.config).then(function(res) {
-        if (!res || !res.json) { reply(data, '读取云端更新配置失败：GitHub Pages / raw / 8091 均不可用。'); return; }
+        if (!res || !res.json) { reply(data, '读取云端更新配置失败：8091 不可用。'); return; }
         var j = res.json;
         var lines = [];
         lines.push('最新版本：v' + (j.version || '未知') + ' ' + fmtSrc(res.source));
@@ -102,7 +100,7 @@ module.exports = {
     // ========== 版本列表 ==========
     function versionList(data) {
       return fetchFirstJson(SRC.releases).then(function(res) {
-        if (!res || !res.json) { reply(data, '读取版本列表失败：GitHub Pages / raw / 8091 均不可用。'); return; }
+        if (!res || !res.json) { reply(data, '读取版本列表失败：8091 不可用。'); return; }
         var j = res.json;
         var rels = Array.isArray(j.releases) ? j.releases : [];
         if (!rels.length) { reply(data, '版本列表为空（仓库暂无 Release）。'); return; }
@@ -116,7 +114,7 @@ module.exports = {
           var full = (r.full && r.full.main) ? r.full.main.split('/').pop() : '';
           lines.push((i + 1) + '. v' + r.version + mark + (r.date ? '（' + r.date + '）' : '') + '\n   补丁 ' + patch + '\n   全量 ' + full);
         }
-        lines.push('\n下载目录：https://github.com/lzyzyzq/QQgfbot/releases/download/<tag>/');
+        lines.push('\n下载目录：https://8091-6f61dc7363389b7a.monkeycode-ai.online/');
         reply(data, lines.join('\n'));
       }).catch(function(e) { reply(data, '读取失败：' + e.message); });
     }

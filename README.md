@@ -81,20 +81,17 @@ npm start          # node dist/server.js 运行
   cd /var/www/php && wget -O patch-4.2.60.zip <补丁URL> && unzip -o patch-4.2.60.zip && pm2 restart qqbot
   ```
 
-## 下载加速说明（GitHub Pages / 镜像 / AI 服务器自动择优）
+## 更新源说明（8091 唯一）
 
-服务器端拉取 `update-config.json`、补丁包、全量包前会先对各候选源 **HEAD 测速**，**哪边快先用哪边**，全部不可用再按序兜底切换：
+机器人运行时的**更新配置、补丁包、版本列表、系统广播**统一只从 AI 服务器 8091 拉取：
 
-1. **GitHub Pages 门户**：`https://lzyzyzq.github.io/QQgfbot/update-config.json`（全球 CDN，更新配置/插件直接由 Pages 提供）
-2. **GitHub Release 主源**：`https://github.com/lzyzyzq/QQgfbot/releases/download/<tag>/<zip>`
-3. **GitHub 加速镜像**（`update-config.json` 的 `mirrors` 中列出，可随时增删）：
-   - `https://ghfast.top/https://github.com/...`
-   - `https://ghproxy.net/https://github.com/...`
-4. **8091 备用源**（AI 开发服务器，与 Release 资产同文件）
+- 云端配置：`https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json`
+- 补丁包：同域名 `qqbot-card-editor-patch-<版本>.zip`
+- 版本列表 / 广播：`releases.json`、`broadcast/broadcast.json`（与 update-config 同域名）
 
-> 测速逻辑在 `src/admin/routes/system.ts`（`speedRank`/`headLatency`），对每个源超时 5 秒自动跳过；
-> 公共加速服务（ghfast/ghproxy 等）由第三方提供，域名可能变化或不可用；
-> 可在面板「更新配置远程地址」或 `update-config.json` 中自行维护可用镜像清单。
+GitHub（lzyzyzq.github.io/QQgfbot）仅作**代码仓库与 Release 发布**（人可浏览下载，内容第一时间自动同步），机器人不再从 GitHub 拉取更新。
+
+> 面板「更新配置远程地址」（configUrl）填上述 8091 域名即可；8091 映射工作区根目录，发布流程把最新包写入工作区即同步上线。
 
 ## 授权说明
 

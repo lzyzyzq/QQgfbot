@@ -36,12 +36,8 @@ const broadcastJobStore = new Map<string, any>();
 
 // ================= 服务端更新接收端（AI 发布包一键接收部署，与「更新系统」记录/重启串联） =================
 const updateRecDir = (): string => path.resolve(process.cwd(), 'data', 'database', '更新');
-// 云端更新配置（update-config.json）候选源：GitHub 主仓 raw 直连 → GitHub 加速镜像 → 8091 备用 → GitHub Pages 门户。
-// 顺序仅为「声明清单」，实际请求前会先 HEAD 测速自动按最快源重排（speedRank），失败仍按序兜底尝试。
+// 云端更新配置（update-config.json）唯一候选源：AI 服务器 8091（用户指定，GitHub 不再作机器人更新源；代码仓库仍照常同步）。
 const DEFAULT_AI_CONFIG_URLS = [
-  'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/update-config.json',
-  'https://lzyzyzq.github.io/QQgfbot/update-config.json',
-  'https://raw.gitmirror.com/lzyzyzq/QQgfbot/main/update-config.json',
   'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json',
 ];
 // 更新配置 JSON 候选地址（去重）：先本机配置 update.config_url（可逗号分隔多个），否则用默认清单
@@ -404,9 +400,9 @@ export function createSystemRoutes(
       footerText: getConfig('bot.footer_text') || '',
       footerAds: getConfig('bot.footer_ads') || '',
       qqLoginToken: getConfig('qqlogin.token') || '',
-      updateVersion: getConfig('update.version') || '4.2.59',
-      updatePatchUrl: getConfig('update.patch_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.59.zip',
-      updateFullUrl: getConfig('update.full_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.59-full.zip',
+      updateVersion: getConfig('update.version') || '4.2.65',
+      updatePatchUrl: getConfig('update.patch_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.65.zip',
+      updateFullUrl: getConfig('update.full_url') || '',
       updateChangeLog: getConfig('update.changelog') || '',
       updateConfigUrl: getConfig('update.config_url') || '',
     });

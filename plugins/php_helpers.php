@@ -475,7 +475,7 @@ if (!function_exists('更新配置')) {
 // 更新配置：版本/补丁URL/全量URL/更新内容。
 // 数据来源（多源自动回退）：
 //   1) 面板桥接配置（本机 db：update.* + update.config_url）
-//   2) 云端 update-config.json（候选：configUrl(可多个) → GitHub Pages(lzyzyzq.github.io/QQgfbot) → GitHub raw → raw.gitmirror 加速 → 8091 备用）
+//   2) 云端 update-config.json（唯一源：AI 服务器 8091，用户指定；GitHub 不再作机器人更新源，代码仓库仍照常同步）
 //      云端优先，拉取失败回退本机配置。
 // 返回额外带 patchUrls/fullUrls（主源 + 全部镜像，去重），供下载时主源失败自动切换。
 function 更新配置() {
@@ -497,9 +497,6 @@ function 更新配置() {
     foreach (preg_split('/[\s,]+/', $cfg['configUrl']) as $u) { $u = trim($u); if ($u !== '') $urls[] = $u; }
   }
   foreach (array(
-    'https://lzyzyzq.github.io/QQgfbot/update-config.json',
-    'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/update-config.json',
-    'https://raw.gitmirror.com/lzyzyzq/QQgfbot/main/update-config.json',
     'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json',
   ) as $u) $urls[] = $u;
 

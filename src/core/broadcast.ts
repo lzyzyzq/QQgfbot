@@ -64,12 +64,8 @@ export interface BroadcastCatalog {
   errors: string[];
 }
 
-// 云端广播目录候选源：GitHub 主仓 raw 直连 → 加速镜像 → 8091 备用
-// 与 update-config 的部署方式保持一致：任选一个可用即整仓读取。
+// 云端广播目录唯一候选源：AI 服务器 8091（用户指定；GitHub 不再作机器人内容源，代码仓库仍照常同步）
 export const BROADCAST_URLS: string[] = [
-  'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/broadcast/broadcast.json',
-  'https://raw.gitmirror.com/lzyzyzq/QQgfbot/main/broadcast/broadcast.json',
-  'https://ghfast.top/https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/broadcast/broadcast.json',
   'https://8091-6f61dc7363389b7a.monkeycode-ai.online/broadcast/broadcast.json',
 ];
 

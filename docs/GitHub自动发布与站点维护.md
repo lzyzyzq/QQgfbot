@@ -22,8 +22,7 @@
 
 改代码后服务器接收更新不再固定顺序，而是对候选源做 HEAD 测速、**哪边快先用哪边**，全部失败才按序兜底：
 
-- 拉取 `update-config.json`（检查更新）：**GitHub Pages**（lzyzyzq.github.io/QQgfbot）→ GitHub raw 直连 → gitmirror 镜像 → **AI 服务器 8091**
-- 下载补丁/全量包：主源(GitHub Release) → ghfast/ghproxy 加速镜像 → 8091 备用源 → 其中可用即测速排序
+- 拉取 `update-config.json`（检查更新）与补丁/全量包：唯一源 **AI 服务器 8091**（用户指定；GitHub 仅作代码仓库/Release 发布，机器人不从 GitHub 拉更新）
 - `update-config.json` 里 `mirrors` 可自行增删，服务器无需改代码
 
 实现位置：`src/admin/routes/system.ts` 的 `speedRank()` / `headLatency()`；仅改源码后需 `npm run build` 并重启服务生效（面板前端改动免编译）。
