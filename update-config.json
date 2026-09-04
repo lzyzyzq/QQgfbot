@@ -1,14 +1,14 @@
 {
   "ok": true,
-  "version": "4.2.65",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.65.zip",
+  "version": "4.2.66",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.66.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.65.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.66.zip"
     }
   ],
-  "changeLog": "机器人状态修复：①机器人名走 data/bots.json 注册表→面板配置→兜底「空空」三层解析，文本与图片状态卡统一显示，图片卡底部水印不再写死「QQ机器人」；②「所在群」与开机状态广播按归属机器人过滤（多机器人同库时只统计/推送本机所在群，不再串到其它机器人）。群内终端更新升级链路修复：支持一条命令内连续升级多个更新包（此前只认单条 wget/unzip 链，多包命令会被静默忽略导致\"半天没回应\"）；兼容命令内 # 注释与换行、QQ 插入的空格/零宽字符；每步下载/校验/解压均群内反馈，失败给出原因，全部完成才重启并回广播新版本确认成功。",
+  "changeLog": "【4.2.66 测试包】仅更新链路改动：机器人更新源统一为 AI 服务器 8091（update-config/补丁包/版本列表/系统广播均只从 8091 拉取），GitHub 不再作机器人更新源（代码仓库仍第一时间自动同步）。用于验证更新系统的插件在群内收到更新包提示并完成升级。",
   "configUrl": ""
 }
