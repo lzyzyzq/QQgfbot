@@ -23,6 +23,16 @@ if (!$in || !is_array($in)) { fwrite(STDERR, "无效输入\n"); exit(0); }
 
 $类型 = (string)($in['type'] ?? '');
 $消息 = trim((string)($in['content'] ?? ''));
+
+// 剥离消息开头对机器人的 @ 提及（QQ 按钮 inlinecmd / AT 产生的 "<@!openid> 更新补丁"），只保留命令本体，
+// 否则前缀匹配「更新补丁」会失败导致发了没回应。
+while (true) {
+  $去 = preg_replace('/^<@![0-9A-Fa-f]+>\s*/', '', $消息);
+  $去 = preg_replace('/^@\S+\s*/', '', $去);
+  if ($去 === $消息) break;
+  $消息 = trim($去);
+}
+
 $群 = (string)($in['groupId'] ?? '');
 $用户 = (string)($in['userId'] ?? '');
 
