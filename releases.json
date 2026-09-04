@@ -8,15 +8,49 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "4.2.63",
-    "changeLog": "修复 定时任务·整点报时 图片卡片：去掉正文里与顶栏重复的「整点报时」标题，时间改为大号水平居中展示（HH:MM:SS + 日期·星期），作为卡片主视觉；图片渲染/发送失败自动回退文字播报"
+    "version": "4.2.64",
+    "changeLog": "修复 GitHub绑定：兼容 QQ 在「绑定」词中间插入空格/零宽字符的拆分（如「GitHub绑 定 xxx」也能识别为绑定命令并给出结果）；无法识别的 github/gh/绑定 开头消息一律弹出使用帮助（此前帮助被主人权限拦截，普通成员仍会无回应）"
   },
   "releases": [
+    {
+      "version": "4.2.64",
+      "tag": "v4.2.64",
+      "date": "2026-09-04",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-patch-4.2.64.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-patch-4.2.64.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-patch-4.2.64.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.64.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-4.2.64.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-4.2.64.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.64/qqbot-card-editor-4.2.64.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.64.zip"
+      }
+    },
     {
       "version": "4.2.63",
       "tag": "v4.2.63",
       "date": "2026-09-04",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.63/qqbot-card-editor-patch-4.2.63.zip",
         "mirrors": [
