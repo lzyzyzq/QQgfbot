@@ -1,14 +1,14 @@
 {
   "ok": true,
-  "version": "4.2.66",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.66.zip",
+  "version": "4.2.67",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.67.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.66.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.67.zip"
     }
   ],
-  "changeLog": "【4.2.66 测试包】仅更新链路改动：机器人更新源统一为 AI 服务器 8091（update-config/补丁包/版本列表/系统广播均只从 8091 拉取），GitHub 不再作机器人更新源（代码仓库仍第一时间自动同步）。用于验证更新系统的插件在群内收到更新包提示并完成升级。",
+  "changeLog": "【4.2.67】群内「终端」命令功能：\n1) 发送「终端 <命令>」或「执行 <命令>」即可在服务器执行任意 shell 命令，输出完整回传发起群（超长自动截取重点错误 + 末尾 30 行）；\n2) 权限放宽：升级与终端命令由 仅超级主人 放开为 超级主人 / 群主 / 群管理员（群主实时识别，群管理员在后台成员管理标注 role=owner/admin）；\n3) 更新菜单在所有机器人所在群可用，更新完成后状态广播仍全群发送。",
   "configUrl": ""
 }
