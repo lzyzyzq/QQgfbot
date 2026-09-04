@@ -33,52 +33,79 @@ $at = "<@!" . $用户 . ">";
 
 // ========== 终端命令直接更新（与面板部署终端串联） ==========
 // 群里直接发送（仅超级主人，URL 为补丁/全量包下载地址）：
-//   cd /var/www/php && wget -O patch-4.2.59.zip <补丁URL> && unzip -o patch-4.2.59.zip && pm2 restart qqbot
-//   cd /var/www/php && wget -O full.zip <全量URL> && unzip -o full.zip && pm2 restart qqbot
-// 识别成功后自动执行：下载 → unzip -t 校验 → unzip -o 解压 → pm2 restart qqbot，全程群内反馈。
+//   cd /var/www/php && wget -O patch-4.2.64.zip <补丁URL> && unzip -o patch-4.2.64.zip && pm2 restart qqbot
+// 兼容增强：
+//   - 多条 wget/unzip 链以 && 连续（例如先升补丁再升下一补丁，最后统一重启）
+//   - 命令中可含 # 注释行与换行（QQ 复制多行命令也识别）
+//   - 兼容 QQ 在命令间插入的空格/零宽字符
+// 识别成功后逐包执行：下载 → unzip -t 校验 → unzip -o 解压，每步群内反馈，全部完成才 pm2 restart qqbot。
 $终端更新 = 解析终端更新命令($消息);
 if ($终端更新 !== null) {
   if (!是否超主($用户)) {
     文字($at . "\n「终端更新」仅超级主人可使用。如需升级请联系管理员。");
     exit(0);
   }
-  $zip = $终端更新['zip'];
-  $url = $终端更新['url'];
-  $kind = stripos($zip, 'patch') !== false ? '补丁包' : '全量包';
   $root = 更新根目录();
-  文字($at . "\n⏳ 已识别终端更新命令，正在下载" . $kind . "（" . $zip . "）…");
-  $zipPath = 更新数据目录() . '/' . $zip;
-  if (!下载文件($url, $zipPath)) {
-    文字($at . "\n❌ 下载失败，请检查下载地址是否可访问。");
-    exit(0);
-  }
-  if (!function_exists('exec')) {
-    文字($at . "\n❌ 服务器未启用 PHP exec，无法自动解压/重启。\n请手动执行：\ncd " . $root . " && unzip -o " . $zipPath . " && pm2 restart qqbot");
+  $steps = $终端更新['steps'];
+  $total = count($steps);
+  $cfgU = 更新配置();
+  $doneVer = '';
+  foreach ($steps as $i => $st) {
+    $n = $i + 1;
+    $zip = $st['zip']; $url = $st['url']; $kind = $st['kind'];
+    文字($at . "\n⏳ (" . $n . "/" . $total . ") 正在下载" . $kind . " " . $zip . " …");
+    $zipPath = 更新数据目录() . '/' . $zip;
+    // 候选源：优先用户给的地址，再依次回退云端镜像；单源超时 25s，累计不超过 2 个候选，防止拖垮 120s 预算
+    $cands = array_unique(array_merge(array($url), $kind === '补丁包' ? $cfgU['patchUrls'] : $cfgU['fullUrls']));
+    $dlErr = '';
+    $dlOK = false;
+    $tried = 0;
+    foreach ($cands as $cu) {
+      $tried++;
+      if (下载文件($cu, $zipPath, 25, $dlErr)) { $dlOK = true; break; }
+      if ($tried >= 2) break;
+    }
+    if (!$dlOK) {
+      文字($at . "\n❌ (" . $n . "/" . $total . ") 下载失败：" . $zip . ($dlErr !== '' ? "（" . $dlErr . "）" : '') . "\n请检查下载地址可访问后重新发送。");
+      exit(0);
+    }
+    if (!function_exists('exec')) {
+      文字($at . "\n❌ 服务器未启用 PHP exec，无法自动解压/重启。\n请手动执行：\ncd " . $root . " && unzip -o " . $zipPath . " && pm2 restart qqbot");
+      @unlink($zipPath);
+      exit(0);
+    }
+    exec('cd ' . escapeshellarg($root) . ' && unzip -t ' . escapeshellarg($zipPath) . ' 2>&1', $tOut, $tCode);
+    if ($tCode !== 0) {
+      文字($at . "\n❌ (" . $n . "/" . $total . ") 压缩包校验失败：" . $zip . "（服务器未安装 unzip 或文件损坏）。");
+      @unlink($zipPath);
+      exit(0);
+    }
+    exec('cd ' . escapeshellarg($root) . ' && unzip -o ' . escapeshellarg($zipPath) . ' 2>&1', $uOut, $uCode);
+    if ($uCode !== 0) {
+      文字($at . "\n❌ (" . $n . "/" . $total . ") 解压失败：" . $zip . "\n" . implode("\n", array_slice($uOut, 0, 4)));
+      @unlink($zipPath);
+      exit(0);
+    }
     @unlink($zipPath);
-    exit(0);
+    if (preg_match('/(\d+(?:\.\d+){1,3})/', $zip, $vm)) $doneVer = $vm[1];
+    更新记录('追加', array('type' => $kind, 'version' => $doneVer, 'time' => 当前时间(), 'content' => '群内终端命令更新：' . $zip));
+    文字($at . "\n✅ (" . $n . "/" . $total . ") " . $kind . " " . $zip . " 已解压完成" . ($total > 1 ? "（" . $n . "/" . $total . "）" : ''));
   }
-  exec('cd ' . escapeshellarg($root) . ' && unzip -t ' . escapeshellarg($zipPath) . ' 2>&1', $tOut, $tCode);
-  if ($tCode !== 0) {
-    文字($at . "\n❌ 压缩包校验失败（服务器未安装 unzip 或文件损坏）。");
-    @unlink($zipPath);
-    exit(0);
-  }
-  exec('cd ' . escapeshellarg($root) . ' && unzip -o ' . escapeshellarg($zipPath) . ' 2>&1', $uOut, $uCode);
-  if ($uCode !== 0) {
-    文字($at . "\n❌ 解压失败：\n" . implode("\n", array_slice($uOut, 0, 5)));
-    @unlink($zipPath);
-    exit(0);
-  }
-  @unlink($zipPath);
-  $ver = '';
-  if (preg_match('/(\d+(?:\.\d+){1,3})/', $zip, $vm)) $ver = $vm[1];
-  if ($ver !== '') {
-    记录当前版本($ver);
-    更新记录('追加', array('type' => $kind, 'version' => $ver, 'time' => 当前时间(), 'content' => '群内终端命令更新：' . $zip));
-  }
-  文字($at . "\n✅ 更新完成！已升级到 v" . ($ver !== '' ? $ver : $版本) . "（" . $kind . "）。\n\n3 秒后自动重启机器人…");
+  if ($doneVer !== '') 记录当前版本($doneVer);
+  $verTxt = '';
+  $vers = array();
+  foreach ($steps as $st) { if (preg_match('/(\d+(?:\.\d+){1,3})/', $st['zip'], $vm)) $vers[] = $vm[1]; }
+  $vers = array_values(array_unique($vers));
+  if (count($vers) > 0) $verTxt = "（" . implode(' → ', $vers) . "）";
+  文字($at . "\n🎉 更新完成！" . $total . " 个更新包已全部解压" . $verTxt . "，3 秒后自动重启机器人…\n重启后本群会收到新版本状态广播，即为升级成功。");
   Markdown("　" . 外显('返回更新', '返回更新') . '　' . 外显('返回菜单', '菜单'));
   延迟重启机器人(3);
+  exit(0);
+}
+
+// 终端更新识别失败：消息长得像终端命令但解析不通过时，给超主明确原因，避免"发了没回应"
+if ($终端更新 === null && 是否超主($用户) && 形似终端更新命令($消息)) {
+  文字($at . "\n⚠️ 未识别到可执行的终端更新命令。\n请核对后重发：\n1) 目录需为 " . 更新根目录() . "\n2) 需含 wget -O 包名.zip 下载地址（http/https）\n3) 需含 unzip 与 pm2 restart qqbot\n支持 # 注释、换行与多个更新包连续升级。\n也可直接发送「更新补丁」或「更新全量」使用内置按钮更新。");
   exit(0);
 }
 
@@ -248,20 +275,61 @@ if (前缀($消息, '删除更新记录')) {
 }
 
 // ========== 终端更新命令解析 ==========
-// 识别群内直接发送的更新命令：cd <更新根目录> && wget -O <zip> <url> && unzip -o <zip> && pm2 restart qqbot
-// 严格校验目录/文件名/进程名与 URL 协议，防止任意命令注入；不匹配返回 null 走常规指令流程。
+// 识别群内直接发送的更新命令（兼容多包连续 + # 注释/换行 + 零宽字符）：
+//   cd <更新根目录> && wget -O <zip> <url> && unzip -o <zip> [&& ... ] && pm2 restart qqbot
+// 只做白名单提取（目录/zip 名/URL/进程名逐一校验），从不直接执行消息原文，防止命令注入。
+// 无法识别返回 null 走「形似终端更新命令」提示分支。
+
+// 归一化：去掉 # 注释行与空行、零宽字符（QQ 分词可能插入），多空格/换行折叠为单个空格
+function 归一化终端文本($msg) {
+  $msg = (string)$msg;
+  $msg = preg_replace('/[\x{200b}\x{200c}\x{200d}\x{feff}\x{2060}]/u', '', $msg); // 零宽字符直接删除
+  $msg = preg_replace('/\x{a0}/u', ' ', $msg);                                       // 不间断空格 → 空格
+  $out = array();
+  foreach (preg_split('/\r?\n/u', $msg) as $l) {
+    $t = trim($l);
+    if ($t === '') continue;
+    if (preg_match('/^\s*#/', $t)) continue;      // 注释行
+    if (preg_match('#^\s*//#', $t)) continue;     // 注释行
+    $out[] = $t;
+  }
+  return preg_replace('/\s+/u', ' ', implode(' ', $out));
+}
+
 function 解析终端更新命令($msg) {
-  $msg = trim((string)$msg);
-  // 去掉引号（wget -O "patch.zip" "url" / 'patch.zip' 'url'）
-  $msg = preg_replace('/"([^"]+)"/', '$1', $msg);
-  $msg = preg_replace("/'([^']+)'/", '$1', $msg);
-  if (!preg_match('/^cd\s+(\S+)\s*&&\s*wget\s+(?:-O\s+)?(\S+)\s+(\S+)\s*&&\s*unzip\s+(?:-o\s+)?(\S+)\s*&&\s*pm2\s+restart\s+(\S+)$/i', $msg, $m)) return null;
-  $dir = $m[1]; $zip = $m[2]; $url = $m[3]; $unz = $m[4]; $proc = $m[5];
+  $msg = 归一化终端文本($msg);
+  if ($msg === '') return null;
   $root = 更新根目录();
-  if (rtrim($dir, '/') !== rtrim($root, '/')) return null;
-  if ($zip !== $unz) return null;
-  if ($proc !== 'qqbot') return null;
-  if (!preg_match('/^[\w.\-]+\.zip$/i', $zip)) return null;
-  if (!preg_match('/^https?:\/\//i', $url)) return null;
-  return array('zip' => $zip, 'url' => $url);
+  if (!preg_match('/^cd\s+(\S+)/iu', $msg, $m)) return null;
+  if (rtrim($m[1], '/') !== rtrim($root, '/')) return null;
+  if (!preg_match('/pm2\s+restart\s+qqbot/iu', $msg)) return null;
+  // 提取全部 wget -O <zip> <url>（兼容 -O 在前/在后、URL 加引号）
+  if (!preg_match_all('/wget(?:\s+-O\s*)?\s*["\']?([A-Za-z0-9._\-]+\.zip)["\']?\s+["\']?(https?:\/\/[^\s"\']+)["\']?/iu', $msg, $mm, PREG_SET_ORDER)) return null;
+  $steps = array();
+  $seen = array();
+  foreach ($mm as $g) {
+    $zip = $g[1];
+    $url = preg_replace('/["\']+$/u', '', trim($g[2]));
+    if ($url === '' || preg_match('/^https?:\/\//i', $url) !== 1) continue;
+    $k = $url . '#' . $zip;
+    if (isset($seen[$k])) continue;
+    $seen[$k] = true;
+    $steps[] = array(
+      'zip' => $zip,
+      'url' => $url,
+      'kind' => stripos($zip, 'patch') !== false ? '补丁包' : '全量包',
+    );
+  }
+  if (count($steps) === 0) return null;
+  return array('steps' => $steps);
+}
+
+// 形似终端更新命令：含 cd/wget/unzip/pm2 restart/.zip 等特征但未通过解析 → 用于给超主提示
+function 形似终端更新命令($msg) {
+  $msg = 归一化终端文本($msg);
+  if ($msg === '') return false;
+  if (preg_match('/cd\s+\S+/iu', $msg) && preg_match('/wget/iu', $msg) && preg_match('/\.zip/iu', $msg)) return true;
+  if (preg_match('/unzip/iu', $msg) && preg_match('/pm2\s+restart/iu', $msg)) return true;
+  if (preg_match('/wget/iu', $msg) && preg_match('/pm2\s+restart/iu', $msg)) return true;
+  return false;
 }

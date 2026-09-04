@@ -1914,7 +1914,7 @@ export class PluginEngine {
         } catch { return ''; }
       },
       getBotName: () => {
-        try { return getConfig('bot.name') || '空空爱追剧'; } catch { return '空空爱追剧'; }
+        try { return getConfig('bot.name') || '空空'; } catch { return '空空'; }
       },
       // 按机器人 AppID 查名称（data/bots.json registry，未登记回退 config bot.name）
       getBotNameById: (botId: string) => {
@@ -1928,7 +1928,7 @@ export class PluginEngine {
             }
           }
         } catch {}
-        return getConfig('bot.name') || '空空爱追剧';
+        return getConfig('bot.name') || '空空';
       },
       getGroupName: (groupOpenid: string) => {
         try {

@@ -116,6 +116,7 @@ module.exports = {
     lines.push('━━━━━━━━━━━━━━');
     if (s && s.version) lines.push('版本：' + s.version);
     if (s && s.uptimeText) lines.push('运行：' + s.uptimeText);
+    if (s && s.botName) lines.push('机器人：' + s.botName);
     if (s && s.groupCount !== undefined) lines.push('所在群：' + s.groupCount + ' 个');
     if (s && s.port) lines.push('端口：' + s.port);
     if (s && s.memory) lines.push('内存：' + s.memory);

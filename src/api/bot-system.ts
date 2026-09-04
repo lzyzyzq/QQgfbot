@@ -703,17 +703,89 @@ router.get('/php-bridge/group-detail', (req: Request, res: Response) => {
   }
 });
 
-// 群列表：机器人所在的所有群（本地记录，含群名/群号/人数/最后活跃）
+// 群列表：当前机器人所在的所有群（本地记录，按归属机器人过滤，含群名/群号/人数/最后活跃）
 router.get('/php-bridge/groups', (req: Request, res: Response) => {
   if (!isLocal(req)) { rejectNonLocal(res); return; }
   try {
-    const db = getDb();
-    const rows = db.prepare('SELECT id, name, group_number, avatar, member_count, last_active FROM groups ORDER BY last_active DESC').all() as any[];
-    res.json({ ok: true, groups: rows });
+    const reqBotId = String((req.query.bot_id as string) || '');
+    const rows = reqBotId ? botGroupRows(reqBotId) : botGroupRows();
+    res.json({ ok: true, bot_id: reqBotId || currentBotId(), groups: rows });
   } catch (e: any) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// ===== 机器人名称与所在群归属（多机器人同库按 bot_id 隔离） =====
+const BOT_DEFAULT_NAME = '空空';
+
+// 当前进程主机器人 AppID
+function currentBotId(): string {
+  try {
+    const b = getBot();
+    return (b && typeof (b as any).getBotId === 'function') ? String((b as any).getBotId()) : '';
+  } catch {
+    return '';
+  }
+}
+
+// data/bots.json 注册的机器人数量（无注册表返回 0）
+function botRegistryCount(): number {
+  try {
+    const file = path.resolve(process.cwd(), 'data', 'bots.json');
+    if (!fs.existsSync(file)) return 0;
+    const arr = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    return Array.isArray(arr) ? arr.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+// 机器人显示名：data/bots.json 注册表（按 AppID） → 配置 bot.name → 兜底默认名
+function resolveBotName(botId?: string): string {
+  const id = botId || currentBotId();
+  if (id) {
+    try {
+      const file = path.resolve(process.cwd(), 'data', 'bots.json');
+      if (fs.existsSync(file)) {
+        const bots = JSON.parse(fs.readFileSync(file, 'utf-8')) as any[];
+        if (Array.isArray(bots)) {
+          const hit = bots.find((b: any) => b && String(b.appId || b.app_id || '') === String(id));
+          if (hit && (hit.name || hit.appName)) return String(hit.name || hit.appName);
+        }
+      }
+    } catch {}
+  }
+  try {
+    return getConfig('bot.name') || BOT_DEFAULT_NAME;
+  } catch {
+    return BOT_DEFAULT_NAME;
+  }
+}
+
+// 当前机器人所在群（本地记录）：优先按 group_members.bot_id / groups.bot_id 归属过滤；
+// 无归属记录时，注册表仅一个机器人（或没有注册表）按全量兜底，多机器人则不下发其它机器人的群。
+function botGroupRows(botId?: string): any[] {
+  const db = getDb();
+  const baseCols = 'id, name, group_number, avatar, member_count, last_active';
+  const id = botId || currentBotId();
+  const all = db.prepare(`SELECT ${baseCols} FROM groups ORDER BY last_active DESC`).all() as any[];
+  if (!id || all.length === 0) return all;
+  let ids: string[] = [];
+  try {
+    const rows = db.prepare(
+      "SELECT gid FROM (SELECT group_id AS gid FROM group_members WHERE bot_id = ? AND group_id != '' UNION SELECT id AS gid FROM groups WHERE bot_id = ? AND id != '') WHERE gid != ''"
+    ).all(id, id) as any[];
+    ids = [...new Set(rows.map((r: any) => String(r.gid)))];
+  } catch {}
+  if (ids.length > 0) {
+    const ph = ids.map(() => '?').join(',');
+    try {
+      return db.prepare(`SELECT ${baseCols} FROM groups WHERE id IN (${ph}) ORDER BY last_active DESC`).all(...ids) as any[];
+    } catch {}
+    return all;
+  }
+  return botRegistryCount() <= 1 ? all : [];
+}
 
 // 渲染群活跃统计长图：接收 GroupStatsCardData，返回 PNG base64
 router.post('/php-bridge/render-stats-card', async (req: Request, res: Response) => {
@@ -804,8 +876,8 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
     let groupCount = 0;
     let pluginCount = 0;
     try {
-      const db = getDb();
-      groupCount = (db.prepare('SELECT COUNT(*) AS c FROM groups').get() as any)?.c || 0;
+      const botRows = botGroupRows();
+      groupCount = botRows.length;
     } catch {}
     try {
       const dir = path.resolve(process.cwd(), 'plugins');
@@ -819,7 +891,7 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
       }
     } catch {}
     const memMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
-    const botName = String(getConfig('bot.name') || 'QQ机器人');
+    const botName = resolveBotName();
     const port = process.env.PORT || String(getConfig('server.port') || '3000');
     const data = {
       ok: true,

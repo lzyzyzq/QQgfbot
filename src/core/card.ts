@@ -669,7 +669,7 @@ export async function renderBotStatusCard(data: BotStatusCardData): Promise<Buff
   <rect x="${PAD_X}" y="${rowsY0}" width="${W - 2 * PAD_X}" height="${rowsH}" rx="14" fill="#111c30"/>
   ${rowSvgs}
   ${errBlock}
-  <text x="${W - PAD_X}" y="${H - 14}" font-family="${FONT}" font-size="13" fill="#64748b" text-anchor="end">QQ机器人 · ${data.checkedAt || bjTime()}</text>
+  <text x="${W - PAD_X}" y="${H - 14}" font-family="${FONT}" font-size="13" fill="#64748b" text-anchor="end">${escSvg((data.botName || '空空'))} · ${data.checkedAt || bjTime()}</text>
   <rect x="40" y="${H - 32}" width="54" height="20" rx="10" fill="#334155"/>
   <text x="67" y="${H - 18}" font-family="${FONT}" font-size="12" font-weight="bold" fill="#7dd3fc" text-anchor="middle">PHP</text>
 </svg>`;

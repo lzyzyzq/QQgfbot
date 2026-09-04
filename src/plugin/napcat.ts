@@ -64,7 +64,7 @@ function selfQqNumber(): string {
 }
 
 function botName(): string {
-  return getConfig('bot.name') || 'QQ机器人';
+  return getConfig('bot.name') || '空空';
 }
 
 export interface NapcatHandleMessage {

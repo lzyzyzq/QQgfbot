@@ -565,28 +565,37 @@ function 是否超主($openid) {
 }
 function is_master($openid) { return 是否超主($openid); }
 
-// 下载文件：二进制下载到本地路径，成功返回 true
-function 下载文件($url, $dst) {
-  if ((string)$url === '' || !function_exists('curl_init')) return false;
+// 下载文件：二进制下载到本地路径，成功返回 true。
+// $timeout 单次下载超时秒数（默认 30，避免长任务拖垮 PHP 插件进程预算 120s 导致"没回应"）。
+// $errRef 可传入变量名：下载失败时回填原因（curl 错误/HTTP 状态码/文件大小）
+function 下载文件($url, $dst, $timeout = 30, &$errRef = null) {
+  $errRef = '';
+  if ((string)$url === '' || !function_exists('curl_init')) { $errRef = '当前环境无 curl 扩展'; return false; }
   $fp = @fopen((string)$dst, 'wb');
-  if (!$fp) return false;
+  if (!$fp) { $errRef = '无法写入本地文件目录'; return false; }
   $ch = curl_init((string)$url);
   curl_setopt_array($ch, array(
     CURLOPT_FILE => $fp,
-    CURLOPT_TIMEOUT => 120,
+    CURLOPT_TIMEOUT => max(5, min(60, (int)$timeout)),
+    CURLOPT_CONNECTTIMEOUT => 10,
     CURLOPT_FOLLOWLOCATION => true,
     CURLOPT_SSL_VERIFYPEER => false,
     CURLOPT_SSL_VERIFYHOST => false,
     CURLOPT_USERAGENT => 'qq-bot-php-plugin-updater',
   ));
   $ok = curl_exec($ch);
-  $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $cerr = curl_error($ch);
   curl_close($ch);
   fclose($fp);
-  if ($ok === false || $code >= 400 || @filesize((string)$dst) <= 0) { @unlink((string)$dst); return false; }
+  if ($ok === false || $code >= 400 || @filesize((string)$dst) <= 0) {
+    $errRef = $ok === false ? '网络错误：' . (string)$cerr : 'HTTP ' . $code;
+    @unlink((string)$dst);
+    return false;
+  }
   return true;
 }
-function download_file($url, $dst) { return 下载文件($url, $dst); }
+function download_file($url, $dst, $timeout = 30, &$errRef = null) { return 下载文件($url, $dst, $timeout, $errRef); }
 
 // 版本号比较：a>b 返回 1，a==b 返回 0，a<b 返回 -1（按数字分段比较，忽略非数字字符）
 function 版本比较($a, $b) {
