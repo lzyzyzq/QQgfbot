@@ -1,12 +1,15 @@
-// 重启控制 v1.1.0 - 超级主人群内「重启机器人/重启服务器」10 秒倒计时后本机 pm2 重启；
+// 重启控制 v1.2.0 - 超级主人群内「重启机器人/重启服务器」10 秒倒计时后本机 pm2 重启；
 // 启动后（onEnable）自动向机器人所在全部群广播运行状态：重启路径会显示「重启完成 · 用时 X 秒」，
 // 广播含就绪重试（HTTP/WS 未就绪时自动等待重发），不再静默丢失。
 // @ts-nocheck
+// 状态/重启广播底部的外显文字指令菜单（点击即触发，可自定义文字与指令）
+var MENU_LABEL = '测试菜单';
+var MENU_CMD = '测试菜单';
 module.exports = {
   manifest: {
     id: 'mod-restart-ctl',
     name: '重启控制',
-    version: '1.1.0',
+    version: '1.2.0',
     description: '超主重启机器人/服务器（10秒倒计时），重启完成自动向全部群广播「用时X秒」状态',
     author: '511742399'
   },
@@ -14,7 +17,7 @@ module.exports = {
   async init() {},
 
   onEnable: function(ctx) {
-    ctx.logger.info('重启控制 v1.1.0 已加载');
+    ctx.logger.info('重启控制 v1.2.0 已加载');
     var self = this;
     // 事件自监听：消息直接进入 handleCommand（标准 JS 插件消息入口）
     var h = function(data) { self.handleCommand(ctx, data).catch(function() {}); };
@@ -162,15 +165,28 @@ module.exports = {
       lines.push('🤖 机器人状态');
     }
     lines.push('━━━━━━━━━━━━━━');
-    if (s && s.version) lines.push('版本：' + s.version);
-    if (s && s.uptimeText) lines.push('运行：' + s.uptimeText);
-    if (s && s.botName) lines.push('机器人：' + s.botName);
+    if (s && s.botName) lines.push('📌 机器人：' + s.botName + (s.botId ? '（' + s.botId + '）' : ''));
+    if (s && s.status) lines.push('状态：' + s.status);
+    if (s && s.serverUptimeText) lines.push('🖥 服务器：正常 · 已运行 ' + s.serverUptimeText);
+    if (s && s.memTotalMb !== undefined) {
+      lines.push('🧠 内存：已用 ' + self.fmtMem(s.memUsedMb) + ' / ' + self.fmtMem(s.memTotalMb) + '（' + s.memPct + '%）');
+    }
+    if (s && s.pluginCount !== undefined) lines.push('🔌 插件：' + s.pluginCount + ' 个');
+    if (s && s.version) lines.push('📦 平台：v' + s.version);
     if (s && s.groupCount !== undefined) lines.push('所在群：' + s.groupCount + ' 个');
+    if (s && s.uptimeText) lines.push('⏱ 本次运行：' + s.uptimeText);
     if (s && s.port) lines.push('端口：' + s.port);
-    if (s && s.memory) lines.push('内存：' + s.memory);
     lines.push('━━━━━━━━━━━━━━');
+    // 外显文字指令菜单：点击直接触发「测试菜单」（enter=false 不自动发送，reply=false 不引用）
+    lines.push('📌 菜单：[' + MENU_LABEL + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(MENU_CMD) + '&enter=false&reply=false)');
     lines.push(restartTxt ? '服务已重启就绪，开始正常工作' : '服务已就绪');
     return lines.join('\n');
+  },
+
+  fmtMem: function(mb) {
+    mb = Number(mb) || 0;
+    if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
+    return mb + ' MB';
   },
 
   doRestart: async function(ctx, groupId, msgId) {

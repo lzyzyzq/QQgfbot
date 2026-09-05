@@ -328,11 +328,31 @@ export function createSystemRoutes(
     if (botId) {
       botIds = [botId];
     } else if (user && user.role !== 'super_master' && botRegistry) {
-      botIds = botRegistry.list(user.username).map((b: any) => b.id);
+      // 运行记录日志按 appId 存储（BotCore.getBotId），这里需把名下机器人的 id 与 appId 都纳入，否则过滤会漏掉记录
+      const owned: string[] = [];
+      for (const b of botRegistry.list(user.username)) {
+        owned.push(b.id);
+        if (b.appId) owned.push(b.appId);
+      }
+      botIds = [...new Set(owned)];
     }
     const logs = querySystemLogs(limit, category, level, botIds);
     const total = querySystemLogsCount(category, level, botIds);
-    res.json({ logs, total, filtered: !!botIds });
+    // 每条记录标注来源机器人：按 appId 或注册 id 反查名称，便于区分是哪台机器人发出的错误
+    let botNameMap = new Map<string, string>();
+    try {
+      for (const b of botRegistry ? botRegistry.list() : []) {
+        if (b.name) {
+          if (b.id && !botNameMap.has(b.id)) botNameMap.set(b.id, String(b.name));
+          if (b.appId && !botNameMap.has(String(b.appId))) botNameMap.set(String(b.appId), String(b.name));
+        }
+      }
+    } catch {}
+    const enriched = (logs as any[]).map((l) => ({
+      ...l,
+      bot_name: l.bot_id ? (botNameMap.get(String(l.bot_id)) || '') : '',
+    }));
+    res.json({ logs: enriched, total, filtered: !!botIds });
   });
 
   // 删除运行记录：body {ids:[...]} 批量删除；?all=1 或 body {all:true} 清空全部

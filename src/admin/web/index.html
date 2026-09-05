@@ -771,11 +771,12 @@ input[type="file"]{color:var(--text2)}
       <option value="">全部级别</option><option value="info">信息</option><option value="warn">警告</option><option value="error">错误</option>
     </select>
     <span style="flex:1"></span>
+    <button class="btn btn-outline btn-sm" onclick="copySelectedRunLogs()" id="runLogCopyBtn" style="display:none">复制所选</button>
     <button class="btn btn-warn btn-sm" onclick="deleteSelectedRunLogs()" id="runLogDelBtn" style="display:none">删除所选</button>
     <button class="btn btn-danger btn-sm" onclick="clearRunLogs()" id="runLogClearBtn" style="display:none">清空记录</button>
     <span id="runLogTotal" style="font-size:12px;color:var(--text2)"></span>
   </div>
-  <div class="table-wrap"><table><thead><tr><th style="width:32px"><input type="checkbox" id="runLogCheckAll" title="全选" onchange="toggleRunLogCheckAll(this)"></th><th style="width:70px">级别</th><th style="width:70px">类别</th><th>内容（完整）</th><th>用户/群（完整）</th><th style="width:150px">时间</th></tr></thead><tbody id="runLogBody"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th style="width:32px"><input type="checkbox" id="runLogCheckAll" title="全选" onchange="toggleRunLogCheckAll(this)"></th><th style="width:70px">级别</th><th style="width:70px">类别</th><th style="width:120px">机器人</th><th>内容（完整）</th><th>用户/群（完整）</th><th style="width:150px">时间</th></tr></thead><tbody id="runLogBody"></tbody></table></div>
 </div>
 
 <div class="page" id="page-authcodes">
@@ -3447,14 +3448,16 @@ async function loadRunLogs(){
     const data=await api(url);
     const colors={info:'var(--focus)',warn:'var(--warn)',error:'var(--danger)'};
     docById('runLogTotal').textContent='共 '+data.total+' 条记录'+(data.total>500?'（仅显示最近 500 条）':'')+(data.filtered?'（仅显示你名下机器人的记录）':'');
+    window._runLogRows=data.logs||[];
     docById('runLogBody').innerHTML=(data.logs||[]).map(l=>
       '<tr><td><input type="checkbox" class="runlog-check" value="'+l.id+'" onchange="updateRunLogDelBtn()"></td>'+
       '<td><span style="color:'+(colors[l.level]||'')+'">'+esc(l.level)+'</span></td>'+
       '<td>'+esc(l.category)+'</td>'+
+      '<td style="font-size:12px">'+renderRunLogBot(l)+'</td>'+
       '<td style="word-break:break-all">'+esc(l.message)+(l.detail?'<br><span style="color:var(--text2);font-size:12px;word-break:break-all">'+esc(l.detail)+'</span>':'')+'</td>'+
       '<td style="font-size:12px;word-break:break-all;color:var(--text2)">'+renderRunLogUser(l)+'</td>'+
       '<td style="font-size:12px">'+new Date(l.created_at+'Z').toLocaleString()+'</td></tr>'
-    ).join('')||'<tr><td colspan="6" style="color:var(--text2);text-align:center">暂无记录</td></tr>';
+    ).join('')||'<tr><td colspan="7" style="color:var(--text2);text-align:center">暂无记录</td></tr>';
     docById('runLogCheckAll').checked=false;
     const canDel=currentUser&&currentUser.role==='super_master';
     docById('runLogClearBtn').style.display=canDel?'':'none';
@@ -3467,8 +3470,32 @@ function renderRunLogUser(l){
   if(l.group_id)parts.push('群: '+esc(l.group_id));
   return parts.join('<br>')||'<span style="color:var(--text2)">-</span>';
 }
+function renderRunLogBot(l){
+  if(!l.bot_id&&!l.bot_name)return '<span style="color:var(--text2)">-</span>';
+  const nm=esc(l.bot_name||'未命名');
+  if(l.bot_name)return nm;
+  return '<span style="color:var(--focus)">'+nm+'</span><br><span style="color:var(--text2);font-size:10px;word-break:break-all">'+esc(l.bot_id)+'</span>';
+}
 function toggleRunLogCheckAll(cb){document.querySelectorAll('.runlog-check').forEach(x=>x.checked=cb.checked);updateRunLogDelBtn()}
-function updateRunLogDelBtn(){const n=document.querySelectorAll('.runlog-check:checked').length;const btn=docById('runLogDelBtn');if(btn)btn.textContent=n?('删除所选('+n+')'):'删除所选'}
+function updateRunLogDelBtn(){const n=document.querySelectorAll('.runlog-check:checked').length;const btn=docById('runLogDelBtn');if(btn)btn.textContent=n?('删除所选('+n+')'):'删除所选';const cb=docById('runLogCopyBtn');if(cb)cb.style.display=n?'':'none'}
+function copySelectedRunLogs(){
+  const byId={};(window._runLogRows||[]).forEach(r=>{byId[r.id]=r});
+  const sel=[...document.querySelectorAll('.runlog-check:checked')].map(x=>parseInt(x.value));
+  if(!sel.length){alert('请先勾选要复制的运行记录');return}
+  const parts=sel.map(id=>{
+    const l=byId[id];if(!l)return'';
+    const ts=new Date(l.created_at+'Z').toLocaleString();
+    const who=[l.bot_name?('机器人:'+l.bot_name):'',(!l.bot_name&&l.bot_id)?('机器人:'+l.bot_id):'',l.user_id?('用户:'+l.user_id):'',l.group_id?('群:'+l.group_id):''].filter(Boolean).join(' ');
+    return '['+ts+'] ['+(l.level||'info').toUpperCase()+'] ['+(l.category||'')+'] '+(who?('['+who+'] '):'')+(l.message||'')+(l.detail?('\n  详情: '+l.detail):'');
+  }).filter(Boolean);
+  const txt=parts.join('\n\n');
+  if(!txt){alert('没有可复制的内容');return}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>{alert('已复制 '+parts.length+' 条运行记录')}).catch(()=>{alert('复制失败，请手动选择复制')});
+  }else{
+    const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}document.body.removeChild(ta);alert(ok?('已复制 '+parts.length+' 条运行记录'):'复制失败，请手动选择复制');
+  }
+}
 async function deleteSelectedRunLogs(){
   const ids=[...document.querySelectorAll('.runlog-check:checked')].map(x=>parseInt(x.value));
   if(!ids.length){alert('请先勾选要删除的运行记录');return}

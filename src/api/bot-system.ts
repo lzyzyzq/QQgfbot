@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { getDb, getConfig, setConfig } from '../db/index';
 import { createLogger } from '../utils/logger';
 import { getBot, getBotInstance } from '../core/bot';
@@ -949,7 +950,22 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
         pluginCount = names.size;
       }
     } catch {}
+    // 插件数优先取引擎实际加载数（只统计 JS/PHP/PY 真插件），避免把资源文件算进去
+    try {
+      const loaded = getPluginEngine().getLoadedVersions().length;
+      if (loaded > 0) pluginCount = loaded;
+    } catch {}
     const memMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    const osMemTotalMb = Math.round(os.totalmem() / 1024 / 1024);
+    const osMemFreeMb = Math.round(os.freemem() / 1024 / 1024);
+    const osMemUsedMb = Math.max(0, osMemTotalMb - osMemFreeMb);
+    const osMemPct = osMemTotalMb > 0 ? Math.round((osMemUsedMb / osMemTotalMb) * 100) : 0;
+    const osUpSecs = Math.floor(os.uptime());
+    const serverUpText =
+      (Math.floor(osUpSecs / 86400) > 0 ? Math.floor(osUpSecs / 86400) + '天' : '') +
+      (Math.floor((osUpSecs % 86400) / 3600) > 0 ? Math.floor((osUpSecs % 86400) / 3600) + '小时' : '') +
+      (Math.floor((osUpSecs % 3600) / 60) > 0 ? Math.floor((osUpSecs % 3600) / 60) + '分' : '') +
+      (osUpSecs % 60) + '秒';
     const botName = resolveBotName();
     const port = process.env.PORT || String(getConfig('server.port') || '3000');
     const data = {
@@ -964,6 +980,12 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
       pluginCount: String(pluginCount),
       groupCount: String(groupCount),
       botName,
+      botId: (() => { try { return getBot() && typeof (getBot() as any).getBotId === 'function' ? String((getBot() as any).getBotId()) : currentBotId(); } catch { return currentBotId(); } })(),
+      serverUptimeText: serverUpText,
+      memTotalMb: osMemTotalMb,
+      memFreeMb: osMemFreeMb,
+      memUsedMb: osMemUsedMb,
+      memPct: osMemPct,
       checkedAt: new Date(Date.now() + 8 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19),
     };
     const buf = await renderBotStatusCard(data);
