@@ -1,10 +1,10 @@
-// 系统工具 v1.0.0 - 在线时间/版本/更新日志/查巡（数据读取网页后端）
+// 系统工具 v1.1.0 - 在线时间/版本/更新日志/查巡（数据读取网页后端）
 module.exports = {
   manifest: {
     id: 'mod-sys-tools',
     name: '系统工具',
-    version: '1.0.0',
-    description: '在线时间、版本号、更新日志、查巡',
+    version: '1.1.0',
+    description: '在线时间、版本号、更新日志、查巡（版本卡动态读取实际插件版本）',
     author: '511742399'
   },
 
@@ -120,17 +120,27 @@ module.exports = {
           } else {
             versionMsg += '平台：QQ Bot Platform v4.0.0\n';
           }
-          versionMsg += '━━━━━━━━━━━━━━\n插件版本：\n' +
-            '• 开关机控制 v4.0.0\n' +
-            '• 主菜单 v4.0.0\n' +
-            '• 娱乐中心 v3.0.0\n' +
-            '• 实用工具 v1.0.0\n' +
-            '• 授权系统 v1.0.0\n' +
-            '• 系统工具 v1.0.0\n' +
-            '• 系统设置 v1.0.0\n' +
-            '• DIC管理 v1.0.0\n' +
-            '• 群管理工具 v3.0.0\n' +
-            '\n🤖 机器人QQ:4010208623';
+          // 插件版本优先读接口动态清单（与插件文件同步），接口缺失时才回退静态兜底
+          var versionMap = {};
+          var hasDynamic = false;
+          if (info && Array.isArray(info.plugins) && info.plugins.length > 0) {
+            hasDynamic = true;
+            for (var pi = 0; pi < info.plugins.length; pi++) {
+              if (info.plugins[pi] && info.plugins[pi].name) versionMap[info.plugins[pi].name] = info.plugins[pi].version;
+            }
+          }
+          var names = ['开关机控制', '主菜单', '娱乐中心', '实用工具', '授权系统', '系统工具', '系统设置', 'DIC管理', '群管理工具'];
+          var fallback = {
+            '开关机控制': '4.0.0', '主菜单': '4.0.0', '娱乐中心': '3.0.0', '实用工具': '1.2.1',
+            '授权系统': '1.0.0', '系统工具': '1.1.0', '系统设置': '1.0.0', 'DIC管理': '1.0.0', '群管理工具': '3.0.0'
+          };
+          versionMsg += '━━━━━━━━━━━━━━\n插件版本：\n';
+          for (var ni = 0; ni < names.length; ni++) {
+            var nm = names[ni];
+            var ver = hasDynamic ? (versionMap[nm] || '—') : (fallback[nm] || '—');
+            versionMsg += '• ' + nm + ' v' + ver + '\n';
+          }
+          versionMsg += '\n🤖 机器人QQ:4010208623';
           await sendReply(versionMsg, [backRow()]);
           return;
         }
@@ -217,6 +227,6 @@ module.exports = {
   },
 
   onEnable: function(ctx) {
-    ctx.logger.info('系统工具 v1.0.0 已加载');
+    ctx.logger.info('系统工具 v1.1.0 已加载');
   }
 };

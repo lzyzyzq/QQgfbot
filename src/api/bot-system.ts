@@ -17,6 +17,7 @@ import {
   deleteScheduleTask,
   toggleScheduleTask,
 } from '../shared/bot-controls';
+import { getPluginEngine } from './index';
 
 // 机器人插件专用系统信息接口（仅允许本机调用）
 // 机器人端"版本/更新日志/运行时间"通过该接口与网页后端共享同一数据源
@@ -587,11 +588,18 @@ router.get('/version', (_req: Request, res: Response) => {
     const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'external', 'NapCatQQ', 'package.json'), 'utf-8'));
     frameworkVersion = pkg.version || '';
   } catch {}
+  // 插件版本：读实际加载插件 manifest（与插件文件同步，随更新自动准确，避免手工清单过时）
+  let plugins: Array<{ name: string; version: string }> = [];
+  try {
+    const list = getPluginEngine().getLoadedVersions();
+    plugins = list.map((p) => ({ name: p.name, version: p.version }));
+  } catch {}
   res.json({
     platform: 'QQ Bot Platform',
     version,
     framework: { name: 'NapCatQQ', version: frameworkVersion },
     node: process.version,
+    plugins,
   });
 });
 

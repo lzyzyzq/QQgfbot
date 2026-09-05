@@ -187,6 +187,22 @@ export class PluginEngine {
     return this.pluginsDir;
   }
 
+  /** 已加载插件清单：名称 + 真实版本（来源为各插件 manifest，随插件文件更新而准确变化） */
+  getLoadedVersions(): Array<{ id: string; name: string; version: string }> {
+    const out: Array<{ id: string; name: string; version: string }> = [];
+    try {
+      for (const [id, entry] of this.plugins) {
+        try {
+          const m = entry && entry.plugin && (entry.plugin as any).manifest;
+          if (!m || !m.name) continue;
+          out.push({ id, name: String(m.name), version: String(m.version || '1.0.0') });
+        } catch { /* 单个插件异常不影响整体 */ }
+      }
+    } catch { /* 忽略 */ }
+    out.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    return out;
+  }
+
   list(): PluginInfo[] {
     try {
       const db = getDb();

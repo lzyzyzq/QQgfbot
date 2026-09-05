@@ -127,6 +127,11 @@ function resolveServerPort(): number {
 // ===== 真实服务器重启 =====
 // 通过 spawn 拉起新进程（reusePort 双进程短暂共存），新进程就绪后写标记文件，旧进程读到后退出
 const RESTART_MARKER = path.join(process.cwd(), '.restart-ready');
+// 重启时间戳标记：面板/群命令重启前写入，重启完成后由「重启控制」插件读它算出「用时 X 秒」广播到群
+const REBOOT_TS_FILE = path.join(process.cwd(), '.reboot-ts');
+function markRebootTs(): void {
+  try { fs.writeFileSync(REBOOT_TS_FILE, String(Date.now()), 'utf-8'); } catch {}
+}
 // 单实例锁：防止误启多个 server 实例共享端口导致 token 鉴权错乱
 const INSTANCE_LOCK = path.join(process.cwd(), '.server.pid');
 
@@ -164,6 +169,7 @@ function localRestart(): Promise<{ ok: boolean; out: string; err: string }> {
     const cwd = '/var/www/php';
     let child: ReturnType<typeof spawn>;
     try {
+      markRebootTs();
       child = spawn('sh', ['-c', 'cd /var/www/php && pm2 restart qqbot'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (e: any) {
       serverLogger.error(`Local restart spawn failed: ${e && e.message ? e.message : e}`);
@@ -204,6 +210,7 @@ function autoEnsurePanelHost(req: any): void {
 }
 
 function realRestart(): void {
+  markRebootTs();
   try { fs.unlinkSync(RESTART_MARKER); } catch {}
   const entry = path.join(process.cwd(), 'dist', 'server.js');
   let child: ReturnType<typeof spawn> | null = null;

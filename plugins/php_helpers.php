@@ -701,6 +701,8 @@ function update_root() { return 更新根目录(); }
 function 延迟重启机器人($秒 = 3) {
   if (!function_exists('exec')) return false;
   $root = 更新根目录();
+  // 记录重启时间戳：重启完成后「重启控制」插件据此广播「重启完成 · 用时 X 秒」
+  @file_put_contents($root . '/.reboot-ts', (string)round(microtime(true) * 1000));
   $cmd = "nohup bash -c 'sleep " . (int)$秒 . "; cd " . escapeshellarg($root) . " && pm2 restart qqbot' >/dev/null 2>&1 &";
   @exec($cmd);
   return true;

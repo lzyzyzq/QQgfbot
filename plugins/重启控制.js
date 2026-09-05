@@ -1,19 +1,20 @@
-// 重启控制 v1.0.0 - 超级主人群内「重启机器人/重启服务器」10 秒倒计时后本机 pm2 重启；
-// 启动后（onEnable）自动向机器人所在全部群广播运行状态（文字 + 状态图）；重启命令失败渲染错误图。
+// 重启控制 v1.1.0 - 超级主人群内「重启机器人/重启服务器」10 秒倒计时后本机 pm2 重启；
+// 启动后（onEnable）自动向机器人所在全部群广播运行状态：重启路径会显示「重启完成 · 用时 X 秒」，
+// 广播含就绪重试（HTTP/WS 未就绪时自动等待重发），不再静默丢失。
 // @ts-nocheck
 module.exports = {
   manifest: {
     id: 'mod-restart-ctl',
     name: '重启控制',
-    version: '1.0.0',
-    description: '超主重启机器人/服务器（10秒倒计时），启动后自动向全部群广播运行状态',
+    version: '1.1.0',
+    description: '超主重启机器人/服务器（10秒倒计时），重启完成自动向全部群广播「用时X秒」状态',
     author: '511742399'
   },
 
   async init() {},
 
   onEnable: function(ctx) {
-    ctx.logger.info('重启控制 v1.0.0 已加载');
+    ctx.logger.info('重启控制 v1.1.0 已加载');
     var self = this;
     // 事件自监听：消息直接进入 handleCommand（标准 JS 插件消息入口）
     var h = function(data) { self.handleCommand(ctx, data).catch(function() {}); };
@@ -92,27 +93,74 @@ module.exports = {
   },
 
   broadcastStatus: async function(ctx) {
+    var self = this;
+    var fs = require('fs');
+    var path = require('path');
+    // 读取重启时间戳：群命令/面板/服务端重启前写入 .reboot-ts，用于计算「重启用时 X 秒」
+    var markerFile = path.join(process.cwd(), '.reboot-ts');
+    var rebootMs = 0;
     try {
-      var groups = await this.getAllGroups();
-      var list = (groups && groups.groups) || [];
-      if (list.length === 0) return;
-      var st = await this.getStatus();
-      var s = st && st.status ? st.status : null;
-      var text = this.statusText(s);
-      for (var i = 0; i < list.length; i++) {
-        var gid = list[i].id;
-        if (!gid) continue;
-        try {
-          await ctx.bot.sendGroupMessage(gid, text);
-          if (st && st.base64) await this.sendImage(ctx, gid, st.base64, 'bot_status.png');
-        } catch (e) {}
-        await new Promise(function(r) { setTimeout(r, 1200); });
+      if (fs.existsSync(markerFile)) rebootMs = parseInt(String(fs.readFileSync(markerFile, 'utf-8')).trim(), 10) || 0;
+    } catch (e) {}
+    var restartTxt = '';
+    if (rebootMs > 0) {
+      var secs = Math.max(0, Math.round((Date.now() - rebootMs) / 1000));
+      restartTxt = '✅ 重启完成 · 用时 ' + self.fmtSec(secs) + ' · 服务已就绪';
+    }
+    var sentAny = false;
+    try {
+      for (var attempt = 0; attempt < 8; attempt++) {
+        if (attempt > 0) await self.sleep(5000);
+        // HTTP 服务未就绪时接口返回 null，等待重试
+        var st = null;
+        var groups = null;
+        try { st = await self.getStatus(); } catch (e) {}
+        try { groups = await self.getAllGroups(); } catch (e) {}
+        if (!st) continue;
+        var list = (groups && groups.groups) || [];
+        var s = st.status ? st.status : null;
+        var text = self.statusText(s, restartTxt);
+        for (var i = 0; i < list.length; i++) {
+          var gid = list[i] && (list[i].id || list[i].groupId || list[i].groupOpenid);
+          if (!gid) continue;
+          try {
+            await ctx.bot.sendGroupMessage(gid, text);
+            sentAny = true;
+          } catch (e) {}
+          if (st.base64) {
+            try { await self.sendImage(ctx, gid, st.base64, 'bot_status.png'); } catch (e) {}
+          }
+          await self.sleep(900);
+        }
+        // 已发出至少一条、或本就没有群、或重试足够多次则结束；WS 未就绪时继续等重发
+        if (sentAny || list.length === 0 || attempt >= 5) break;
       }
     } catch (e) {}
+    // 消费掉重启标记，避免下次普通启动误报「重启完成」
+    if (rebootMs > 0) {
+      try { if (fs.existsSync(markerFile)) fs.unlinkSync(markerFile); } catch (e) {}
+    }
   },
 
-  statusText: function(s) {
-    var lines = ['🤖 机器人状态'];
+  sleep: function(ms) {
+    return new Promise(function(r) { setTimeout(r, ms); });
+  },
+
+  fmtSec: function(n) {
+    n = Math.max(0, Math.floor(n));
+    if (n < 60) return n + '秒';
+    var m = Math.floor(n / 60);
+    var s = n % 60;
+    return m + '分' + (s > 0 ? s + '秒' : '');
+  },
+
+  statusText: function(s, restartTxt) {
+    var lines = [];
+    if (restartTxt) {
+      lines.push(restartTxt);
+    } else {
+      lines.push('🤖 机器人状态');
+    }
     lines.push('━━━━━━━━━━━━━━');
     if (s && s.version) lines.push('版本：' + s.version);
     if (s && s.uptimeText) lines.push('运行：' + s.uptimeText);
@@ -121,7 +169,7 @@ module.exports = {
     if (s && s.port) lines.push('端口：' + s.port);
     if (s && s.memory) lines.push('内存：' + s.memory);
     lines.push('━━━━━━━━━━━━━━');
-    lines.push('服务已就绪');
+    lines.push(restartTxt ? '服务已重启就绪，开始正常工作' : '服务已就绪');
     return lines.join('\n');
   },
 
@@ -137,6 +185,10 @@ module.exports = {
     }
     var child = null;
     try {
+      // 记录重启发起时间戳，重启完成后广播「用时 X 秒」
+      var pth = require('path');
+      var fss = require('fs');
+      try { fss.writeFileSync(pth.join(process.cwd(), '.reboot-ts'), String(Date.now()), 'utf-8'); } catch (e) {}
       // 部署终端：cd /var/www/php 根目录后执行 pm2 restart qqbot
       var spawn = require('child_process').spawn;
       child = spawn('sh', ['-c', 'cd /var/www/php && pm2 restart qqbot'], { cwd: '/var/www/php' });
