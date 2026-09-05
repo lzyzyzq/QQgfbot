@@ -317,12 +317,13 @@ function 解析终端更新命令($msg) {
   if (!preg_match('/^cd\s+(\S+)/iu', $msg, $m)) return null;
   if (rtrim($m[1], '/') !== rtrim($root, '/')) return null;
   if (!preg_match('/pm2\s+restart\s+qqbot/iu', $msg)) return null;
-  // 提取全部 wget -O <zip> <url>（兼容 -O 在前/在后、URL 加引号）
-  if (!preg_match_all('/wget(?:\s+-O\s*)?\s*["\']?([A-Za-z0-9._\-]+\.zip)["\']?\s+["\']?(https?:\/\/[^\s"\']+)["\']?/iu', $msg, $mm, PREG_SET_ORDER)) return null;
+  // 提取全部 wget -O <zip> <url>（兼容 -O 在前/在后、zip 名带目录如 /tmp/up.zip、URL 加引号）
+  if (!preg_match_all('/wget(?:\s+-O\s*)?\s*["\']?([A-Za-z0-9._\-\/]+?\.zip)["\']?\s+["\']?(https?:\/\/[^\s"\']+)["\']?/iu', $msg, $mm, PREG_SET_ORDER)) return null;
   $steps = array();
   $seen = array();
   foreach ($mm as $g) {
-    $zip = $g[1];
+    // zip 名可能带目录前缀（用户习惯 -O /tmp/up.zip），统一取纯文件名，下载到更新数据目录
+    $zip = basename($g[1]);
     $url = preg_replace('/["\']+$/u', '', trim($g[2]));
     if ($url === '' || preg_match('/^https?:\/\//i', $url) !== 1) continue;
     $k = $url . '#' . $zip;
