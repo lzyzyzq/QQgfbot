@@ -47,14 +47,15 @@
     <p style="margin-top:10px"><a class="btn btn-main" href="releases.html">版本列表 / 补丁列表</a>
     <a class="btn btn-main" href="downloads.html">补丁 / 插件下载</a>
     <a class="btn" href="https://github.com/lzyzyzq/QQgfbot">GitHub 仓库</a>
-    <a class="btn" href="https://github.com/lzyzyzq/QQgfbot/blob/main/README.md">项目说明（README）</a></p></div><div class="box"><h2>最新版本 4.2.68 更新内容</h2>
-    <div class="changelog">【4.2.68】定时播报发群失败修复：
-1) 主动发群消息被 QQ 平台返回 11255/群已注销/无权限时，自动登记该群「不可达」，定时任务（整点报时/天气播报等）自动停发该群，不再每个整点反复失败刷屏；
-2) 群恢复可达（能收到该群消息）后自动恢复播报，无需人工干预；
-3) 修正定时任务发送失败的运行日志：发送失败不再误记为成功。</div>
+    <a class="btn" href="https://github.com/lzyzyzq/QQgfbot/blob/main/README.md">项目说明（README）</a></p></div><div class="box"><h2>最新版本 4.2.69 更新内容</h2>
+    <div class="changelog">【4.2.69】终端更新命令兼容修复：
+1) 群里直接发送的终端升级命令支持 wget -O 带路径包名（如 -O /tmp/up.zip），自动取纯文件名下载解压，不再误报「未识别到可执行的终端更新命令」；
+2) 原纯文件名/多包连续/带 # 注释与换行的升级命令格式全部保持兼容。</div>
     <p style="margin-top:10px"><a class="btn btn-main" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">update-config.json（服务器自动更新源）</a>
     <a class="btn" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">从 GitHub Pages 获取更新配置</a></p></div><div class="box"><h2>历史版本</h2>
-    <table><thead><tr><th>版本</th><th>下载</th><th></th></tr></thead><tbody><tr><td><b>4.2.68</b> <span class="tag tag-cur">当前</span><br>2026-09-04</td>
+    <table><thead><tr><th>版本</th><th>下载</th><th></th></tr></thead><tbody><tr><td><b>4.2.69</b> <span class="tag tag-cur">当前</span><br>2026-09-05</td>
+      <td><a class="btn btn-main" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-patch-4.2.69.zip">补丁包</a><a class="btn" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-4.2.69.zip">全量包</a></td>
+      <td><a class="btn" href="releases.html">全部镜像与备用源</a></td></tr><tr><td><b>4.2.68</b><br>2026-09-04</td>
       <td><a class="btn btn-main" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.68/qqbot-card-editor-patch-4.2.68.zip">补丁包</a><a class="btn" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.68/qqbot-card-editor-4.2.68.zip">全量包</a></td>
       <td><a class="btn" href="releases.html">全部镜像与备用源</a></td></tr><tr><td><b>4.2.67</b><br>2026-09-04</td>
       <td><a class="btn btn-main" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.67/qqbot-card-editor-patch-4.2.67.zip">补丁包</a><a class="btn" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.67/qqbot-card-editor-4.2.67.zip">全量包</a></td>
@@ -98,5 +99,5 @@
       data-input-position="top" data-theme="light" data-lang="zh-CN" data-loading="lazy" async>
     </script>
 </main>
-<footer>由 scripts/site-gen.mjs 自动生成（GitHub Actions 定时/发版触发，自动提交回仓库）· 生成时间 2026-09-04 00:00:00</footer>
+<footer>由 scripts/site-gen.mjs 自动生成（GitHub Actions 定时/发版触发，自动提交回仓库）· 生成时间 2026-09-05 00:00:00</footer>
 </body></html>

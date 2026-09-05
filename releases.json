@@ -8,15 +8,49 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "4.2.68",
-    "changeLog": "【4.2.68】定时播报发群失败修复：\n1) 主动发群消息被 QQ 平台返回 11255/群已注销/无权限时，自动登记该群「不可达」，定时任务（整点报时/天气播报等）自动停发该群，不再每个整点反复失败刷屏；\n2) 群恢复可达（能收到该群消息）后自动恢复播报，无需人工干预；\n3) 修正定时任务发送失败的运行日志：发送失败不再误记为成功。"
+    "version": "4.2.69",
+    "changeLog": "【4.2.69】终端更新命令兼容修复：\n1) 群里直接发送的终端升级命令支持 wget -O 带路径包名（如 -O /tmp/up.zip），自动取纯文件名下载解压，不再误报「未识别到可执行的终端更新命令」；\n2) 原纯文件名/多包连续/带 # 注释与换行的升级命令格式全部保持兼容。"
   },
   "releases": [
+    {
+      "version": "4.2.69",
+      "tag": "v4.2.69",
+      "date": "2026-09-05",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-patch-4.2.69.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-patch-4.2.69.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-patch-4.2.69.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.69.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-4.2.69.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-4.2.69.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-4.2.69.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.69.zip"
+      }
+    },
     {
       "version": "4.2.68",
       "tag": "v4.2.68",
       "date": "2026-09-04",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.68/qqbot-card-editor-patch-4.2.68.zip",
         "mirrors": [
@@ -376,5 +410,5 @@
     "category": "General",
     "categoryId": "DIC_kwDOULngW84DEvUl"
   },
-  "generatedAt": "2026-09-04T00:00:00.000Z"
+  "generatedAt": "2026-09-05T00:00:00.000Z"
 }
