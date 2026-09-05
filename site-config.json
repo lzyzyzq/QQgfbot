@@ -28,7 +28,7 @@
     {
       "file": "qqbot-dev-docs.zip",
       "name": "开发与使用文档包",
-      "desc": "Python/PHP 插件开发文档、NapCat 兼容层、终端开发与使用文档合集"
+      "desc": "当前全部插件索引与命令总览（38 个插件：文件/ID/版本/命令/存储键）+ PHP/Python/JS 开发文档 + BotAPI/CQ码/NapCat/终端/更新系统参考 + 逐插件使用说明 + 示例与工程模板"
     }
   ]
 }

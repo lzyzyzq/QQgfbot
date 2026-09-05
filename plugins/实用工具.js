@@ -1,10 +1,10 @@
-// 实用工具 v1.2.0 - 每日备注/打卡/昵称/天气/个人信息
+// 实用工具 v1.2.1 - 每日备注/打卡/昵称/天气/个人信息（富媒体头像卡）
 module.exports = {
   manifest: {
     id: 'mod-utils',
     name: '实用工具',
-    version: '1.2.0',
-    description: '每日备注、每日打卡、设置昵称、图片天气、个人信息',
+    version: '1.2.1',
+    description: '每日备注、每日打卡、设置昵称、图片天气、个人信息（头像卡）',
     author: '511742399'
   },
 
@@ -226,7 +226,7 @@ module.exports = {
           return;
         }
 
-        // ===== 个人信息 =====
+        // ===== 个人信息（富媒体头像卡：engine.getUserProfile 本地聚合 + sendGroupMarkdownWithImage 发送头像） =====
         if (content === '个人信息') {
           var nickname = ctx.storage.get('nickname_' + userId) || '未设置';
           var total = ctx.storage.get('checkin_util_total_' + userId) || '0';
@@ -235,16 +235,43 @@ module.exports = {
           var note = ctx.storage.get('note_' + userId + '_' + today) || '无';
           var lastCheckin = ctx.storage.get('checkin_util_' + userId + '_' + today) ? '已打卡' : '未打卡';
 
+          // 后端聚合资料（与网页面板/菜单同源）：OpenID→QQ/昵称/头像/面板角色/授权角色
+          var prof = null;
+          try { prof = (ctx.engine && ctx.engine.getUserProfile) ? ctx.engine.getUserProfile(userId, 1) : null; } catch(e) {}
+          var qq = (prof && prof.qq_number) || '';
+          var uname = (prof && prof.nickname) || nickname;
+          var avatar = (prof && prof.avatar) || '';
+          var permRole = (prof && prof.permission) || '';
+          var authRole = (prof && prof.auth_role) || '';
+          var gName = '';
+          try { gName = (ctx.engine && ctx.engine.getGroupName) ? ctx.engine.getGroupName(groupId) : ''; } catch(e) {}
+
+          var permLabel = permRole || authRole || '普通用户';
+          var authText = authRole ? ('已授权' + (authRole === permRole ? '' : ' · ' + authRole)) : (permRole ? '面板成员' : '未授权');
+
           var md = '# 👤 个人信息\n' +
+            '![头像](__AVATAR__)\n' +
+            '👥 所在群：' + (gName || '-') + '\n' +
+            '👤 昵称：' + uname + '\n' +
+            '🔢 QQ：' + (qq || '未绑定') + '\n' +
+            '🆔 用户ID：' + userId + '\n' +
+            '🔐 权限：' + permLabel + '\n' +
+            '✅ 授权：' + authText + '\n' +
             '━━━━━━━━━━━━━━\n' +
-            '**昵称**：' + nickname + '\n' +
-            '**今日打卡**：' + lastCheckin + '\n' +
-            '**连续打卡**：' + streak + ' 天\n' +
-            '**总积分**：' + total + '\n' +
-            '**今日备注**：' + note + '\n' +
+            '📅 打卡：' + lastCheckin + ' · 连续 ' + streak + ' 天 · 积分 ' + total + '\n' +
+            '📝 今日备注：' + note + '\n' +
             '━━━━━━━━━━━━━━\n' +
             '发送"实用功能"查看更多';
-          await ctx.bot.sendMarkdownGroup(groupId, md);
+          // 头像富媒体发送（占位 __AVATAR__ 成功自动删除/失败替换为提示），无头像/失败也回退文本
+          try {
+            if (ctx.bot && ctx.bot.sendGroupMarkdownWithImage) {
+              await ctx.bot.sendGroupMarkdownWithImage(groupId, md, avatar, msgId);
+            } else {
+              await ctx.bot.sendMarkdownGroup(groupId, md.replace(/!\[头像\]\(__AVATAR__\)\n?/g, ''), undefined, undefined, msgId);
+            }
+          } catch(e) {
+            try { await ctx.bot.sendMarkdownGroup(groupId, md.replace(/!\[头像\]\(__AVATAR__\)\n?/g, ''), undefined, undefined, msgId); } catch(e2) {}
+          }
           return;
         }
 
@@ -256,6 +283,6 @@ module.exports = {
   },
 
   onEnable: function(ctx) {
-    ctx.logger.info('实用工具 v1.2.0 已加载');
+    ctx.logger.info('实用工具 v1.2.1 已加载');
   }
 };
