@@ -47,12 +47,12 @@
     <p style="margin-top:10px"><a class="btn btn-main" href="releases.html">版本列表 / 补丁列表</a>
     <a class="btn btn-main" href="downloads.html">补丁 / 插件下载</a>
     <a class="btn" href="https://github.com/lzyzyzq/QQgfbot">GitHub 仓库</a>
-    <a class="btn" href="https://github.com/lzyzyzq/QQgfbot/blob/main/README.md">项目说明（README）</a></p></div><div class="box"><h2>最新版本 4.2.70 更新内容</h2>
-    <div class="changelog">【4.2.70】个人信息卡片恢复 + 版本卡动态化 + 重启完成广播修复：
-1) 实用工具「个人信息」富媒体头像卡恢复（getUserProfile 头像/昵称/QQ/权限 + 群名），不再依赖已移除的 qq-bot-plugins 包；
-2) 群内「版本」卡片改为动态读取实际插件版本（修复实用工具显示 v1.0.0 与实际 v1.2.1 不符、以及今后每次插件更新后版本不再滞后）；
-3) 重启/更新完成后自动向机器人所在全部群广播「✅ 重启完成 · 用时 X 秒」，增加就绪重试，不再因 HTTP/WS 未就绪而静默丢失；
-4) 群内终端更新命令执行完会正常回复 @ 艾特。</div>
+    <a class="btn" href="https://github.com/lzyzyzq/QQgfbot/blob/main/README.md">项目说明（README）</a></p></div><div class="box"><h2>最新版本 4.2.71 更新内容</h2>
+    <div class="changelog">【4.2.71】重启广播信息增强 + 运行记录机器人标识与多选复制：
+1) 重启/启动广播升级为完整状态卡：标注是哪台机器人发出的（名称+ID）、机器人状态、服务器已运行时长、系统总内存/已用/百分比、实际插件数、版本与群数，并带「✅ 重启完成 · 用时 X 秒」计时；
+2) 广播底部附带可点击外显文字指令菜单「测试菜单」（mqqapi 回填，enter=false）；
+3) 面板「运行记录」新增机器人列（每条标注来源机器人），支持勾选多选后一键「复制所选」，复制内容含时间/级别/类别/机器人/消息与详情；
+4) 修复非超主账号查看运行记录时机器人过滤字段（日志按 appId 存储）。</div>
     <p style="margin-top:10px"><a class="btn btn-main" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">update-config.json（服务器自动更新源）</a>
     <a class="btn" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">从 GitHub Pages 获取更新配置</a></p></div><div class="box"><h2>历史版本</h2>
     <table><thead><tr><th>版本</th><th>下载</th><th></th></tr></thead><tbody><tr><td><b>4.2.69</b><br>2026-09-05</td>
