@@ -42,12 +42,11 @@
   <nav><a href="https://github.com/lzyzyzq/QQgfbot">GitHub 仓库</a><a href="https://lzyzyzq.github.io/QQgfbot">首页</a><a href="releases.html">版本列表</a><a href="downloads.html">补丁/插件下载</a></nav>
 </div></header>
 <main>
-<div class="box"><h2>最新版本 4.2.71 更新内容</h2>
-    <div class="changelog">【4.2.71】重启广播信息增强 + 运行记录机器人标识与多选复制：
-1) 重启/启动广播升级为完整状态卡：标注是哪台机器人发出的（名称+ID）、机器人状态、服务器已运行时长、系统总内存/已用/百分比、实际插件数、版本与群数，并带「✅ 重启完成 · 用时 X 秒」计时；
-2) 广播底部附带可点击外显文字指令菜单「测试菜单」（mqqapi 回填，enter=false）；
-3) 面板「运行记录」新增机器人列（每条标注来源机器人），支持勾选多选后一键「复制所选」，复制内容含时间/级别/类别/机器人/消息与详情；
-4) 修复非超主账号查看运行记录时机器人过滤字段（日志按 appId 存储）。</div>
+<div class="box"><h2>最新版本 4.2.72 更新内容</h2>
+    <div class="changelog">【4.2.72】定时任务多机器人群误停发修复：
+1) 修复定时任务绑定机器人后仍把全库所有机器人名下的群 OpenID 混发 → 对端 11255/群已注销 → 所有活跃群被误登记停发的根因；目标群现在只取该机器人名下群，不再跨机器人混发；
+2) 不可达判断按「机器人+群」维度隔离，A 机器人的误标不再停掉 B 机器人的正常播报；
+3) 自动自愈清理「登记机器人≠群归属」的脏停发记录（含盒子上 7 条活跃群误标），重启即恢复。</div>
     <p style="margin-top:10px"><a class="btn btn-main" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">update-config.json（服务器自动更新源）</a>
     <a class="btn" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">从 GitHub Pages 获取更新配置</a></p></div><div class="box"><h2>插件 / 文档下载</h2>
     <table><thead><tr><th>名称</th><th>说明</th><th>下载</th></tr></thead><tbody><tr><td><b>抖音视频下载爬虫</b><br><code>douyin-scraper.zip</code></td>
