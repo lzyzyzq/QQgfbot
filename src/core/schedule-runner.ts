@@ -7,7 +7,7 @@ import { getBotInstance } from './bot';
 import { ScheduleTask, getSwitchState } from '../shared/bot-controls';
 import { loadBroadcastTaskById, broadcastContent } from './broadcast';
 import { renderTextCard, renderChimeCard } from './card';
-import { isGroupUnreachable } from './group-reach';
+import { isGroupUnreachableFor, pruneCrossBotUnreachableGroups } from './group-reach';
 import { createLogger } from '../utils/logger';
 
 const runnerLogger = createLogger('schedule-runner');
@@ -53,6 +53,22 @@ function botForTask(t: ScheduleTask, gid: string) {
   const inst = botForGroupId(gid);
   if (!inst) runnerLogger.warn(`定时任务 ${t.id} 群 ${gid} 无归属机器人，跳过发送`);
   return inst;
+}
+
+/** 机器人名下可路由群（group_members 归属 + groups 表 bot_id，两源并集）。
+ *  注意：QQ 开放平台不同机器人对同一 QQ 群分配不同的群 OpenID，机器人只能给自己加入的群发消息。
+ *  因此定时任务若绑定指定 botId，目标群必须只取该机器人名下群，绝不能混入其他机器人的群 OpenID，
+ *  否则会报 11255/群已注销，并把活跃群误登记成不可达导致停发。 */
+function botOwnedGroupIds(botId: string): string[] {
+  try {
+    const db = getDb();
+    const rows = db.prepare(
+      "SELECT gid FROM (SELECT group_id AS gid FROM group_members WHERE bot_id = ? AND group_id != '' UNION SELECT id AS gid FROM groups WHERE bot_id = ? AND id != '') WHERE gid != ''"
+    ).all(botId, botId) as any[];
+    return [...new Set(rows.map((r: any) => String(r.gid)))];
+  } catch {
+    return [];
+  }
 }
 
 // 功能开关门控：broadcast 任务按内容类型对应开关，关闭则跳过发送；toggle 任务不受门控
@@ -391,12 +407,22 @@ async function dispatch(t: ScheduleTask) {
     }
   }
   const { text, images } = extractImages(content);
-  const groups = Array.isArray(t.groups) && t.groups.length ? t.groups : allGroupIds();
+  // 目标群：任务显式指定优先；为空则按任务绑定机器人名下群（避免混入其他机器人视角的群 OpenID 导致 11255）
+  let groups: string[];
+  if (t.botId) {
+    const owned = botOwnedGroupIds(t.botId);
+    groups = (Array.isArray(t.groups) && t.groups.length ? t.groups : owned).filter((g) => owned.includes(g));
+  } else {
+    groups = Array.isArray(t.groups) && t.groups.length ? t.groups : allGroupIds();
+  }
   runnerLogger.info(`定时任务触发: id=${t.id} type=${t.type} contentType=${t.contentType} time=${t.time || '-'} botId=${t.botId || '按群归属'} groups=${groups.length} images=${images.length} plugin=${t.pluginName || '-'} at=${Array.isArray(t.atUsers) ? t.atUsers.length : 0} linkMode=${t.linkMode === undefined ? '全局' : t.linkMode}`);
   for (const gid of groups) {
     try {
-      // 已登记不可达的群（主动消息 11255/群已注销）跳过发送，避免每个整点反复失败刷屏
-      if (isGroupUnreachable(gid)) {
+      const bot = botForTask(t, gid);
+      if (!bot) continue;
+      // 已登记不可达的群（主动消息 11255/群已注销）跳过发送，避免每个整点反复失败刷屏；
+      // 停发记录按机器人维度区分，避免 A 机器人曾错发 B 机器人名下群造成误登记影响本机
+      if (isGroupUnreachableFor(gid, bot.getBotId())) {
         const dk = 'dead:' + gid;
         if (lastFire[dk] !== bjNow().ymd) {
           lastFire[dk] = bjNow().ymd;
@@ -404,8 +430,6 @@ async function dispatch(t: ScheduleTask) {
         }
         continue;
       }
-      const bot = botForTask(t, gid);
-      if (!bot) continue;
       if (t.contentType === 'plugin') {
         await callPluginBroadcast(t, gid);
         continue;
@@ -439,6 +463,9 @@ async function dispatch(t: ScheduleTask) {
 
 function tick() {
   try {
+    // 自愈：定时清除跨机器人误标的停发记录（A 机器人曾错发 B 名下群被误登记），避免脏数据影响正常群
+    const pruned = pruneCrossBotUnreachableGroups();
+    if (pruned) runnerLogger.info(`自愈清理了 ${pruned} 条跨机器人误停发记录`);
     const raw = getConfig('schedule_tasks') || '[]';
     const tasks = (JSON.parse(raw) as ScheduleTask[]) || [];
     const n = bjNow();

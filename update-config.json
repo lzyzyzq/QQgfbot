@@ -1,14 +1,14 @@
 {
   "ok": true,
-  "version": "4.2.71",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.71.zip",
+  "version": "4.2.72",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.72.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.71.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.72.zip"
     }
   ],
-  "changeLog": "【4.2.71】重启广播信息增强 + 运行记录机器人标识与多选复制：\n1) 重启/启动广播升级为完整状态卡：标注是哪台机器人发出的（名称+ID）、机器人状态、服务器已运行时长、系统总内存/已用/百分比、实际插件数、版本与群数，并带「✅ 重启完成 · 用时 X 秒」计时；\n2) 广播底部附带可点击外显文字指令菜单「测试菜单」（mqqapi 回填，enter=false）；\n3) 面板「运行记录」新增机器人列（每条标注来源机器人），支持勾选多选后一键「复制所选」，复制内容含时间/级别/类别/机器人/消息与详情；\n4) 修复非超主账号查看运行记录时机器人过滤字段（日志按 appId 存储）。",
+  "changeLog": "【4.2.72】定时任务多机器人群误停发修复：\n1) 修复定时任务绑定机器人后仍把全库所有机器人名下的群 OpenID 混发 → 对端 11255/群已注销 → 所有活跃群被误登记停发的根因；目标群现在只取该机器人名下群，不再跨机器人混发；\n2) 不可达判断按「机器人+群」维度隔离，A 机器人的误标不再停掉 B 机器人的正常播报；\n3) 自动自愈清理「登记机器人≠群归属」的脏停发记录（含盒子上 7 条活跃群误标），重启即恢复。",
   "configUrl": ""
 }

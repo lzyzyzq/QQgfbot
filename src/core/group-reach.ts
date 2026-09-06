@@ -2,7 +2,7 @@
 // 登记该群"不可达"，定时任务/广播自动跳过，避免每个整点反复撞墙刷屏错误日志。
 // 恢复：收到该群新消息视为群已重新可达，自动移出登记（自然闭环）。
 // 存储：config 键 group_unreachable_list，JSON { gid: { at, botId, reason } }
-import { getConfig, setConfig } from '../db/index';
+import { getConfig, setConfig, getDb } from '../db/index';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('group-reach');
@@ -74,4 +74,47 @@ export function reviveGroupUnreachable(gid: string) {
 export function isGroupUnreachable(gid: string): boolean {
   if (!gid) return false;
   return Object.prototype.hasOwnProperty.call(loadUnreachableGroups(), gid);
+}
+
+/** 多机器人场景：发送定时任务时仅跳过「该机器人自己名下」且「曾由该机器人登记不可达」的群。
+ *  不同机器人对同一 QQ 群的 OpenID 不同，全库群混发时会出现 A 机器人发 B 机器人视角的群
+ *  OpenID → 必报 11255 → 被误登记不可达 → 连带自己名下的群也停发。此处按 botId 维度隔离，避免误停。 */
+export function isGroupUnreachableFor(gid: string, botId: string): boolean {
+  if (!gid || !botId) return false;
+  const map = loadUnreachableGroups();
+  if (!Object.prototype.hasOwnProperty.call(map, gid)) return false;
+  const e = map[gid];
+  return e && String(e.botId || '') === String(botId);
+}
+
+/** 自愈：清理「跨机器人误标」的停发记录。
+ *  每个群 OpenID 只归属一台机器人（group_members/groups 中该 gid 的 bot_id）。
+ *  定时任务曾用 A 机器人发 B 机器人视角的群 OpenID → 平台报 11255 → 误登记成
+ *  { gid: { botId: A } }，而 gid 实际归属 B。此类记录应自动删除，否则会连带
+ *  B 机器人自己名下的群也停发（isGroupUnreachableFor 已按 bot 隔离，但仍把脏数据清掉更干净）。
+ *  返回清理条数。 */
+export function pruneCrossBotUnreachableGroups(): number {
+  try {
+    const db = getDb();
+    const map = loadUnreachableGroups();
+    let removed = 0;
+    for (const gid of Object.keys(map)) {
+      const botId = map[gid].botId || '';
+      if (!botId) continue;
+      const hit = db.prepare(
+        "SELECT 1 FROM group_members WHERE group_id = ? AND bot_id = ? LIMIT 1"
+      ).get(gid, botId) || db.prepare(
+        "SELECT 1 FROM groups WHERE id = ? AND bot_id = ? LIMIT 1"
+      ).get(gid, botId);
+      if (!hit) {
+        delete map[gid];
+        removed++;
+        logger.warn(`停发记录自愈清除: 群 ${gid} 登记的机器人 ${botId} 与群实际归属不符（疑似跨机器人误标）`);
+      }
+    }
+    if (removed) save(map);
+    return removed;
+  } catch {
+    return 0;
+  }
 }
