@@ -292,8 +292,9 @@
     <div class="row">
       <label>插件：</label>
       <select id="pluginSel" style="flex:1"><option value="">加载中...</option></select>
+      <button class="btn primary" id="dictQuickBtn" style="display:none" onclick="openDictManage()">📖 cid 词库管理</button>
     </div>
-    <div class="hint">全部 js / python（.py）机器人插件均可在本页编辑/预览/保存其卡片配置（按机器人分组）。「欢迎新用户」自动渲染入群欢迎卡片；「测试菜单」渲染菜单卡片；其他插件读取配置后即可生效。</div>
+    <div class="hint">全部 js / python（.py）机器人插件均可在本页编辑/预览/保存其卡片配置（按机器人分组）。下拉选中「DIC管理」或「词典回复」时本页自动切换为 <b>cid 词库管理</b>（词条可视化编辑 + 写盘热重载），其它插件走卡片/回复编辑；「欢迎新用户」自动渲染入群欢迎卡片；「测试菜单」渲染菜单卡片。</div>
   </div>
 
   <div class="card">
@@ -1980,10 +1981,12 @@ function loadReplyEditor(name){
     $('replyEditorCard').style.display = 'none';
     rsState.loaded = false;
     $('rsDictTabs').style.display = 'flex';
+    var dqb = $('dictQuickBtn'); if (dqb) dqb.style.display = '';
     rsDictTab('dict');
     return;
   }
   $('rsDictTabs').style.display = 'none';
+  var dqb = $('dictQuickBtn'); if (dqb) dqb.style.display = 'none';
   var dcCard = $('dictCard');
   if (dcCard) dcCard.style.display = 'none';
   if (name === '测试菜单' || name === '欢迎新用户'){
@@ -2023,6 +2026,17 @@ function loadReplyEditor(name){
     rsRerenderBranches();
     rsRenderLines();
   }).catch(function(e){ toast('回复模板加载失败：' + (e && e.message || e)); });
+}
+
+// 顶栏「cid 词库管理」快捷钮：仅当前插件为 DIC管理 / 词典回复时可见
+function openDictManage(){
+  var name = curPlugin || (($('pluginSel') && $('pluginSel').value) || '');
+  if (name !== '词典回复' && name !== 'DIC管理'){
+    toast('请先在顶部下拉选中「DIC管理」或「词典回复」，再点此进入词库管理');
+    return;
+  }
+  loadReplyEditor(name);
+  var dc = $('dictCard'); if (dc) dc.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ===== cid 词库管理（词典回复 dict.txt：key|value 行，支持中文） =====
