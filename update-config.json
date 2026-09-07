@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.75",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.75.zip",
+  "version": "4.2.76",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.76.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.75.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.76.zip"
     }
   ],
-  "changeLog": "【4.2.75】ReplySpec 批量接入 12 插件 + 天气查询接口可配置：\n1) 回复可视化收编第二批：群主、绑定管理、充值系统、签到系统、关键词回复、列表读取、群信息、菜单模式、讲笑话、问候插件、实用工具、娱乐中心 共 12 个插件内置 REPLY_SPEC 行模板（累计 120+ 分支，覆盖各指令的成功/失败/权限/空态等真实回复），后台「回复编辑器」对这批插件即时可用：改行保存（config 覆盖）或一键写回源码（marker 段替换，可撤销）；渲染非空优先、空则回退原文兜底，业务逻辑零改动；\n2) 实用工具「查询天气 城市」数据源可配置：系统设置新增「天气文本接口地址 / 天气图片接口地址」（默认 wttr.in 恢复原样），占位符 {city}（URL 编码）/ {cityRaw}（原名）自由拼接口，也可在插件卡片·变量管理填全局变量 weather_api（仅文本接口，优先级低于系统设置）；\n3) 内置模板字典 builtinReplySpec 全量登记 13 插件（含 OpenID查询），新增全内置模板覆盖单测，vitest 全量 69 项通过。"
+  "changeLog": "4.2.76：更新系统徽章三态修复 + 央视式天气插件 + cid 词库管理 + 菜单按钮模式恢复"
 }

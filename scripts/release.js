@@ -91,19 +91,27 @@ const clPath = path.join(ROOT, 'CHANGELOG.md');
 const clOld = fs.existsSync(clPath) ? fs.readFileSync(clPath, 'utf8') : '';
 const commitLines = sh('git log --oneline --no-merges ' + fromTag + '..HEAD').split('\n').filter(Boolean);
 const date = new Date().toISOString().slice(0, 10);
-const clLines = [
-  '## ' + ver + '（' + date + '）',
-  '',
-];
-if (note) {
-  clLines.push('### 发布说明', '', note, '');
+if (!new RegExp('^## ' + ver.replace(/\./g, '\\.') + '（' + date + '）', 'm').test(clOld)) {
+  const clLines = [
+    '## ' + ver + '（' + date + '）',
+    '',
+  ];
+  if (note) {
+    clLines.push('### 发布说明', '', note, '');
+  }
+  clLines.push('### 提交', '');
+  for (const c of commitLines) clLines.push('- ' + c);
+  clLines.push('', '---', '');
+  const clNew = clLines.join('\n') + clOld;
+  fs.writeFileSync(clPath, clNew, 'utf8');
+  console.log('CHANGELOG 已更新（' + commitLines.length + ' 条提交）');
+} else {
+  console.log('CHANGELOG 已有 ' + ver + ' 段落，跳过');
 }
-clLines.push('### 提交', '');
-for (const c of commitLines) clLines.push('- ' + c);
-clLines.push('', '---', '');
-const clNew = clLines.join('\n') + clOld;
-fs.writeFileSync(clPath, clNew, 'utf8');
-console.log('CHANGELOG 已更新（' + commitLines.length + ' 条提交）');
+// 供 --gh 正文复用
+const clBlock = [];
+if (note) clBlock.push(note, '');
+clBlock.push(...commitLines.map((c) => '- ' + c));
 
 // 4) 编译 dist
 run('npm run build');
@@ -155,8 +163,9 @@ uc.changeLog = changeLog;
 fs.writeFileSync(ucPath, JSON.stringify(uc, null, 2) + '\n', 'utf8');
 console.log('update-config.json 已登记 ' + ver);
 
-// 7) commit + tag + push（仓库双写：源码 + 包 + 登记 + CHANGELOG）
-sh('git add package.json CHANGELOG.md update-config.json ' + zipName);
+// 7) commit + tag + push（仓库双写：源码 + 包 + 登记 + CHANGELOG；zip 被 gitignore 故强制入库）
+sh('git add package.json CHANGELOG.md update-config.json');
+sh('git add -f ' + zipName);
 sh('git commit -m "release: ' + ver + '（自动发布）"');
 sh('git tag ' + tag);
 sh('git push origin main --tags');
@@ -166,7 +175,7 @@ console.log('已推送 main + tag ' + tag);
 if (doGh) {
   const ghOk = sh('gh auth status') || '';
   if (ghOk.indexOf('Logged in') >= 0) {
-    const body = clLines.join('\n').replace(/^---\n*/, '').trim();
+    const body = clBlock.join('\n').trim();
     const bf = path.join(ROOT, '.release-body-' + ver + '.md');
     fs.writeFileSync(bf, body, 'utf8');
     sh('gh release create ' + tag + ' "' + zipPath + '" --title "' + tag + '" --notes-file "' + bf + '"');

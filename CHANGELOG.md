@@ -1,3 +1,19 @@
+## 4.2.76（2026-09-07）
+
+### 发布说明
+
+4.2.76：更新系统徽章三态修复 + 央视式天气插件 + cid 词库管理 + 菜单按钮模式恢复
+
+### 提交
+
+- 7ab1199 chore: WP5 发布自动化脚本 scripts/release.js（bump→CHANGELOG→build→补丁zip→update-config→commit+tag+push→可选 gh Release）
+- 597efbb feat(admin): DIC 管理页串联 —— menu-editor 选中 DIC管理/词典回复 均展示 cid 词库管理 Tab；管理面板插件行新增「管理页面」直达 menu-editor?plugin=名，页面支持 ?plugin= 参数自动选中
+- d10d3db feat(admin): 菜单全局模式管理 + 按钮模式恢复 —— engine 四态(text/text_link/image/button)set/get，menu-config 新增 global-menu-mode GET/PUT，menu-editor 顶部全局模式卡，新版菜单 sendMenu 增加内联按钮键盘分支，DIC 模式设置恢复按钮选项
+- b4d75aa feat(admin): cid 词库管理（词典回复 dict.txt）——后端 GET/PUT /_dict/entries 行级词库读写+保存后热重载词典回复，menu-editor 词典回复插件切「cid 词库管理」页签可视化增删改词条/注释/空行，支持中文与搜索
+- d1371d3 feat(plugins): 新增央视式天气预报插件（全国/分区/单城三形态，7 分区 33 城，本地天气接口聚合 Open-Meteo+wttr.in 回退，sharp SVG 分区图）
+- 32399d0 feat: 更新系统徽章三态修复（发现新版/已是最新 vX/更新源不可达不误报）+ 远程检测失败不再误判最新 + 卡片徽章自适应
+
+---
 # 更新日志
 
 ## 2026-09-07
