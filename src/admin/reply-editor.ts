@@ -240,6 +240,39 @@ export function builtinReplySpec(name: string): ReplySpec | null {
         },
       ],
     },
+    },
+    '群主': {
+      name: '群主',
+      version: '1.0.0',
+      desc: '查询本群群主/管理员信息',
+      branches: [
+        {
+          key: 'none',
+          label: '未记录群主（无 owner 数据）',
+          scope: ['group'],
+          triggers: ['群主', '谁是群主', '查群主', '群主是谁', '群主信息'],
+          lines: [
+            { t: 'text', v: '👑 尚未记录本群群主信息。' },
+            { t: 'text', v: '请先让群主在群内发一条消息，机器人记录后即可查询。' },
+          ],
+        },
+        {
+          key: 'owner',
+          label: '群主/群管理员信息（owner 命中）',
+          scope: ['group'],
+          triggers: ['群主', '谁是群主', '查群主', '群主是谁', '群主信息'],
+          lines: [
+            { t: 'text', v: '👑 {role}信息' },
+            { t: 'text', v: '━━━━━━━━━━━━━━' },
+            { t: 'row', pre: '昵称：', k: 'nick', fb: '未知' },
+            { t: 'row', pre: 'QQ：', k: 'qq', hide: true },
+            { t: 'row', pre: '角色：', k: 'role' },
+            { t: 'text', v: '━━━━━━━━━━━━━━' },
+            { t: 'text', v: '发送「主菜单」查看更多' },
+          ],
+        },
+      ],
+    },
   };
   return map[name] || null;
 }
