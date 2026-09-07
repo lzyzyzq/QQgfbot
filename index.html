@@ -47,11 +47,13 @@
     <p style="margin-top:10px"><a class="btn btn-main" href="releases.html">版本列表 / 补丁列表</a>
     <a class="btn btn-main" href="downloads.html">补丁 / 插件下载</a>
     <a class="btn" href="https://github.com/lzyzyzq/QQgfbot">GitHub 仓库</a>
-    <a class="btn" href="https://github.com/lzyzyzq/QQgfbot/blob/main/README.md">项目说明（README）</a></p></div><div class="box"><h2>最新版本 4.2.72 更新内容</h2>
-    <div class="changelog">【4.2.72】定时任务多机器人群误停发修复：
-1) 修复定时任务绑定机器人后仍把全库所有机器人名下的群 OpenID 混发 → 对端 11255/群已注销 → 所有活跃群被误登记停发的根因；目标群现在只取该机器人名下群，不再跨机器人混发；
-2) 不可达判断按「机器人+群」维度隔离，A 机器人的误标不再停掉 B 机器人的正常播报；
-3) 自动自愈清理「登记机器人≠群归属」的脏停发记录（含盒子上 7 条活跃群误标），重启即恢复。</div>
+    <a class="btn" href="https://github.com/lzyzyzq/QQgfbot/blob/main/README.md">项目说明（README）</a></p></div><div class="box"><h2>最新版本 4.2.73 更新内容</h2>
+    <div class="changelog">【4.2.73】全插件统一后台编辑器（menu-editor 全部插件库）+ 一键登记串联 + 插件开发文档生成：
+1) 后台新增「全部插件库」工作台表格：目录型(zip)/单文件(js/mjs/py/php)插件统一展示，行操作含信息查看、启停/审批/信息编辑（按插件类型走对应更新链路）、可视化配置入口、生成卡片代码/撤销；js/mjs 插件双页（menu-editor/index）无缝衔接可视化配置→代码生成；
+2) 主菜单/欢迎新用户等 js 插件可视化配置新增「生成卡片代码」：自动注入最新可视化配置进插件源码并备份原码，生成后即发布即用；
+3) 一键登记串联：对缺 DB 记录或缺 plugin.json 的插件，行「登记」按钮从插件内代码解析 manifest（name/version/author/description）——目录型补全 plugin.json 并入库，js/mjs/py 走引擎注册、php 入库，登记后启停/审批/信息全链路可用；
+4) 插件开发文档生成：目录型插件行「生成文档」按插件内代码解析依赖与能力清单，自动生成 README.md + CHANGELOG.md（已存在不覆盖）；
+5) 引擎新增 renderCard/sendCard/renderMenu/renderBlocks 卡片渲染与发送 API，插件内可直接调用。</div>
     <p style="margin-top:10px"><a class="btn btn-main" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">update-config.json（服务器自动更新源）</a>
     <a class="btn" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">从 GitHub Pages 获取更新配置</a></p></div><div class="box"><h2>历史版本</h2>
     <table><thead><tr><th>版本</th><th>下载</th><th></th></tr></thead><tbody><tr><td><b>4.2.69</b><br>2026-09-05</td>
