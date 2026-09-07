@@ -240,7 +240,6 @@ export function builtinReplySpec(name: string): ReplySpec | null {
         },
       ],
     },
-    },
     '群主': {
       name: '群主',
       version: '1.0.0',
