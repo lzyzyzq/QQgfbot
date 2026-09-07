@@ -10,6 +10,7 @@ import { getDb, getConfig, setConfig } from '../../db/index';
 import { v4 as uuidv4 } from 'uuid';
 import { generatePluginBlockCode, injectCodeSegment, hasUCardSegment, assertInjectableSourceFile } from '../plugin-codegen';
 import { findPluginIdFor as findMenuConfigPluginId, readAll as readMenuConfigAll, mergeConfig as mergeMenuConfig } from '../../api/menu-config';
+import { builtinReplySpec, cfgKeyFor, makePreviewData, renderBranch, type ReplySpec } from '../reply-editor';
 
 // ===================== 插件审批存储 =====================
 interface PluginApproval {
@@ -1453,6 +1454,113 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
       changelog: clExisted ? '已存在，未覆盖' : '已生成',
       version: m.version || '1.0.0',
     });
+  });
+
+  // ------------------------------------------------------------
+  // 21. 回复可视化编辑器（ReplySpec）：读取/保存回复模板 + 一键写回插件源码
+  //   A 保存到 config（plugin.file-{name}.reply），插件运行时读它即时渲染生效
+  //   B 「写回源码」把默认 ReplySpec 常量固化进插件（仅已内置 REPLY_SPEC 标记的适配插件），可撤销
+  // ------------------------------------------------------------
+
+  function readReplyCfg(name: string): any {
+    try {
+      const row = getDb().prepare('SELECT value FROM config WHERE key = ?').get(cfgKeyFor(name)) as any;
+      if (row && row.value) return JSON.parse(String(row.value));
+    } catch {}
+    return null;
+  }
+
+  function writeReplyCfg(name: string, spec: any): void {
+    getDb()
+      .prepare('INSERT INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP')
+      .run(cfgKeyFor(name), JSON.stringify(spec));
+  }
+
+  router.get('/:name/reply-spec', (req: Request, res: Response) => {
+    const name = req.params.name;
+    const stored = readReplyCfg(name);
+    const builtin = builtinReplySpec(name);
+    const spec: ReplySpec | null = stored || builtin;
+    if (!spec) {
+      res.status(404).json({ error: '该插件暂无回复模板（ReplySpec）内置定义，且尚未保存过自定义回复' });
+      return;
+    }
+    const botName = String(req.query.botName || '');
+    const botId = String(req.query.botId || '');
+    const preview = makePreviewData(botName || undefined, botId || undefined);
+    res.json({ ok: true, name, spec, edited: !!stored, preview, hasBuiltin: !!builtin });
+  });
+
+  router.post('/:name/reply-spec', requireSuperMaster, (req: Request, res: Response) => {
+    const name = req.params.name;
+    const spec = (req.body && (req.body.spec || req.body)) as any;
+    if (!spec || typeof spec !== 'object' || !Array.isArray(spec.branches)) {
+      res.status(400).json({ error: '无效的回复模板：需 { name, branches: [...] }' });
+      return;
+    }
+    try {
+      writeReplyCfg(String(spec.name || name), spec);
+      res.json({ ok: true, key: cfgKeyFor(name), branches: spec.branches.length });
+    } catch (e: any) {
+      res.status(500).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  router.post('/:name/reply-apply', requireSuperMaster, async (req: Request, res: Response) => {
+    const name = req.params.name;
+    const target = locatePluginEntryFile(name, pluginsDir);
+    if (!target || !/\.(js|mjs)$/i.test(target)) {
+      res.status(400).json({ error: 'ReplySpec 源码注入仅支持 js/mjs 单文件插件' });
+      return;
+    }
+    const code = fs.readFileSync(target, 'utf-8');
+    const begin = '/*__REPLY_SPEC_BEGIN__*/';
+    const end = '/*__REPLY_SPEC_END__*/';
+    const bIdx = code.indexOf(begin);
+    const eIdx = code.indexOf(end);
+    if (bIdx < 0 || eIdx < 0 || eIdx <= bIdx) {
+      res.status(400).json({ error: '该插件源码中未找到 ReplySpec 适配标记（/*__REPLY_SPEC_BEGIN__*/），暂无法自动注入；需先完成插件适配改造后即可一键写回。' });
+      return;
+    }
+    const spec: ReplySpec | null = (req.body && req.body.spec) || readReplyCfg(name) || builtinReplySpec(name);
+    if (!spec) {
+      res.status(404).json({ error: '没有可写回的回复模板（内置与 config 均无）' });
+      return;
+    }
+    try {
+      const username = req.adminUser?.username || 'system';
+      const backupKey = cfgKeyFor(name) + '.codebackup';
+      getDb()
+        .prepare('INSERT INTO config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP')
+        .run(backupKey, JSON.stringify({ fileName: target, code, owner: username, at: new Date().toISOString() }));
+      const constDecl = begin + '\nvar REPLY_SPEC = ' + JSON.stringify(spec, null, 1) + ';\n' + end;
+      const patched = code.slice(0, bIdx) + constDecl + code.slice(eIdx + end.length);
+      fs.writeFileSync(target, patched, 'utf-8');
+      res.json({ ok: true, fileName: path.basename(target), branches: spec.branches.length });
+    } catch (e: any) {
+      res.status(500).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  router.post('/:name/reply-apply/undo', requireSuperMaster, async (req: Request, res: Response) => {
+    const name = req.params.name;
+    try {
+      const backupKey = cfgKeyFor(name) + '.codebackup';
+      const row = getDb().prepare('SELECT value FROM config WHERE key = ?').get(backupKey) as any;
+      if (!row || !row.value) {
+        res.status(404).json({ error: '没有可还原的写回备份（尚未执行过「写回源码」）' });
+        return;
+      }
+      const bak = JSON.parse(String(row.value));
+      if (!bak || !bak.fileName || !fs.existsSync(path.join(pluginsDir, path.basename(bak.fileName)))) {
+        res.status(400).json({ error: '备份记录无效或插件文件已被删除' });
+        return;
+      }
+      fs.writeFileSync(path.join(pluginsDir, path.basename(bak.fileName)), String(bak.code), 'utf-8');
+      res.json({ ok: true, fileName: path.basename(bak.fileName) });
+    } catch (e: any) {
+      res.status(500).json({ error: String((e && e.message) || e) });
+    }
   });
 
   // multer/上传错误统一返回 JSON（默认返回 HTML，会导致前端报 Failed to fetch / 解析失败）

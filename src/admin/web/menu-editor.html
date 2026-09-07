@@ -202,7 +202,23 @@
   .pl-on { font-size: 10px; vertical-align: 1px; }
   .pl-ops { white-space: nowrap; }
   .pl-ops .btn { margin: 1px 2px; }
-  .pv-modal-body { padding: 14px 18px; overflow-y: auto; background: #f8fafc; color: #334155; white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.7; max-height: 60vh; font-family: Consolas,Menlo,monospace; }
+   .pv-modal-body { padding: 14px 18px; overflow-y: auto; background: #f8fafc; color: #334155; white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.7; max-height: 60vh; font-family: Consolas,Menlo,monospace; }
+  /* ===== 回复编辑器（ReplySpec） ===== */
+  .rs-branches { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .rs-chip { display: inline-block; padding: 4px 12px; border-radius: 14px; font-size: 12px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; cursor: pointer; user-select: none; }
+  .rs-chip.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .rs-branch-tip { font-size: 12px; color: #64748b; background: #f8fafc; border: 1px dashed #dbe2ea; border-radius: 8px; padding: 5px 9px; margin-bottom: 6px; }
+  .rs-line { border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; background: #fff; }
+  .rs-lh { display: flex; align-items: center; gap: 6px; }
+  .rs-sel { font-size: 12px; padding: 2px 4px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; }
+  .rs-grp { flex: 1; }
+  .rs-fields { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+  .rs-in { font-size: 12px; padding: 4px 7px; border-radius: 6px; border: 1px solid #cbd5e1; min-width: 120px; max-width: 280px; }
+  .rs-in-wide { flex: 1; min-width: 200px; max-width: none; }
+  .rs-key { min-width: 110px; max-width: 150px; }
+  .rs-hide { font-size: 12px; color: #64748b; display: inline-flex; align-items: center; gap: 3px; }
+  .rs-hide input { margin: 0; }
+  .rs-branch-tip .btn { margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -283,6 +299,24 @@
       <button class="btn danger" onclick="resetMeta()">↺ 恢复原始信息</button>
     </div>
     <div class="hint">改动保存到服务器 config（plugin.file-xxx.meta），网页插件列表与卡片说明会按此显示。</div>
+  </div>
+
+  <div class="card" id="replyEditorCard" style="display:none">
+    <h2>✍️ 回复编辑器 <span style="color:#999;font-size:12px" id="rsMeta"></span></h2>
+    <div class="hint" style="margin-bottom:8px" id="rsHint"></div>
+    <div class="rs-branches" id="rsBranches"></div>
+    <div style="margin:8px 0;font-weight:600;font-size:13px">回复内容（从上到下为实际发送顺序，可增删改行 / ↑↓ 排序）<span style="font-weight:normal;color:#888">：text=固定行 · val=取值行（空显回退）· row=前缀拼值行（空可隐藏）· link=可点回填链接 · blank=空行</span></div>
+    <div id="rsLines"></div>
+    <div style="margin:6px 0"><button class="btn primary" onclick="rsAddLine()">＋ 在此分支末尾加一行</button></div>
+    <div class="toolbar" style="flex-wrap:wrap">
+      <button class="btn primary" onclick="rsSave()">💾 保存回复</button>
+      <button class="btn" onclick="rsLoad()">↻ 重新加载</button>
+      <button class="btn" onclick="rsApply()">⚡ 生成并写入源码（内嵌为插件默认回复，可撤销）</button>
+      <button class="btn danger" onclick="rsUndo()">↩️ 撤销写回源码</button>
+    </div>
+    <div class="hint" style="margin:6px 0">保存到服务器 config（plugin.file-xxx.reply）：插件运行时读它即时渲染（比内置源码优先级高）；「生成并写入源码」把当前模板固化进插件代码（写前自动备份，可用「撤销写回」还原）。</div>
+    <div style="font-weight:600;font-size:13px;margin-bottom:4px">👁️ 真实回复预览 <span id="rsScope" style="font-weight:normal;color:#888"></span></div>
+    <div class="preview" id="rsPreview" style="white-space:pre-wrap;font-family:monospace;font-size:12px"></div>
   </div>
 
   <div class="card">
@@ -1532,6 +1566,7 @@ $('pluginSel').addEventListener('change', function(){
   loadConfig();
   loadMeta();
   syncActiveRow();
+  loadReplyEditor();
 });
 
 function loadMeta(){
@@ -1862,6 +1897,210 @@ var varCache = {};
 
 function escAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
 
+// ===== 回复编辑器（ReplySpec：无内置菜单模板插件的真实回复可视化） =====
+var rsState = { name:'', spec:null, preview:{}, activeKey:'', loaded:false, edited:false };
+var RS_KEYS = 'openid,qq,nick,botName,botId,botShow,gid,guildId,atOpenids'.split(',');
+
+function rsCurBranch(){ return rsState.activeBranch(); }
+rsState.activeBranch = function(){
+  if (!rsState.spec || !rsState.spec.branches) return null;
+  for (var i=0;i<rsState.spec.branches.length;i++) if (rsState.spec.branches[i].key===rsState.activeKey) return rsState.spec.branches[i];
+  return rsState.spec.branches[0] || null;
+};
+function rsBranchOf(key){ if(!rsState.spec||!rsState.spec.branches)return null; for(var i=0;i<rsState.spec.branches.length;i++){if(rsState.spec.branches[i].key===key)return rsState.spec.branches[i];} return null; }
+
+function loadReplyEditor(name){
+  name = name || curPlugin;
+  var card = $('replyEditorCard');
+  if (!card) return;
+  if (name === '测试菜单' || name === '欢迎新用户'){
+    card.style.display = 'none';
+    rsState.loaded = false;
+    return;
+  }
+  var botId = '', botName = '';
+  var sel = $('botSel');
+  if (sel && sel.value){ botId = sel.value; var txt = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : ''; botName = txt.replace(/（.*$/, ''); }
+  api('/api/plugins/' + encodeURIComponent(name) + '/reply-spec?botName=' + encodeURIComponent(botName || '') + '&botId=' + encodeURIComponent(botId || '')).then(function(r){
+    if (!r.ok || !r.data || !r.data.spec){
+      if (r.status === 404){
+        card.style.display = 'block';
+        $('rsHint').textContent = '该插件尚未接入 ReplySpec（回复可视化）。接入后即可在下方按真实回复行编辑并写回源码。';
+        $('rsBranches').innerHTML = '';
+        $('rsLines').innerHTML = '<div class="hint">暂无可用回复模板。</div>';
+        $('rsPreview').textContent = '';
+        $('rsMeta').textContent = '';
+        $('rsScope').textContent = '';
+        rsState.loaded = false;
+        return;
+      }
+      toast('回复模板加载失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+      return;
+    }
+    rsState.name = name;
+    rsState.spec = r.data.spec;
+    rsState.preview = r.data.preview || {};
+    rsState.edited = !!r.data.edited;
+    rsState.loaded = true;
+    var first = rsState.spec.branches[0];
+    rsState.activeKey = first ? first.key : '';
+    card.style.display = 'block';
+    $('rsMeta').textContent = name + (rsState.edited ? ' · 已有自定义回复（优先于内置源码）' : ' · 内置源码模板');
+    $('rsHint').innerHTML = '把「' + esc(name) + '」插件的真实群回复按行可视化：切换上方分支（对应不同指令/场景），增删改下方行后保存即让机器人回复随之改变。';
+    rsRerenderBranches();
+    rsRenderLines();
+  }).catch(function(e){ toast('回复模板加载失败：' + (e && e.message || e)); });
+}
+
+function rsRerenderBranches(){
+  var box = $('rsBranches');
+  box.innerHTML = (rsState.spec.branches || []).map(function(b){
+    return '<span class="rs-chip' + (b.key === rsState.activeKey ? ' active' : '') + '" onclick="rsPickBranch(\'' + escAttr(b.key) + '\')">' + esc(b.label || b.key) + '</span>';
+  }).join('') || '';
+}
+function rsPickBranch(key){
+  rsState.activeKey = key;
+  rsRerenderBranches();
+  rsRenderLines();
+}
+
+var RS_LTYPE = { text:'固定行', val:'取值行', row:'拼值行', link:'链接行', blank:'空行' };
+function rsLineHtml(ln, i){
+  var typeOpts = Object.keys(RS_LTYPE).map(function(t){ return '<option value="' + t + '"' + (ln.t === t ? ' selected' : '') + '>' + RS_LTYPE[t] + '</option>'; }).join('');
+  var keysOpts = RS_KEYS.map(function(k){ return '<option value="' + k + '"' + (ln.k === k ? ' selected' : '') + '>' + k + '</option>'; }).join('');
+  var h = '<div class="rs-line" id="rsL' + i + '">';
+  h += '<div class="rs-lh"><select class="rs-sel" onchange="rsSwapType(' + i + ',this.value)">' + typeOpts + '</select>' +
+    '<span class="rs-grp" id="rsGrp' + i + '"></span>' +
+    '<button class="icon-btn" title="上移" onclick="rsMove(' + i + ',-1)">↑</button>' +
+    '<button class="icon-btn" title="下移" onclick="rsMove(' + i + ',1)">↓</button>' +
+    '<button class="icon-btn del" title="删除本行" onclick="rsDel(' + i + ')">✕</button></div>';
+  h += '<div class="rs-fields" id="rsF' + i + '"></div></div>';
+  return h;
+}
+function rsFieldsOf(ln, i){
+  var h = '';
+  if (ln.t === 'text') h += rsIn('text', '固定文本（支持 {key} 占位）', ln.v, i);
+  if (ln.t === 'val') h += rsIn('fb', '空值回退文本', ln.fb, i) + rsKIn(i, ln) + '<label class="rs-hide" title="值为空时不输出">&nbsp;<input type="checkbox" ' + (ln.hide ? 'checked' : '') + ' onchange="rsPatch(' + i + ',{hide:this.checked})"> 为空隐藏</label>';
+  if (ln.t === 'row') h += rsIn('pre', '前缀（如 QQ号：）', ln.pre, i) + rsKIn(i, ln) + rsIn('post', '后缀（如 {botId}）', ln.post, i) + '<label class="rs-hide"><input type="checkbox" ' + (ln.hide ? 'checked' : '') + ' onchange="rsPatch(' + i + ',{hide:this.checked})"> 为空隐藏整行</label>';
+  if (ln.t === 'link') h += rsIn('pre', '前缀（如 群 OpenID 请）', ln.pre, i) + rsIn('label', '链接文字（如 发送「…」）', ln.label, i) + rsIn('cmd', '点击回填指令', ln.cmd, i) + rsIn('post', '后缀', ln.post, i);
+  if (ln.t === 'blank') h += '<span class="hint">空行（分隔）</span>';
+  return h;
+}
+function rsIn(field, ph, val, i){
+  var fld = (field === 'text') ? 'v' : field;
+  return '<input type="text" class="rs-in' + (field==='text' ? ' rs-in-wide' : '') + '" placeholder="' + esc(ph) + '" value="' + escAttr(val || '') + '" oninput="rsPatch(' + i + ',{' + fld + ':this.value})">';
+}
+function rsKIn(i, ln){
+  return '<select class="rs-in rs-key" onchange="rsPatch(' + i + ',{k:this.value})"><option value="">（选数据键）</option>' +
+    RS_KEYS.map(function(k){ return '<option value="' + k + '"' + (ln.k === k ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select>';
+}
+function rsRenderLines(){
+  var b = rsState.activeBranch();
+  var box = $('rsLines');
+  if (!b){ box.innerHTML = '<div class="hint">该插件暂无回复分支。</div>'; return; }
+  box.innerHTML = '<div class="rs-branch-tip">分支：' + esc(b.label || b.key) + (b.triggers && b.triggers.length ? '（触发：' + esc(b.triggers.join(' / ')) + '）' : '') + '</div>' +
+    (b.lines || []).map(function(ln, i){ return rsLineHtml(ln, i); }).join('') || '<div class="hint">分支暂无行，点「加一行」开始。</div>';
+  (b.lines || []).forEach(function(ln, i){ var el = $('rsF' + i); if (el) el.innerHTML = rsFieldsOf(ln, i); });
+  rsPreview();
+}
+function rsPatch(i, patch){
+  var b = rsState.activeBranch();
+  if (!b || !b.lines[i]) return;
+  for (var k in patch) if (Object.prototype.hasOwnProperty.call(patch, k)) b.lines[i][k] = patch[k];
+  rsPreview();
+}
+function rsSwapType(i, t){
+  var b = rsState.activeBranch();
+  if (!b || !b.lines[i]) return;
+  var old = b.lines[i];
+  var n = { t: t };
+  if (t === 'text'){ n.v = old.v || ''; }
+  else if (t === 'val'){ n.k = old.k || 'openid'; n.fb = old.fb || '(未获取到)'; n.hide = !!old.hide; }
+  else if (t === 'row'){ n.pre = old.pre || ''; n.k = old.k || ''; n.post = old.post || ''; n.hide = !!old.hide; }
+  else if (t === 'link'){ n.pre = old.pre || ''; n.label = old.label || ''; n.cmd = old.cmd || ''; n.post = old.post || ''; }
+  b.lines[i] = n;
+  rsRenderLines();
+}
+function rsMove(i, dir){
+  var b = rsState.activeBranch();
+  if (!b) return;
+  var j = i + dir;
+  if (j < 0 || j >= b.lines.length) return;
+  var t = b.lines[i]; b.lines[i] = b.lines[j]; b.lines[j] = t;
+  rsRenderLines();
+}
+function rsAddLine(){
+  var b = rsState.activeBranch();
+  if (!b) return;
+  if (!b.lines) b.lines = [];
+  b.lines.push({ t: 'text', v: '在此输入回复内容（可含 {openid}/{qq}/{nick}/{botName}/{botId}/{botShow}/{gid} 等占位）' });
+  rsRenderLines();
+}
+function rsDel(i){
+  var b = rsState.activeBranch();
+  if (!b) return;
+  b.lines.splice(i, 1);
+  rsRenderLines();
+}
+
+// —— 前端渲染镜像（与后端 reply-editor.renderBranch / 插件 rsRender 同语义）——
+function rsLinkify(label, cmd){ return '[' + label + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(cmd) + '&enter=false&reply=false)'; }
+function rsInterp(s){
+  var d = rsState.preview || {};
+  return String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function(m, k){ var v = d[k]; return (v !== undefined && String(v).length) ? String(v) : ''; });
+}
+function rsLineText(ln){
+  var d = rsState.preview || {};
+  if (!ln) return '';
+  if (ln.t === 'blank') return '';
+  if (ln.t === 'text') return rsInterp(ln.v || '');
+  var get = function(){ var raw = ln.k ? d[ln.k] : undefined; if (raw !== undefined && String(raw).length) return String(raw); return (ln.fb !== undefined && ln.fb !== null && String(ln.fb).length) ? String(ln.fb) : ''; };
+  if (ln.t === 'val') return rsInterp(get());
+  if (ln.t === 'row'){ var v = get(); if (!v && ln.hide) return null; return rsInterp((ln.pre || '') + v + (ln.post || '')); }
+  if (ln.t === 'link') return (ln.pre || '') + rsLinkify(ln.label || '', ln.cmd || '') + (ln.post || '');
+  return '';
+}
+function rsPreview(){
+  var b = rsState.activeBranch();
+  var el = $('rsPreview');
+  if (!b){ if (el) el.textContent = ''; return; }
+  var out = [];
+  (b.lines || []).forEach(function(ln){
+    var t = rsLineText(ln);
+    if (t !== null && t !== undefined) out.push(t);
+  });
+  if (el){
+    el.textContent = out.join('\n');
+    $('rsScope').textContent = '（数据：机器人 ' + (rsState.preview.botShow || rsState.preview.botId || '?') + ' · ' + (rsState.preview.nick || '?') + ' · openid ' + (rsState.preview.openid || '?') + '）';
+  }
+}
+function rsSave(){
+  if (!rsState.spec){ toast('无可用模板'); return; }
+  if (!confirm('保存「' + rsState.name + '」回复模板到服务器？（保存后插件运行时按新模板回复，机器人无关、全 bot 生效）')) return;
+  api('/api/plugins/' + encodeURIComponent(rsState.name) + '/reply-spec', { method: 'POST', body: JSON.stringify({ spec: rsState.spec }) }).then(function(r){
+    if (r.ok && r.data && r.data.ok){ toast('已保存回复模板（config plugin.file-' + rsState.name + '.reply）'); rsState.edited = true; $('rsMeta').textContent = rsState.name + ' · 已有自定义回复（优先于内置源码）'; }
+    else toast('保存失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+  });
+}
+function rsApply(){
+  if (!rsState.spec){ toast('无可用模板'); return; }
+  if (!confirm('把当前回复模板固化写入「' + rsState.name + '」插件源码（/*__REPLY_SPEC__*/ 常量段）？\n写前自动备份原码，可随时「撤销写回源码」还原。')) return;
+  api('/api/plugins/' + encodeURIComponent(rsState.name) + '/reply-apply', { method: 'POST', body: JSON.stringify({ spec: rsState.spec }) }).then(function(r){
+    if (r.ok && r.data && r.data.ok) toast('已写入源码：' + (r.data.fileName || ''));
+    else toast('写回失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+  });
+}
+function rsUndo(){
+  if (!confirm('撤销「' + rsState.name + '」最近一次写回源码，还原插件原代码？')) return;
+  api('/api/plugins/' + encodeURIComponent(rsState.name) + '/reply-apply/undo', { method: 'POST' }).then(function(r){
+    if (r.ok && r.data && r.data.ok) toast('已还原源码：' + (r.data.fileName || ''));
+    else toast('撤销失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+  });
+}
+function rsLoad(){
+  loadReplyEditor(rsState.name || curPlugin);
+}
+
 function toggleSidebar(){
   sidebarOpen = !sidebarOpen;
   $('sidebar').classList.toggle('open', sidebarOpen);
@@ -1888,6 +2127,7 @@ function selectPlugin(name){
   loadMeta();
   renderSidebarPlugins();
   syncActiveRow();
+  loadReplyEditor();
 }
 
 function loadExternLinks(){

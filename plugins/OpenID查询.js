@@ -6,6 +6,133 @@
 //   私聊发「OpenID查询」→ 返回你的 OpenID
 //   频道里发「OpenID查询」/「频道OpenID查询」→ 返回频道 OpenID
 // 说明：每个机器人下同一用户的 OpenID 不同，此命令用于跨机器人对账与身份识别
+// 说明：回复内容已接入 ReplySpec 可视化编辑器（后台「回复编辑器」可改行/增删/写回源码），
+//       生效优先级：config（plugin.file-OpenID查询.reply）> 内置 REPLY_SPEC 常量。
+
+/*__REPLY_SPEC_BEGIN__*/
+var REPLY_SPEC = {
+  name: 'OpenID查询',
+  version: '1.0.0',
+  desc: '查询自己的 OpenID / 群 OpenID / 频道 OpenID，可 @ 其他用户查询其 OpenID（帮助多机器人 OpenID 对账与身份识别）',
+  branches: [
+    {
+      key: 'self', label: 'OpenID查询（群/私聊/频道 · 自己）', scope: ['group', 'c2c', 'guild'], triggers: ['OpenID查询', '我的OpenID'],
+      lines: [
+        { t: 'text', v: '你的 OpenID：' },
+        { t: 'val', k: 'openid', fb: '(未获取到，请确认已通过机器人所在群/私聊交互过)' },
+        { t: 'row', pre: 'QQ号：', k: 'qq', hide: true },
+        { t: 'row', pre: '昵称：', k: 'nick', hide: true },
+        { t: 'row', pre: '所属机器人：', k: 'botShow', hide: true }
+      ]
+    },
+    {
+      key: 'self@group', label: 'OpenID查询（群内 · 追加群OpenID指引）', scope: ['group'], triggers: ['OpenID查询'],
+      lines: [
+        { t: 'text', v: '你的 OpenID：' },
+        { t: 'val', k: 'openid', fb: '(未获取到，请确认已通过机器人所在群/私聊交互过)' },
+        { t: 'row', pre: 'QQ号：', k: 'qq', hide: true },
+        { t: 'row', pre: '昵称：', k: 'nick', hide: true },
+        { t: 'row', pre: '所属机器人：', k: 'botShow', hide: true },
+        { t: 'link', pre: '群 OpenID 请', label: '发送「群OpenID查询」', cmd: '群OpenID查询' }
+      ]
+    },
+    {
+      key: 'self@c2c', label: 'OpenID查询（私聊）', scope: ['c2c'], triggers: ['OpenID查询'],
+      lines: [
+        { t: 'text', v: '你的 OpenID：' },
+        { t: 'val', k: 'openid', fb: '(未获取到)' },
+        { t: 'row', pre: '昵称：', k: 'nick', hide: true },
+        { t: 'row', pre: '所属机器人：', k: 'botShow', hide: true }
+      ]
+    },
+    {
+      key: 'self@guild', label: 'OpenID查询（频道）', scope: ['guild'], triggers: ['OpenID查询'],
+      lines: [
+        { t: 'text', v: '你的 OpenID：' },
+        { t: 'val', k: 'openid', fb: '(未获取到)' },
+        { t: 'row', pre: '昵称：', k: 'nick', hide: true },
+        { t: 'row', pre: '所属机器人：', k: 'botShow', hide: true }
+      ]
+    },
+    {
+      key: 'at', label: 'OpenID查询 @用户（有人被 @）', scope: ['group'], triggers: ['OpenID查询 @xxx'],
+      lines: [
+        { t: 'text', v: '被 @ 用户们的 OpenID：' },
+        { t: 'val', k: 'atOpenids' },
+        { t: 'text', v: '（每个机器人下 OpenID 不同，请在使用对应机器人的群内查询）' }
+      ]
+    },
+    {
+      key: 'atEmpty', label: 'OpenID查询 @用户（未 @ 到人）', scope: ['group'], triggers: ['OpenID查询 @xxx'],
+      lines: [
+        { t: 'text', v: '请 @ 一个用户来查询他的 OpenID，例如：OpenID查询 @张三' }
+      ]
+    },
+    {
+      key: 'group', label: '群OpenID查询（群内）', scope: ['group'], triggers: ['群OpenID查询'],
+      lines: [
+        { t: 'text', v: '当前群 OpenID：' },
+        { t: 'val', k: 'gid', fb: '(未获取到)' },
+        { t: 'row', pre: '所属机器人：', k: 'botShow', hide: true },
+        { t: 'link', pre: '你的 OpenID 请', label: '发送「OpenID查询」', cmd: 'OpenID查询' }
+      ]
+    },
+    {
+      key: 'group@guild', label: '频道OpenID查询（频道内）', scope: ['guild'], triggers: ['频道OpenID查询'],
+      lines: [
+        { t: 'text', v: '当前频道 OpenID：' },
+        { t: 'val', k: 'gid', fb: '(未获取到)' },
+        { t: 'row', pre: '频道ID：', k: 'guildId', hide: true },
+        { t: 'row', pre: '所属机器人：', k: 'botShow', hide: true }
+      ]
+    }
+  ]
+};
+/*__REPLY_SPEC_END__*/
+
+// ===== ReplySpec 行渲染（与后台 src/admin/reply-editor.ts renderBranch 同语义，单文件自包含）=====
+function _rsGet(d, k) {
+  if (d && k && d[k] !== undefined && String(d[k]).length) return String(d[k]);
+  return '';
+}
+function _rsVal(ln, d) {
+  var v = _rsGet(d, ln.k);
+  if (v) return v;
+  return (ln.fb !== undefined && ln.fb !== null && String(ln.fb).length) ? String(ln.fb) : '';
+}
+function _rsInterp(s, d) {
+  return String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function(m, k) { return _rsGet(d, k); });
+}
+function _rsMq(label, cmd) {
+  return '[' + label + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(cmd) + '&enter=false&reply=false)';
+}
+function rsRender(branchKey, d, spec, linkFn) {
+  var s = spec || REPLY_SPEC;
+  if (!s || !s.branches) return '';
+  var b = null;
+  for (var i = 0; i < s.branches.length; i++) { if (s.branches[i].key === branchKey) { b = s.branches[i]; break; } }
+  if (!b) return '';
+  var out = [];
+  for (var j = 0; j < b.lines.length; j++) {
+    var ln = b.lines[j];
+    if (!ln) continue;
+    if (ln.t === 'blank') { out.push(''); continue; }
+    if (ln.t === 'text') { out.push(_rsInterp(ln.v || '', d)); continue; }
+    if (ln.t === 'val') { out.push(_rsInterp(_rsVal(ln, d), d)); continue; }
+    if (ln.t === 'row') {
+      var v = _rsVal(ln, d);
+      if (!v && ln.hide) continue;
+      out.push(_rsInterp((ln.pre || '') + v + (ln.post || ''), d));
+      continue;
+    }
+    if (ln.t === 'link') {
+      var lk = (linkFn || _rsMq)(ln.label || '', ln.cmd || '');
+      out.push((ln.pre || '') + lk + (ln.post || ''));
+    }
+  }
+  return out.join('\n');
+}
+
 module.exports = {
   manifest: {
     id: 'mod-openid-query',
@@ -18,6 +145,17 @@ module.exports = {
   onEnable: function(ctx) {
     ctx.logger.info('OpenID查询插件已启用 v1.0.0');
 
+    // ReplySpec：服务器 config 覆盖内置模板（后台「回复编辑器」保存后即时生效）
+    var curSpec = REPLY_SPEC;
+    try {
+      var raw = (ctx.engine && ctx.engine.getConfigValue) ? ctx.engine.getConfigValue('plugin.file-OpenID查询.reply') : null;
+      if (raw) {
+        var parsed = JSON.parse(String(raw));
+        if (parsed && Array.isArray(parsed.branches) && parsed.branches.length) curSpec = parsed;
+      }
+    } catch (e) { ctx.logger.warn('OpenID查询 ReplySpec config 解析失败，使用内置模板: ' + String(e && e.message || e)); }
+    var linkFn = function(t, c) { return (ctx.link && ctx.link.linkify) ? ctx.link.linkify(t, c) : _rsMq(t, c); };
+
     function normalize(content) {
       return (content || '').trim().replace(/^\s*<@!?[A-Fa-f0-9]+>\s*/, '').trim();
     }
@@ -27,11 +165,11 @@ module.exports = {
       return a.openid || a.id || data.member_openid || '';
     }
 
-    function botLine(botId) {
+    function botShow(botId) {
       if (!botId) return '';
       var name = (ctx.engine && ctx.engine.getBotNameById) ? ctx.engine.getBotNameById(botId) : '';
-      if (name && name !== botId) return '所属机器人：' + name + '（' + botId + '）';
-      return '所属机器人：' + botId;
+      if (name && name !== botId) return name + '（' + botId + '）';
+      return botId;
     }
 
     // 群内回复：外显文字链接（mqqapi）需 markdown 才可点击，优先 sendMarkdownGroup，失败回退普通文本
@@ -65,47 +203,45 @@ module.exports = {
       return content === '群OpenID查询' || content === '群OpenID' || content === '群openid' || content === '频道OpenID查询' || content === '频道OpenID';
     }
 
+    function baseData(data) {
+      var a = data.author || {};
+      return {
+        openid: selfOpenid(data),
+        qq: a.qqId || '',
+        nick: a.username || '',
+        botShow: botShow(data.botId),
+        gid: data.groupId || data.channelId || '',
+        guildId: data.guildId || '',
+      };
+    }
+
     // ===== 群消息 =====
     ctx.eventBus.on('message.group', async function(data) {
       try {
         var content = normalize(data.content || '');
         var gid = data.groupId || data.channelId || '';
         var msgId = data.id;
-        var myOpenid = selfOpenid(data);
-        var a = data.author || {};
-        var myQq = a.qqId || '';
-        var myNick = a.username || '';
+        var d = baseData(data);
+        var myOpenid = d.openid;
 
         if (isQuery(content)) {
-          var lines = ['你的 OpenID：', myOpenid || '(未获取到，请确认已通过机器人所在群/私聊交互过)'];
-          if (myQq) lines.push('QQ号：' + myQq);
-          if (myNick) lines.push('昵称：' + myNick);
-          var bl = botLine(data.botId);
-          if (bl) lines.push(bl);
-          lines.push('群 OpenID 请' + ctx.link.linkify('发送「群OpenID查询」', '群OpenID查询') + '');
-          if (gid) await sendGroup(gid, lines.join('\n'), msgId);
+          var text = rsRender('self@group', d, curSpec, linkFn);
+          if (gid && text) await sendGroup(gid, text, msgId);
           return;
         }
 
         if ((content === 'OpenID查询 @' || content.indexOf('OpenID查询 @') === 0 || content.indexOf('openid查询 @') === 0) && !isQuery(content)) {
           var ats = extractAtOpenids(content);
-          if (ats.length === 0) {
-            if (gid) await sendGroup(gid, '请 @ 一个用户来查询他的 OpenID，例如：OpenID查询 @张三');
-            return;
-          }
-          var oLines = ['被 @ 用户' + (ats.length > 1 ? '们' : '') + '的 OpenID：'];
-          for (var i = 0; i < ats.length; i++) oLines.push((i + 1) + '. ' + ats[i]);
-          oLines.push('（每个机器人下 OpenID 不同，请在使用对应机器人的群内查询）');
-          if (gid) await sendGroup(gid, oLines.join('\n'));
+          var atText = (ats.length === 0)
+            ? rsRender('atEmpty', d, curSpec, linkFn)
+            : rsRender('at', { atOpenids: ats.map(function(id, i) { return (i + 1) + '. ' + id; }).join('\n') }, curSpec, linkFn);
+          if (atText && gid) await sendGroup(gid, atText);
           return;
         }
 
         if (isGroupQuery(content)) {
-          var gl = ['当前群 OpenID：', gid || '(未获取到)'];
-          var bl2 = botLine(data.botId);
-          if (bl2) gl.push(bl2);
-          gl.push('你的 OpenID 请' + ctx.link.linkify('发送「OpenID查询」', 'OpenID查询') + '');
-          if (gid) await sendGroup(gid, gl.join('\n'));
+          var gText = rsRender('group', d, curSpec, linkFn);
+          if (gid && gText) await sendGroup(gid, gText);
           return;
         }
       } catch (e) {
@@ -118,28 +254,23 @@ module.exports = {
       try {
         var content = normalize(data.content || '');
         var channelId = data.channelId || '';
-        var myOpenid = selfOpenid(data);
-        var a = data.author || {};
+        var d = baseData(data);
+        var myOpenid = d.openid;
 
         if (isQuery(content)) {
-          var lines = ['你的 OpenID：', myOpenid || '(未获取到)'];
-          if (a.username) lines.push('昵称：' + a.username);
-          var bl = botLine(data.botId);
-          if (bl) lines.push(bl);
-          if (channelId) {
-            try { await ctx.bot.sendChannelMessage(channelId, { content: lines.join('\n') }); }
-            catch(e) { try { await ctx.bot.sendMessage(channelId, lines.join('\n')); } catch(e2) { ctx.logger.error('频道回复失败: ' + String(e2 && e2.message || e2)); } }
+          var text = rsRender('self@guild', d, curSpec, linkFn);
+          if (channelId && text) {
+            try { await ctx.bot.sendChannelMessage(channelId, { content: text }); }
+            catch(e) { try { await ctx.bot.sendMessage(channelId, text); } catch(e2) { ctx.logger.error('频道回复失败: ' + String(e2 && e2.message || e2)); } }
           }
           return;
         }
 
         if (isGroupQuery(content)) {
-          var gl = ['当前频道 OpenID：', channelId || '(未获取到)', '频道ID：' + (data.guildId || '-')];
-          var bl2 = botLine(data.botId);
-          if (bl2) gl.push(bl2);
-          if (channelId) {
-            try { await ctx.bot.sendChannelMessage(channelId, { content: gl.join('\n') }); }
-            catch(e) { try { await ctx.bot.sendMessage(channelId, gl.join('\n')); } catch(e2) { ctx.logger.error('频道回复失败: ' + String(e2 && e2.message || e2)); } }
+          var gText = rsRender('group@guild', d, curSpec, linkFn);
+          if (channelId && gText) {
+            try { await ctx.bot.sendChannelMessage(channelId, { content: gText }); }
+            catch(e) { try { await ctx.bot.sendMessage(channelId, gText); } catch(e2) { ctx.logger.error('频道回复失败: ' + String(e2 && e2.message || e2)); } }
           }
           return;
         }
@@ -153,14 +284,11 @@ module.exports = {
       try {
         var content = normalize(data.content || '');
         var myOpenid = selfOpenid(data);
-        var a = data.author || {};
+        var d = baseData(data);
         if (isQuery(content)) {
-          var lines = ['你的 OpenID：', myOpenid || '(未获取到)'];
-          if (a.username) lines.push('昵称：' + a.username);
-          var bl = botLine(data.botId);
-          if (bl) lines.push(bl);
-          if (myOpenid) {
-            try { await ctx.bot.sendPrivateMessage(myOpenid, lines.join('\n')); } catch(e) { ctx.logger.error('私聊回复失败: ' + String(e && e.message || e)); }
+          var text = rsRender('self@c2c', d, curSpec, linkFn);
+          if (myOpenid && text) {
+            try { await ctx.bot.sendPrivateMessage(myOpenid, text); } catch(e) { ctx.logger.error('私聊回复失败: ' + String(e && e.message || e)); }
           }
           return;
         }
