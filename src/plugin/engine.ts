@@ -1925,13 +1925,13 @@ export class PluginEngine {
       getGlobalMode: () => {
         try {
           const row = getDb().prepare("SELECT value FROM config WHERE key = 'global_mode'").get() as any;
-          if (row && row.value) return row.value === 'text_link' ? 'text' : row.value;
+          if (row && row.value) return row.value;
         } catch {}
-        return 'text';
+        return 'text_link';
       },
       setGlobalMode: (mode: string) => {
-        // text_link 模式已移除，统一归一化为 text
-        const m = (mode === 'text' || mode === 'image') ? mode : 'text';
+        // 支持 文字 text / 文字外显链接 text_link / 图片 image / 内联按钮 button 四种模式
+        const m = (['text', 'text_link', 'image', 'button'].indexOf(mode) >= 0) ? mode : 'text_link';
         try {
           getDb().prepare(
             "INSERT INTO config (key, value, updated_at) VALUES ('global_mode', ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"

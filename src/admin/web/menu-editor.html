@@ -405,6 +405,22 @@
     <div class="preview" id="preview"></div>
   </div>
 
+  <div class="card" id="gmCard">
+    <h2>🎛️ 菜单全局模式 <span style="color:#999;font-size:12px">（全机器人共享一份，决定群内菜单发送形态）</span></h2>
+    <div class="row">
+      <label>菜单模式：</label>
+      <select id="gmSel" style="flex:1">
+        <option value="text_link">文字外显链接模式（默认，功能项为可点链接，点后指令回填）</option>
+        <option value="text">文字模式（纯文本清单）</option>
+        <option value="image">图片菜单模式（sharp 卡片图）</option>
+        <option value="button">按钮模式（标题 + 内联按钮，点按钮自动填入指令并发送）</option>
+      </select>
+      <button class="btn primary" onclick="gmSave()">💾 保存全局模式</button>
+      <button class="btn" onclick="gmLoad()">↻ 刷新</button>
+    </div>
+    <div class="hint">与群内「模式设置」指令等价并共享同一配置：文字=纯文本清单 · 文字外显链接=可点击回填 · 图片=卡片图 · 按钮=内联按钮键盘。任意机器人群内发送菜单/功能菜单都会按此模式渲染。</div>
+  </div>
+
   <div class="card">
     <h2>🔑 全局变量 <span style="color:#999;font-size:12px">（用户自定义，各插件共用）</span></h2>
     <div class="var-hint">在下方创建变量名 + 值，保存到服务器 config（plugin.vars），任意插件代码里用 <code>ctx.engine.getVariable('变量名')</code> 读取、<code>ctx.engine.setVariable('变量名','值')</code> 写入；同一个变量可被多个插件、多个机器人调用。</div>
@@ -2395,6 +2411,26 @@ function delVar(name){
   });
 }
 
+// ===== 菜单全局模式（config global_mode：text/text_link/image/button，全机器人共享） =====
+function gmLoad(){
+  api('/api/menu-config/global-menu-mode').then(function(r){
+    if (!r.ok || !r.data || r.data.code !== 200){ toast('全局模式读取失败' + (r.data && r.data.error ? '：' + esc(r.data.error) : '')); return; }
+    var sel = $('gmSel');
+    if (!sel) return;
+    var m = String(r.data.mode || 'text_link');
+    sel.value = ['text', 'text_link', 'image', 'button'].indexOf(m) >= 0 ? m : 'text_link';
+  }).catch(function(){});
+}
+
+function gmSave(){
+  var sel = $('gmSel');
+  if (!sel) return;
+  api('/api/menu-config/global-menu-mode', { method: 'PUT', body: JSON.stringify({ mode: sel.value }) }).then(function(r){
+    if (r.ok && r.data && r.data.code === 200){ toast('✅ ' + (r.data.msg || '全局模式已保存')); gmLoad(); }
+    else toast('保存失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+  });
+}
+
 // 仅超级主人显示「插件工坊」入口
 api('/api/auth/me').then(function(r){
   if (r.ok && r.data && r.data.role === 'super_master'){
@@ -2407,6 +2443,7 @@ api('/api/auth/me').then(function(r){
 loadAllPlugins();
 loadBots();
 loadVars();
+gmLoad();
 </script>
 <div class="workshop-overlay" id="modalWorkshop">
   <div class="workshop">

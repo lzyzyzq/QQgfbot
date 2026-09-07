@@ -366,6 +366,36 @@ module.exports = (function () {
       } catch (e) {}
     }
 
+    // 内联按钮模式：标题 + 按钮键盘（点按钮自动回填指令，enter 发送）
+    const gMode = (ctx.engine && ctx.engine.getGlobalMode) ? String(ctx.engine.getGlobalMode() || '') : '';
+    if (gMode === 'button' && ctx.bot && ctx.bot.sendKeyboardGroup) {
+      try {
+        const menu = MENU[menuKey] || MENU.main;
+        const kbRows = [];
+        for (const row of menu.rows) {
+          if (!Array.isArray(row)) continue; // tips 说明行不转按钮
+          const btns = [];
+          for (const it of row) {
+            if (!it || !it.label) continue;
+            const data = String(it.action || it.label);
+            btns.push({
+              id: 'kb_' + (menuKey || 'main') + '_' + data,
+              render_data: { label: it.label, visited_label: it.label, style: 0 },
+              action: { type: 2, data, enter: true, permission: { type: 2 } }
+            });
+          }
+          if (btns.length) kbRows.push(btns);
+        }
+        if (kbRows.length) {
+          const ok = await ctx.bot.sendKeyboardGroup(groupId, {
+            content: '**' + menu.title + '**\n点下方按钮，指令会自动填入输入框，点「发送」即触发；也可以直接发文字指令。',
+            rows: kbRows
+          }, msgId);
+          if (ok) return;
+        }
+      } catch (e) {}
+    }
+
     // 链接式 markdown：头像内嵌 + 功能项文字外显（受全局开关控制）
     let md = renderMd(ctx, data, menuKey);
     try {

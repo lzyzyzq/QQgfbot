@@ -152,15 +152,16 @@ module.exports = {
             await sendReply('⛔ 仅超级主人可操作', [backRow()]);
             return;
           }
-          var modeNames = { button: '按钮模式(已移除)', text: '文字模式', text_link: '文字链接模式', image: '图片菜单模式' };
+          var modeNames = { button: '按钮模式', text: '文字模式', text_link: '文字链接模式', image: '图片菜单模式' };
           if (content === '模式设置') {
             var currentMode = ctx.storage.get('global_mode') || 'text_link';
-            await sendReply('🔄 当前全局模式：' + (modeNames[currentMode] || currentMode) + '\n格式：模式设置 文字 / 文字链接 / 图片', [backRow()]);
+            await sendReply('🔄 当前全局模式：' + (modeNames[currentMode] || currentMode) + '\n格式：模式设置 按钮 / 文字 / 文字链接 / 图片', [backRow()]);
             return;
           }
           var mode = content.substring(5).trim();
           if (mode === '按钮' || mode === 'button') {
-            await sendReply('❌ 按钮模式已移除\n请使用：文字 / 文字链接 / 图片', [backRow()]);
+            ctx.storage.set('global_mode', 'button');
+            await sendReply('✅ 已切换为按钮模式（菜单以「标题 + 内联按钮」发送，点按钮自动回填指令）', [backRow()]);
           } else if (mode === '图片' || mode === 'image' || mode === '图片菜单') {
             ctx.storage.set('global_mode', 'image');
             await sendReply('✅ 已切换为图片菜单模式', [backRow()]);
@@ -171,7 +172,7 @@ module.exports = {
             ctx.storage.set('global_mode', 'text_link');
             await sendReply('✅ 已切换为文字链接模式\n菜单按钮将变为可点击的文字链接', [backRow()]);
           } else {
-            await sendReply('❌ 无效模式\n请使用：文字 / 文字链接 / 图片', [backRow()]);
+            await sendReply('❌ 无效模式\n请使用：按钮 / 文字 / 文字链接 / 图片', [backRow()]);
           }
           return;
         }

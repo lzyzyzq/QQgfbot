@@ -594,6 +594,32 @@ router.put('/menu-config/global-link-mode', (req, res) => {
   }
 });
 
+// GET /api/menu-config/global-menu-mode → 全局菜单模式（text=文字 / text_link=文字外显链接 / image=图片菜单 / button=内联按钮）
+router.get('/menu-config/global-menu-mode', (_req, res) => {
+  let mode = 'text_link';
+  try {
+    const db = getDb();
+    const row = db.prepare("SELECT value FROM config WHERE key = 'global_mode'").get() as any;
+    if (row && row.value) mode = String(row.value);
+  } catch {}
+  res.json({ code: 200, mode });
+});
+
+// PUT /api/menu-config/global-menu-mode  body: { mode: 'text'|'text_link'|'image'|'button' }
+router.put('/menu-config/global-menu-mode', (req, res) => {
+  const MODES = ['text', 'text_link', 'image', 'button'];
+  const mode = MODES.indexOf(String((req.body || {}).mode || '')) >= 0 ? String((req.body || {}).mode) : 'text_link';
+  try {
+    const db = getDb();
+    db.prepare(
+      "INSERT INTO config (key, value, updated_at) VALUES ('global_mode', ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"
+    ).run(mode);
+    res.json({ code: 200, msg: '菜单全局模式已切换为 ' + mode, mode });
+  } catch (e: any) {
+    res.status(500).json({ code: 500, msg: '保存失败', error: String(e && e.message || e) });
+  }
+});
+
 // POST /api/menu-config  body: { plugin?, appid, config? }  config 为空/缺省 = 恢复默认
 router.post('/menu-config', (req, res) => {
   const body = req.body || {};
