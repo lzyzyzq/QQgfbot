@@ -320,7 +320,12 @@ module.exports = {
             }
            try {
             var cityEnc = encodeURIComponent(city);
-            var url = 'https://wttr.in/' + cityEnc + '?format=%C+%t+%h+%w&lang=zh';
+            // 天气接口可配置：系统设置 bot.weather_text_api / bot.weather_png_api > 全局变量 weather_api（仅文本）> 默认 wttr.in
+            var wTextApi = '', wPngApi = '';
+            try { if (ctx.engine && ctx.engine.getConfigValue) { wTextApi = String(ctx.engine.getConfigValue('bot.weather_text_api') || '').trim(); wPngApi = String(ctx.engine.getConfigValue('bot.weather_png_api') || '').trim(); } } catch (e0) {}
+            if (!wTextApi) { try { if (ctx.engine && ctx.engine.getVariable) wTextApi = String(ctx.engine.getVariable('weather_api') || '').trim(); } catch (e0) {} }
+            var weatherFill = function(tpl, raw, enc) { return String(tpl || '').replace(/\{cityRaw\}/g, raw).replace(/\{city\}/g, enc); };
+            var url = wTextApi ? weatherFill(wTextApi, city, cityEnc) : ('https://wttr.in/' + cityEnc + '?format=%C+%t+%h+%w&lang=zh');
             // 用 https 模块（原 http 模块请求 https 地址会报 Protocol "https:" not supported）
             var httpMod = require(url.indexOf('https:') === 0 ? 'https' : 'http');
             var result = await new Promise(function(resolve, reject) {
@@ -340,7 +345,7 @@ module.exports = {
               var imgSent = false;
               try {
                 if (groupId && ctx.bot.uploadGroupImage && ctx.bot.sendGroupImageMessage) {
-                  var pngUrl = 'https://wttr.in/' + cityEnc + '_p.png';
+                  var pngUrl = wPngApi ? weatherFill(wPngApi, city, cityEnc) : ('https://wttr.in/' + cityEnc + '_p.png');
                   var up = await ctx.bot.uploadGroupImage(groupId, pngUrl);
                   if (up && up.file_info) {
                     await ctx.bot.sendGroupImageMessage(groupId, up.file_info, msgId);

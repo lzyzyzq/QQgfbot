@@ -1,14 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.74",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.74.zip",
+  "version": "4.2.75",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.75.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.74.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.75.zip"
     }
   ],
-  "changeLog": "【4.2.74】ReplySpec 回复可视化编辑器（插件真实回复按行编辑 + 一键写回源码）：\n1) menu-editor 新增「回复编辑器」：对 OpenID查询 等文本回复插件把真实回复按行可视化（固定行/取值行/前缀拼值行/可点链接行/空行，分支切换+增删改排序），实时预览以当前机器人真名真 ID 渲染（botName/botId 真值，openid/qq/nick 示例占位）；\n2) 后端 reply-spec 底座：内置 ReplySpec 模板与 config 自定义并存，config（plugin.file-xxx.reply）优先于内置；插件运行时按模板渲染回复；\n3) 一键写回源码：校验插件含 ReplySpec 适配标记后把当前模板固化进源码（/*__REPLY_SPEC__*/ marker 段），写前自动备份可一键撤销还原；\n4) OpenID查询 全面接入首个样板：内置 8 分支（群/私聊/频道/@ 他人 等），渲染 helper 自包含，可点链接尊重全局外显开关。",
-  "configUrl": ""
+  "changeLog": "【4.2.75】ReplySpec 批量接入 12 插件 + 天气查询接口可配置：\n1) 回复可视化收编第二批：群主、绑定管理、充值系统、签到系统、关键词回复、列表读取、群信息、菜单模式、讲笑话、问候插件、实用工具、娱乐中心 共 12 个插件内置 REPLY_SPEC 行模板（累计 120+ 分支，覆盖各指令的成功/失败/权限/空态等真实回复），后台「回复编辑器」对这批插件即时可用：改行保存（config 覆盖）或一键写回源码（marker 段替换，可撤销）；渲染非空优先、空则回退原文兜底，业务逻辑零改动；\n2) 实用工具「查询天气 城市」数据源可配置：系统设置新增「天气文本接口地址 / 天气图片接口地址」（默认 wttr.in 恢复原样），占位符 {city}（URL 编码）/ {cityRaw}（原名）自由拼接口，也可在插件卡片·变量管理填全局变量 weather_api（仅文本接口，优先级低于系统设置）；\n3) 内置模板字典 builtinReplySpec 全量登记 13 插件（含 OpenID查询），新增全内置模板覆盖单测，vitest 全量 69 项通过。"
 }

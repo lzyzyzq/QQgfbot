@@ -2,6 +2,12 @@
 
 ## 2026-09-07
 
+### 4.2.75：ReplySpec 批量接入 12 插件 + 天气查询接口可配置
+- **回复可视化收编第二批（12 插件，累计 120+ 分支行模板）**：群主、绑定管理、充值系统、签到系统、关键词回复、列表读取、群信息、菜单模式、讲笑话、问候插件、实用工具、娱乐中心 —— 每文件顶部内嵌 `/*__REPLY_SPEC_BEGIN__*/` marker 段（REPLY_SPEC 分支模板）+ 自包含渲染 helper + 原文兜底 `_fbXxx()`（render 非空优先、空回退原文）；业务触发/权限/逻辑逐字未动；覆盖各指令的成功/失败/权限拒绝/空态/列表等真实回复出口
+- **内置模板字典全量登记**：`builtinReplySpec` 现含 13 插件（OpenID查询 + 上述 12）；后台「回复编辑器」对这批插件即时可用——改行保存（config `plugin.file-{name}.reply` 覆盖）或一键写回源码（marker 段替换 + 备份撤销）；新增全内置模板覆盖单测（vitest 全量 69 项通过、tsc 零错）
+- **天气查询接口可配置（实用工具）**：数据源优先级 = 系统设置「天气文本/图片接口地址」> 引擎全局变量 `weather_api`（仅文本）> 默认 wttr.in（恢复原样）；占位符 `{city}`（URL 编码城市名）/ `{cityRaw}`（原城市名），PNG 天气图接口同步可配
+- 端到端已验证：12 插件 GET reply-spec 内置模板与真值预览就绪 + 绑定管理 config 保存→写回源码→undo 字节级还原全链路 PASS；测试 config 已清理
+
 ### 4.2.74：ReplySpec 回复可视化编辑器（真实回复按行编辑 + 一键写回源码）
 - **menu-editor 新增「回复编辑器」卡**（插件信息与页面管理之间，随选插件自动加载）：对 OpenID查询 等无内置卡片模板的文本回复插件，把真实回复按行可视化——五种行类型：text 固定行（支持 {key} 占位插值）、val 取值行（空值显示回退文本，可隐藏）、row 前缀拼值行（前缀+数据键+后缀，可空隐藏整行）、link 可点回填链接行（mqqapi inlinecmd，尊重全局文字外显开关）、blank 空行；分支页签切换（对应不同指令/场景）+ 行增删改/↑↓排序；底部「真实回复预览」实时渲染，以当前选中机器人真名真 ID（botName/botId/botShow）为数据底座，触发用户字段 openid/qq/nick/gid/guildId 给出示例占位便于观察排版
 - **ReplySpec 底座（src/admin/reply-editor.ts）**：ReplyLine/ReplyBranch/ReplySpec/ReplyCtxData 模型、renderBranch 行渲染（行内 {key} 二次插值）、linkifyMarkdown、makePreviewData 真值预览、builtinReplySpec 内置模板字典；单测 9 项

@@ -417,6 +417,8 @@ export function createSystemRoutes(
       chimeTexts: getConfig('bot.chime_texts') || '',
       chimeCity: getConfig('bot.chime_city') || '北京',
       chimeAd: getConfig('bot.chime_ad') || '',
+      weatherTextApi: getConfig('bot.weather_text_api') || '',
+      weatherPngApi: getConfig('bot.weather_png_api') || '',
       footerText: getConfig('bot.footer_text') || '',
       footerAds: getConfig('bot.footer_ads') || '',
       qqLoginToken: getConfig('qqlogin.token') || '',
@@ -455,6 +457,8 @@ export function createSystemRoutes(
     if (req.body.chimeTexts !== undefined) setConfig('bot.chime_texts', String(req.body.chimeTexts));
     if (req.body.chimeCity !== undefined) setConfig('bot.chime_city', String(req.body.chimeCity).trim() || '北京');
     if (req.body.chimeAd !== undefined) setConfig('bot.chime_ad', String(req.body.chimeAd));
+    if (req.body.weatherTextApi !== undefined) setConfig('bot.weather_text_api', String(req.body.weatherTextApi).trim());
+    if (req.body.weatherPngApi !== undefined) setConfig('bot.weather_png_api', String(req.body.weatherPngApi).trim());
     if (req.body.footerText !== undefined) setConfig('bot.footer_text', String(req.body.footerText));
     if (req.body.footerAds !== undefined) setConfig('bot.footer_ads', String(req.body.footerAds));
     if (req.body.qqLoginToken !== undefined) setConfig('qqlogin.token', String(req.body.qqLoginToken).trim());
