@@ -1,4 +1,171 @@
 // 实用工具 v1.2.1 - 每日备注/打卡/昵称/天气/个人信息（富媒体头像卡）
+// ReplySpec 回复可视化：内置模板可被后台 config plugin.file-实用工具.reply 覆盖；渲染优先+原文兜底
+/*__REPLY_SPEC_BEGIN__*/
+var REPLY_SPEC = {
+  name: '实用工具',
+  version: '1.2.1',
+  desc: '每日备注/每日打卡/设置昵称/查询天气（帮助与失败提示）等纯文本回复模板；个人信息头像卡与天气图片保持富媒体原样',
+  branches: [
+    {
+      key: 'noteView', label: '每日备注（查看·今日已有内容）', scope: ['group'], triggers: ['每日备注'],
+      lines: [
+        { "t": "text", "v": "📝 今日备注" },
+        { "t": "text", "v": "{note}" }
+      ]
+    },
+    {
+      key: 'noteEmpty', label: '每日备注（查看·今日暂无备注）', scope: ['group'], triggers: ['每日备注'],
+      lines: [
+        { "t": "text", "v": "📝 今日暂无备注" },
+        { "t": "text", "v": "发送\"每日备注 内容\" 记录今天" }
+      ]
+    },
+    {
+      key: 'noteSaveEmpty', label: '每日备注（保存·内容为空提示）', scope: ['group'], triggers: ['每日备注 x'],
+      lines: [
+        { "t": "text", "v": "📝 请填写备注内容" },
+        { "t": "text", "v": "格式：每日备注 今天的心情/日记" }
+      ]
+    },
+    {
+      key: 'noteSaved', label: '每日备注（保存成功）', scope: ['group'], triggers: ['每日备注 x'],
+      lines: [
+        { "t": "text", "v": "✅ 今日备注已保存！" },
+        { "t": "text", "v": "📝 {note}" }
+      ]
+    },
+    {
+      key: 'checkinDup', label: '每日打卡（今日已打卡）', scope: ['group'], triggers: ['每日打卡'],
+      lines: [
+        { "t": "text", "v": "✅ 今天已经打过卡了！" },
+        { "t": "text", "v": "明天再来吧~" }
+      ]
+    },
+    {
+      key: 'checkinOk', label: '每日打卡（成功+points/连续/加奖行）', scope: ['group'], triggers: ['每日打卡'],
+      lines: [
+        { "t": "text", "v": "✅ 打卡成功！" },
+        { "t": "text", "v": "获得积分：+{points}" },
+        { "t": "text", "v": "累计积分：{total}" },
+        { "t": "text", "v": "连续打卡：{streak} 天" },
+        { "t": "row", "k": "reward7", "hide": true },
+        { "t": "row", "k": "reward30", "hide": true }
+      ]
+    },
+    {
+      key: 'nickView', label: '设置昵称（查看当前昵称）', scope: ['group'], triggers: ['设置昵称'],
+      lines: [
+        { "t": "text", "v": "✏️ 当前昵称：{nick}" },
+        { "t": "text", "v": "发送\"设置昵称 新昵称\" 修改" }
+      ]
+    },
+    {
+      key: 'nickSet', label: '设置昵称（修改成功）', scope: ['group'], triggers: ['设置昵称 x'],
+      lines: [
+        { "t": "text", "v": "✅ 昵称已设置为：{nick}" }
+      ]
+    },
+    {
+      key: 'nickErr', label: '设置昵称（空/超长错误）', scope: ['group'], triggers: ['设置昵称 x'],
+      lines: [
+        { "t": "text", "v": "昵称长度1-20个字符" }
+      ]
+    },
+    {
+      key: 'weatherHelp', label: '查询天气（帮助句）', scope: ['group'], triggers: ['查询天气', '天气'],
+      lines: [
+        { "t": "text", "v": "🌤 查询天气" },
+        { "t": "text", "v": "格式：查询天气 城市名" },
+        { "t": "text", "v": "例：查询天气 北京" }
+      ]
+    },
+    {
+      key: 'weatherCityEmpty', label: '查询天气（城市为空提示）', scope: ['group'], triggers: ['查询天气 x'],
+      lines: [
+        { "t": "text", "v": "🌤 请填写城市名" },
+        { "t": "text", "v": "格式：查询天气 城市名" }
+      ]
+    },
+    {
+      key: 'weatherFail', label: '天气文本兜底（接口无返回）', scope: ['group'], triggers: ['查询天气 x'],
+      lines: [
+        { "t": "text", "v": "❌ 查询失败，请检查城市名" }
+      ]
+    },
+    {
+      key: 'weatherErr', label: '天气文本兜底（接口异常）', scope: ['group'], triggers: ['查询天气 x'],
+      lines: [
+        { "t": "text", "v": "❌ 天气查询失败：{msg}" }
+      ]
+    },
+    {
+      key: 'fallback', label: '未知指令', scope: ['group'], triggers: ['其他'],
+      lines: [
+        { "t": "text", "v": "❓ 未知指令" },
+        { "t": "text", "v": "发送\"实用功能\"查看所有实用工具" }
+      ]
+    }
+  ]
+};
+/*__REPLY_SPEC_END__*/
+
+// ===== ReplySpec 行渲染（与后台 src/admin/reply-editor.ts renderBranch 同语义，单文件自包含）=====
+function _rsGet(d, k) {
+  if (d && k && d[k] !== undefined && String(d[k]).length) return String(d[k]);
+  return '';
+}
+function _rsVal(ln, d) {
+  var v = _rsGet(d, ln.k);
+  if (v) return v;
+  return (ln.fb !== undefined && ln.fb !== null && String(ln.fb).length) ? String(ln.fb) : '';
+}
+function _rsInterp(s, d) {
+  return String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function(m, k) { return _rsGet(d, k); });
+}
+function _rsMq(label, cmd) {
+  return '[' + label + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(cmd) + '&enter=false&reply=false)';
+}
+function rsRender(branchKey, d, spec, linkFn) {
+  var s = spec || REPLY_SPEC;
+  if (!s || !s.branches) return '';
+  var b = null;
+  for (var i = 0; i < s.branches.length; i++) { if (s.branches[i].key === branchKey) { b = s.branches[i]; break; } }
+  if (!b) return '';
+  var out = [];
+  for (var j = 0; j < b.lines.length; j++) {
+    var ln = b.lines[j];
+    if (!ln) continue;
+    if (ln.t === 'blank') { out.push(''); continue; }
+    if (ln.t === 'text') { out.push(_rsInterp(ln.v || '', d)); continue; }
+    if (ln.t === 'val') { out.push(_rsInterp(_rsVal(ln, d), d)); continue; }
+    if (ln.t === 'row') {
+      var v = _rsVal(ln, d);
+      if (!v && ln.hide) continue;
+      out.push(_rsInterp((ln.pre || '') + v + (ln.post || ''), d));
+      continue;
+    }
+    if (ln.t === 'link') {
+      var lk = (linkFn || _rsMq)(ln.label || '', ln.cmd || '');
+      out.push((ln.pre || '') + lk + (ln.post || ''));
+    }
+  }
+  return out.join('\n');
+}
+
+// ===== ReplySpec 生效规格（config 覆盖内置模板），onEnable 装载后 handleCommand 内渲染 =====
+var _curSpec = REPLY_SPEC;
+var _curLink = _rsMq;
+function _loadReplySpec(ctx) {
+  try {
+    var raw = (ctx.engine && ctx.engine.getConfigValue) ? ctx.engine.getConfigValue('plugin.file-实用工具.reply') : null;
+    if (raw) {
+      var parsed = JSON.parse(String(raw));
+      if (parsed && Array.isArray(parsed.branches) && parsed.branches.length) _curSpec = parsed;
+    }
+  } catch (e) { ctx.logger.warn('实用工具 ReplySpec config 解析失败，使用内置模板: ' + String(e && e.message || e)); }
+  _curLink = function(t, c) { return (ctx.link && ctx.link.linkify) ? ctx.link.linkify(t, c) : _rsMq(t, c); };
+}
+
 module.exports = {
   manifest: {
     id: 'mod-utils',
@@ -29,6 +196,29 @@ module.exports = {
           }
         };
 
+        // ===== ReplySpec 渲染 helper（baseData 键集同群主.js；动态值经 extra 注入，render 空时回落原文兜底）=====
+        function baseData(msg) {
+          var a = msg.author || {};
+          var botId = msg.botId || '';
+          var bName = (ctx.engine && ctx.engine.getBotNameById) ? (ctx.engine.getBotNameById(botId) || '') : '';
+          return {
+            botId: botId,
+            botName: bName,
+            botShow: (bName && bName !== botId) ? bName + '（' + botId + '）' : botId,
+            gid: msg.groupId || '',
+            openid: (a && (a.openid || a.id)) || msg.member_openid || '',
+            qq: (a && a.qqId) || '',
+            nick: (a && a.username) || ''
+          };
+        }
+        function render(key, msg, extra) {
+          var bd = baseData(msg);
+          var d = {};
+          for (var k in bd) if (Object.prototype.hasOwnProperty.call(bd, k)) d[k] = bd[k];
+          if (extra) for (var e in extra) if (Object.prototype.hasOwnProperty.call(extra, e)) d[e] = extra[e];
+          return rsRender(key, d, _curSpec, _curLink);
+        }
+
         // ===== 每日备注 =====
         if (content === '每日备注' || content.indexOf('每日备注 ') === 0) {
           var today = new Date().toISOString().split('T')[0];
@@ -36,19 +226,19 @@ module.exports = {
           if (content === '每日备注') {
             var existing = ctx.storage.get(key);
             if (existing) {
-              await sendReply('📝 今日备注\n' + existing, [backRow()]);
+              await sendReply(render('noteView', data, { note: existing }) || ('📝 今日备注\n' + existing), [backRow()]);
             } else {
-              await sendReply('📝 今日暂无备注\n发送"每日备注 内容" 记录今天', [backRow()]);
+              await sendReply(render('noteEmpty', data) || '📝 今日暂无备注\n发送"每日备注 内容" 记录今天', [backRow()]);
             }
             return;
           }
           var note = content.substring(5).trim();
           if (!note) {
-            await sendReply('📝 请填写备注内容\n格式：每日备注 今天的心情/日记', [backRow()]);
+            await sendReply(render('noteSaveEmpty', data) || '📝 请填写备注内容\n格式：每日备注 今天的心情/日记', [backRow()]);
             return;
           }
           ctx.storage.set(key, note);
-          await sendReply('✅ 今日备注已保存！\n📝 ' + note, [backRow()]);
+          await sendReply(render('noteSaved', data, { note: note }) || ('✅ 今日备注已保存！\n📝 ' + note), [backRow()]);
           return;
         }
 
@@ -60,7 +250,7 @@ module.exports = {
           var totalKey = 'checkin_util_total_' + userId;
 
           if (ctx.storage.get(key)) {
-            await sendReply('✅ 今天已经打过卡了！\n明天再来吧~', [backRow()]);
+            await sendReply(render('checkinDup', data) || '✅ 今天已经打过卡了！\n明天再来吧~', [backRow()]);
             return;
           }
 
@@ -89,7 +279,13 @@ module.exports = {
             '连续打卡：' + streak + ' 天';
           if (streak >= 7) msg += '\n🎉 连续7天奖励+20积分！';
           if (streak >= 30) msg += '\n🌟 满月奖励+50积分！';
-          await sendReply(msg, [backRow()]);
+          await sendReply(render('checkinOk', data, {
+            points: points,
+            total: total,
+            streak: streak,
+            reward7: (streak >= 7) ? '🎉 连续7天奖励+20积分！' : '',
+            reward30: (streak >= 30) ? '🌟 满月奖励+50积分！' : ''
+          }) || msg, [backRow()]);
           return;
         }
 
@@ -97,31 +293,31 @@ module.exports = {
         if (content === '设置昵称' || content.indexOf('设置昵称 ') === 0) {
           if (content === '设置昵称') {
             var current = ctx.storage.get('nickname_' + userId) || '未设置';
-            await sendReply('✏️ 当前昵称：' + current + '\n发送"设置昵称 新昵称" 修改', [backRow()]);
+            await sendReply(render('nickView', data, { nick: current }) || ('✏️ 当前昵称：' + current + '\n发送"设置昵称 新昵称" 修改'), [backRow()]);
             return;
           }
           var nick = content.substring(5).trim();
           if (!nick || nick.length > 20) {
-            await sendReply('昵称长度1-20个字符', [backRow()]);
+            await sendReply(render('nickErr', data) || '昵称长度1-20个字符', [backRow()]);
             return;
           }
           ctx.storage.set('nickname_' + userId, nick);
-          await sendReply('✅ 昵称已设置为：' + nick, [backRow()]);
+          await sendReply(render('nickSet', data, { nick: nick }) || ('✅ 昵称已设置为：' + nick), [backRow()]);
           return;
         }
 
          // ===== 查询天气 =====
          var isWeather = content === '查询天气' || content.indexOf('查询天气 ') === 0 || content === '天气' || content.indexOf('天气 ') === 0;
          if (isWeather) {
-           if (content === '查询天气' || content === '天气') {
-             await sendReply('🌤 查询天气\n格式：查询天气 城市名\n例：查询天气 北京', [backRow()]);
-             return;
-           }
-           var city = content.indexOf('查询天气 ') === 0 ? content.substring(5).trim() : content.substring(3).trim();
-           if (!city) {
-             await sendReply('🌤 请填写城市名\n格式：查询天气 城市名', [backRow()]);
-             return;
-           }
+            if (content === '查询天气' || content === '天气') {
+              await sendReply(render('weatherHelp', data) || '🌤 查询天气\n格式：查询天气 城市名\n例：查询天气 北京', [backRow()]);
+              return;
+            }
+            var city = content.indexOf('查询天气 ') === 0 ? content.substring(5).trim() : content.substring(3).trim();
+            if (!city) {
+              await sendReply(render('weatherCityEmpty', data) || '🌤 请填写城市名\n格式：查询天气 城市名', [backRow()]);
+              return;
+            }
            try {
             var cityEnc = encodeURIComponent(city);
             var url = 'https://wttr.in/' + cityEnc + '?format=%C+%t+%h+%w&lang=zh';
@@ -218,10 +414,10 @@ module.exports = {
                   '风力：' + wind, [backRow()]);
               }
             } else {
-              await sendReply('❌ 查询失败，请检查城市名', [backRow()]);
+              await sendReply(render('weatherFail', data) || '❌ 查询失败，请检查城市名', [backRow()]);
             }
           } catch(e) {
-            await sendReply('❌ 天气查询失败：' + e.message, [backRow()]);
+            await sendReply(render('weatherErr', data, { msg: e.message }) || ('❌ 天气查询失败：' + e.message), [backRow()]);
           }
           return;
         }
@@ -275,7 +471,7 @@ module.exports = {
           return;
         }
 
-        await sendReply('❓ 未知指令\n发送"实用功能"查看所有实用工具', [backRow()]);
+        await sendReply(render('fallback', data) || '❓ 未知指令\n发送"实用功能"查看所有实用工具', [backRow()]);
       } catch(e) {
         ctx.logger.error('实用工具错误: ' + e.message);
       }
@@ -284,5 +480,6 @@ module.exports = {
 
   onEnable: function(ctx) {
     ctx.logger.info('实用工具 v1.2.1 已加载');
+    _loadReplySpec(ctx);
   }
 };

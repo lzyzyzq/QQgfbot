@@ -4,7 +4,83 @@
 // 离线可用：笑话库内置，不依赖外部 API；TTS 失败仅回退纯文本
 // v1.0.1: 改为 eventBus 自监听（message.group/message.c2c），普通消息即可触发；
 //         指令避开「笑话/讲笑话」单指令（与娱乐中心文本笑话功能区分），专注语音朗读
+// ReplySpec 回复可视化：内置模板可被后台 config plugin.file-讲笑话.reply 覆盖
 // @ts-nocheck
+/*__REPLY_SPEC_BEGIN__*/
+var REPLY_SPEC = {
+  name: "讲笑话",
+  version: "1.0.1",
+  desc: "随机讲一个内置笑话并以语音条朗读（{joke} 为随机笑话内容）",
+  branches: [
+    {
+      key: "joke",
+      label: "笑话文字卡片（{joke} 为随机笑话，语音条发送逻辑不受模板影响）",
+      scope: ["group"],
+      triggers: ["来段笑话", "讲个笑话", "讲个段子", "来段段子", "语音笑话", "笑话语音"],
+      lines: [
+        { "t": "text", "v": "😄 讲笑话" },
+        { "t": "text", "v": "━━━━━━━━━━━━━━" },
+        { "t": "text", "v": "{joke}" },
+        { "t": "text", "v": "━━━━━━━━━━━━━━" },
+        { "t": "text", "v": "🎤 语音版同步播放中…" }
+      ]
+    },
+    {
+      key: "tts-fail",
+      label: "语音生成失败回退提示（紧随文字卡片后发送）",
+      scope: ["group"],
+      triggers: ["来段笑话", "讲个笑话", "讲个段子", "来段段子", "语音笑话", "笑话语音"],
+      lines: [
+        { "t": "text", "v": "⚠️ 语音生成失败，已改为文字版，请查看上方笑话内容。" }
+      ]
+    }
+  ]
+};
+/*__REPLY_SPEC_END__*/
+
+// ===== ReplySpec 行渲染（与后台 src/admin/reply-editor.ts renderBranch 同语义，单文件自包含）=====
+function _rsGet(d, k) {
+  if (d && k && d[k] !== undefined && String(d[k]).length) return String(d[k]);
+  return '';
+}
+function _rsVal(ln, d) {
+  var v = _rsGet(d, ln.k);
+  if (v) return v;
+  return (ln.fb !== undefined && ln.fb !== null && String(ln.fb).length) ? String(ln.fb) : '';
+}
+function _rsInterp(s, d) {
+  return String(s).replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function(m, k) { return _rsGet(d, k); });
+}
+function _rsMq(label, cmd) {
+  return '[' + label + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(cmd) + '&enter=false&reply=false)';
+}
+function rsRender(branchKey, d, spec, linkFn) {
+  var s = spec || REPLY_SPEC;
+  if (!s || !s.branches) return '';
+  var b = null;
+  for (var i = 0; i < s.branches.length; i++) { if (s.branches[i].key === branchKey) { b = s.branches[i]; break; } }
+  if (!b) return '';
+  var out = [];
+  for (var j = 0; j < b.lines.length; j++) {
+    var ln = b.lines[j];
+    if (!ln) continue;
+    if (ln.t === 'blank') { out.push(''); continue; }
+    if (ln.t === 'text') { out.push(_rsInterp(ln.v || '', d)); continue; }
+    if (ln.t === 'val') { out.push(_rsInterp(_rsVal(ln, d), d)); continue; }
+    if (ln.t === 'row') {
+      var v = _rsVal(ln, d);
+      if (!v && ln.hide) continue;
+      out.push(_rsInterp((ln.pre || '') + v + (ln.post || ''), d));
+      continue;
+    }
+    if (ln.t === 'link') {
+      var lk = (linkFn || _rsMq)(ln.label || '', ln.cmd || '');
+      out.push((ln.pre || '') + lk + (ln.post || ''));
+    }
+  }
+  return out.join('\n');
+}
+
 const JOKES = [
   '今天去超市买东西，结账时收银员问我要不要袋子，我说不用了，然后她把东西一件一件扔进了我的口袋。',
   '我问我妈：为什么你老是催我找对象？我妈说：我怕你孤独终老。我说：那你可以养只猫陪我啊。我妈：养猫还得花钱买猫粮，你对象可以自己带饭。',
@@ -28,6 +104,22 @@ const JOKES = [
   '有一天我问手机：你说，我长得帅吗？手机没理我。我又问：你倒是说话呀？手机终于弹出一条消息：Siri 正在思考如何委婉地告诉你真相。'
 ];
 
+// ===== 运行时 spec / linkFn（onEnable 载入服务器 config plugin.file-讲笑话.reply 覆盖）=====
+var _rsSpec = REPLY_SPEC;
+var _rsLink = null;
+
+function rsJokeText(key, d) {
+  return rsRender(key, d, _rsSpec, _rsLink);
+}
+
+// ===== 固定回复兜底原文（rsRender 因 spec 缺失/异常返回空时使用，保证线上行为不回退）=====
+function fbJoke(joke) {
+  return '😄 讲笑话\n━━━━━━━━━━━━━━\n' + joke + '\n━━━━━━━━━━━━━━\n🎤 语音版同步播放中…';
+}
+function fbTtsFail() {
+  return '⚠️ 语音生成失败，已改为文字版，请查看上方笑话内容。';
+}
+
 module.exports = {
   manifest: {
     id: 'mod-joke',
@@ -41,6 +133,15 @@ module.exports = {
 
   onEnable: function(ctx) {
     ctx.logger.info('讲笑话 v1.0.1 已加载');
+    // ReplySpec：服务器 config 覆盖内置模板（后台「回复编辑器」保存后即时生效）
+    try {
+      var raw = (ctx.engine && ctx.engine.getConfigValue) ? ctx.engine.getConfigValue('plugin.file-讲笑话.reply') : null;
+      if (raw) {
+        var parsed = JSON.parse(String(raw));
+        if (parsed && Array.isArray(parsed.branches) && parsed.branches.length) _rsSpec = parsed;
+      }
+    } catch (e) { ctx.logger.warn('讲笑话 ReplySpec config 解析失败，使用内置模板: ' + String(e && e.message || e)); }
+    _rsLink = (ctx.link && ctx.link.linkify) ? function(t, c) { return ctx.link.linkify(t, c); } : _rsMq;
     var self = this;
     ctx.eventBus.on('message.group', async function(data) {
       try { await self.handleMessage(ctx, data); } catch (e) {}
@@ -77,7 +178,8 @@ module.exports = {
   doJoke: async function(ctx, groupId, msgId) {
     try {
       var joke = JOKES[Math.floor(Math.random() * JOKES.length)];
-      await ctx.bot.sendGroupMessage(groupId, '😄 讲笑话\n━━━━━━━━━━━━━━\n' + joke + '\n━━━━━━━━━━━━━━\n🎤 语音版同步播放中…', msgId);
+      var text = rsJokeText('joke', { joke: joke });
+      await ctx.bot.sendGroupMessage(groupId, text || fbJoke(joke), msgId);
 
       var voiceOk = false;
       try {
@@ -90,7 +192,8 @@ module.exports = {
         }
       } catch(e) {}
       if (!voiceOk) {
-        try { await ctx.bot.sendGroupMessage(groupId, '⚠️ 语音生成失败，已改为文字版，请查看上方笑话内容。', msgId); } catch(e) {}
+        var ft = rsJokeText('tts-fail', {});
+        try { await ctx.bot.sendGroupMessage(groupId, ft || fbTtsFail(), msgId); } catch(e) {}
       }
     } catch(e) {}
   }

@@ -75,4 +75,16 @@ describe('reply-editor ReplySpec 渲染', () => {
   it('builtinReplySpec 未知插件返回 null', () => {
     expect(builtinReplySpec('不存在插件')).toBeNull();
   });
+
+  it('已收编的全部插件均登记内置模板且各分支可渲染', () => {
+    const names = ['OpenID查询', '群主', '充值系统', '绑定管理', '签到系统', '关键词回复', '列表读取', '群信息', '菜单模式', '讲笑话', '问候插件', '实用工具', '娱乐中心'];
+    for (const n of names) {
+      const spec = builtinReplySpec(n);
+      expect(spec, `内置模板缺失：${n}`).not.toBeNull();
+      expect(spec!.branches.length, `${n} 分支为空`).toBeGreaterThan(0);
+      for (const b of spec!.branches) {
+        expect(() => renderBranch(b, makePreviewData()), `${n}::${b.key} 渲染抛错`).not.toThrow();
+      }
+    }
+  });
 });
