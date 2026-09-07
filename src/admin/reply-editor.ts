@@ -128,6 +128,8 @@ export function makePreviewData(botName?: string, botId?: string, extra?: Record
     botId: bid,
     botShow: (bn && bn !== bid) ? bn + '（' + bid + '）' : bid,
     gid: '9C724B2EE6C3D4A18F1B2A5C7E8F9A0B',
+    guildId: 'BOT_GUILD_' + bid.slice(-6),
+    atOpenids: 'F6E1C9A82B3D4E5F60718293A4B5C6D7',
   };
   if (extra) Object.assign(d, extra);
   return d;
