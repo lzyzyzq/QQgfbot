@@ -1,14 +1,14 @@
 {
   "ok": true,
-  "version": "4.2.73",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.73.zip",
+  "version": "4.2.74",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.74.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.73.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.74.zip"
     }
   ],
-  "changeLog": "【4.2.73】全插件统一后台编辑器（menu-editor 全部插件库）+ 一键登记串联 + 插件开发文档生成：\n1) 后台新增「全部插件库」工作台表格：目录型(zip)/单文件(js/mjs/py/php)插件统一展示，行操作含信息查看、启停/审批/信息编辑（按插件类型走对应更新链路）、可视化配置入口、生成卡片代码/撤销；js/mjs 插件双页（menu-editor/index）无缝衔接可视化配置→代码生成；\n2) 主菜单/欢迎新用户等 js 插件可视化配置新增「生成卡片代码」：自动注入最新可视化配置进插件源码并备份原码，生成后即发布即用；\n3) 一键登记串联：对缺 DB 记录或缺 plugin.json 的插件，行「登记」按钮从插件内代码解析 manifest（name/version/author/description）——目录型补全 plugin.json 并入库，js/mjs/py 走引擎注册、php 入库，登记后启停/审批/信息全链路可用；\n4) 插件开发文档生成：目录型插件行「生成文档」按插件内代码解析依赖与能力清单，自动生成 README.md + CHANGELOG.md（已存在不覆盖）；\n5) 引擎新增 renderCard/sendCard/renderMenu/renderBlocks 卡片渲染与发送 API，插件内可直接调用。",
+  "changeLog": "【4.2.74】ReplySpec 回复可视化编辑器（插件真实回复按行编辑 + 一键写回源码）：\n1) menu-editor 新增「回复编辑器」：对 OpenID查询 等文本回复插件把真实回复按行可视化（固定行/取值行/前缀拼值行/可点链接行/空行，分支切换+增删改排序），实时预览以当前机器人真名真 ID 渲染（botName/botId 真值，openid/qq/nick 示例占位）；\n2) 后端 reply-spec 底座：内置 ReplySpec 模板与 config 自定义并存，config（plugin.file-xxx.reply）优先于内置；插件运行时按模板渲染回复；\n3) 一键写回源码：校验插件含 ReplySpec 适配标记后把当前模板固化进源码（/*__REPLY_SPEC__*/ marker 段），写前自动备份可一键撤销还原；\n4) OpenID查询 全面接入首个样板：内置 8 分支（群/私聊/频道/@ 他人 等），渲染 helper 自包含，可点链接尊重全局外显开关。",
   "configUrl": ""
 }

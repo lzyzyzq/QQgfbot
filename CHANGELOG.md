@@ -2,6 +2,13 @@
 
 ## 2026-09-07
 
+### 4.2.74：ReplySpec 回复可视化编辑器（真实回复按行编辑 + 一键写回源码）
+- **menu-editor 新增「回复编辑器」卡**（插件信息与页面管理之间，随选插件自动加载）：对 OpenID查询 等无内置卡片模板的文本回复插件，把真实回复按行可视化——五种行类型：text 固定行（支持 {key} 占位插值）、val 取值行（空值显示回退文本，可隐藏）、row 前缀拼值行（前缀+数据键+后缀，可空隐藏整行）、link 可点回填链接行（mqqapi inlinecmd，尊重全局文字外显开关）、blank 空行；分支页签切换（对应不同指令/场景）+ 行增删改/↑↓排序；底部「真实回复预览」实时渲染，以当前选中机器人真名真 ID（botName/botId/botShow）为数据底座，触发用户字段 openid/qq/nick/gid/guildId 给出示例占位便于观察排版
+- **ReplySpec 底座（src/admin/reply-editor.ts）**：ReplyLine/ReplyBranch/ReplySpec/ReplyCtxData 模型、renderBranch 行渲染（行内 {key} 二次插值）、linkifyMarkdown、makePreviewData 真值预览、builtinReplySpec 内置模板字典；单测 9 项
+- **后端四路由**：GET/POST `/:name/reply-spec`（config `plugin.file-{name}.reply` 覆盖优先于内置，edited 标志 + 预览数据随响应下发）、POST `/:name/reply-apply`（仅 js/mjs 且源码含 `/*__REPLY_SPEC_BEGIN__*/` 适配标记才注入，备份原码到 config `...reply.codebackup`）、POST `/:name/reply-apply/undo`（校验文件名防路径穿越后按备份字节还原）
+- **OpenID查询 首个适配样板**：整文件改写为 ReplySpec 驱动——REPLY_SPEC 内置 8 分支（self / self@group / self@c2c / self@guild / at / atEmpty / group / group@guild，31 行），onEnable 读 config 覆盖内置，内嵌自包含渲染 helper（_rsGet/_rsVal/_rsInterp/_rsMq/rsRender），群消息 sendMarkdownGroup 优先、频道 sendChannelMessage 回退 sendMessage、私聊 sendPrivateMessage，链接经 ctx.link.linkify 尊重全局外显开关；源码 marker 段与后端模板语义逐字对齐（全角括号 botShow、`%69nlinecmd` 转义）
+- 端到端已验证：config 保存 → edited 覆盖 → 写回源码 marker 段替换 → undo 字节级还原，全链路通过
+
 ### 4.2.73：全插件统一后台编辑器（menu-editor 升级）+ 渲染引擎 API + 卡片代码生成
 - **menu-editor 顶部新增「全部插件库」统一工作台**：一次展示 js / mjs / py / php / 目录 zip / 文件 file 全类型插件（数据源与行内权限同管理面板），支持搜索过滤；点选整行进入该插件卡片可视化编辑；行内操作：查看 README 文档、打开/查看源码、查看 CHANGELOG 日志、模拟消息测试、启停、删除（超主），并支持一键「生成卡片代码 / 撤销生成」
 - **共享气泡测试视图 QQTester（tester.js）**：管理面板与 menu-editor 两页共用，把 `/api/plugins/test` 的回复以「用户消息→机器人回复」气泡会话呈现；index 测试弹窗保留原摘要并联动打开气泡视图，支持群聊/私聊场景与机器人选择
