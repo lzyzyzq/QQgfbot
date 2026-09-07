@@ -343,7 +343,7 @@
   </div>
 
   <div class="card" id="dictCard" style="display:none">
-    <h2>📖 cid 词库管理 <span style="color:#999;font-size:12px">（词典回复 dict.txt）</span></h2>
+    <h2>📖 cid 词库管理 <span style="color:#999;font-size:12px">（词典回复 dict.txt · 通过 DIC管理 / 词典回复 插件进入）</span></h2>
     <div class="hint" style="margin-bottom:8px">以行编辑「关键词|回复内容」词条（key|value，均支持中文；value 支持 <code>{{number}}</code> <code>{{time}}</code> <code>{{dice}}</code> <code>{{joke}}</code> <code>{{fortune}}</code> 占位符与 JSON 键盘/图文卡回复）。空行与 # 注释行原样保留；「💾 保存」即写盘并热重载词典回复插件。</div>
     <div class="dc-bar">
       <button class="btn btn-sm primary" onclick="dcAdd('e')">＋ 新增词条</button>
@@ -1975,8 +1975,8 @@ function loadReplyEditor(name){
   name = name || curPlugin;
   var card = $('replyEditorCard');
   if (!card) return;
-  // 词典回复：cid 词库管理页（默认展示），回复编辑器为其预留后续适配
-  if (name === '词典回复'){
+  // 词典回复 / DIC管理：cid 词库管理页（默认展示），回复编辑器为其预留后续适配
+  if (name === '词典回复' || name === 'DIC管理'){
     $('replyEditorCard').style.display = 'none';
     rsState.loaded = false;
     $('rsDictTabs').style.display = 'flex';
@@ -2444,6 +2444,26 @@ loadAllPlugins();
 loadBots();
 loadVars();
 gmLoad();
+
+// 支持从管理面板带 ?plugin=插件名 直达：等插件下拉就绪后自动选中该插件
+(function bootFromQueryPlugin(){
+  var m = (location.search || '').match(/[?&]plugin=([^&]+)/);
+  if (!m) return;
+  var want = decodeURIComponent(m[1]);
+  var tries = 0;
+  var t = setInterval(function(){
+    tries++;
+    var sel = $('pluginSel');
+    var ready = sel && sel.options && sel.options.length > 0;
+    if (ready || tries > 40){
+      clearInterval(t);
+      if (!ready) return;
+      var names = Array.prototype.slice.call(sel.options).map(function(o){ return o.value; });
+      if (names.indexOf(want) >= 0) selectPlugin(want);
+      else { toast('插件「' + want + '」不在可编辑列表'); }
+    }
+  }, 200);
+})();
 </script>
 <div class="workshop-overlay" id="modalWorkshop">
   <div class="workshop">
