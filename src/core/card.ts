@@ -455,6 +455,7 @@ export interface UpdateCardData {
   fullUrl: string;
   changeLog: string;    // 更新内容
   hasUpdate: boolean;
+  remoteOk?: boolean;   // 远程 update-config 是否拉取成功；false = 无法确认最新版本
   checkedAt?: string;   // 检查时间
   lastUpdate?: string;  // 上次更新时间
   recordCount?: number; // 更新记录条数
@@ -498,8 +499,21 @@ export async function renderUpdateCard(data: UpdateCardData): Promise<Buffer> {
   const H = cmdY0 + cmdH + footerH;
 
   const has = !!data.hasUpdate;
-  const status = has ? '发现新版本' : '已是最新版本';
-  const statusColor = has ? '#fbbf24' : '#22c55e';
+  const remoteOk = data.remoteOk !== false;
+  // 徽章三态：发现新版（琥珀）/ 已最新且远程可确认（绿）/ 更新源不可达（红，不误报最新）
+  let status = '';
+  if (has) status = '发现新版本 v' + String(data.version || '?');
+  else if (remoteOk) status = '已是最新版本 v' + String(data.current || '?');
+  else status = '未能确认最新版本';
+  const statusColor = has ? '#fbbf24' : (remoteOk ? '#22c55e' : '#f87171');
+  const estW = (s: string, fs: number): number => {
+    let w = 0;
+    for (const ch of String(s || '')) w += ch.charCodeAt(0) > 255 ? fs : fs * 0.58;
+    return Math.ceil(w);
+  };
+  const pillW = Math.min(W - 96, Math.max(104, estW(status, 15) + 38));
+  const pillX = W - 24 - pillW;
+  const pillFill = has ? 'rgba(251,191,36,.16)' : (remoteOk ? 'rgba(34,197,94,.16)' : 'rgba(248,113,113,.16)');
   // 检查时间精简显示 MM-DD HH:MM
   const fmtShort = (s: string): string => {
     const m = String(s || '').match(/(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
@@ -561,8 +575,8 @@ export async function renderUpdateCard(data: UpdateCardData): Promise<Buffer> {
   <circle cx="${W - 120}" cy="108" r="56" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="16"/>
   <text x="40" y="54" font-family="${FONT}" font-size="34" font-weight="bold" fill="#ffffff">更新系统</text>
   <text x="42" y="86" font-family="${FONT}" font-size="14" letter-spacing="3" fill="#c4b5fd">UPDATE SYSTEM</text>
-  <rect x="${W - 176}" y="32" width="136" height="36" rx="18" fill="${has ? 'rgba(251,191,36,.16)' : 'rgba(34,197,94,.16)'}" stroke="${statusColor}" stroke-width="1.5"/>
-  <text x="${W - 108}" y="56" font-family="${FONT}" font-size="15" font-weight="bold" fill="${statusColor}" text-anchor="middle">${escSvg(status)}</text>
+  <rect x="${pillX}" y="32" width="${pillW}" height="36" rx="18" fill="${pillFill}" stroke="${statusColor}" stroke-width="1.5"/>
+  <text x="${pillX + pillW / 2}" y="56" font-family="${FONT}" font-size="15" font-weight="bold" fill="${statusColor}" text-anchor="middle">${escSvg(fit(status, pillW - 30, 15))}</text>
   <text x="40" y="116" font-family="${FONT}" font-size="13" fill="#93a4f7">仅超级主人可操作 · 自动下载/解压/重启</text>
   ${infoCards}
   <rect x="${PAD_X}" y="${logY0}" width="${W - 2 * PAD_X}" height="${logH}" rx="14" fill="#1e293b"/>

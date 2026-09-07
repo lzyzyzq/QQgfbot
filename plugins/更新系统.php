@@ -144,6 +144,8 @@ $版本 = $cfg['version'] !== '' ? $cfg['version'] : '4.2.59';
 $当前 = 当前版本();
 if ($当前 === '') { $当前 = $版本; 记录当前版本($版本); } // 首次以更新包版本为基线
 $hasUpdate = 版本比较($版本, $当前) === 1;
+// 远程更新源（update-config.json）是否拉取成功：失败时不得误报「已是最新版本」
+$remoteOk = trim((string)($cfg['sourceUrl'] ?? '')) !== '';
 
 $更新内容默认 = "更新系统界面全新美化：版本信息卡/更新状态徽章/更新历史\n检查更新无论有无新版本都会提醒\n群号「截至时间」显示用户发送命令的时刻（北京时间）\n更新到服务器后执行：cd /var/www/php && pm2 restart qqbot";
 $changelog = $cfg['changeLog'] !== '' ? $cfg['changeLog'] : $更新内容默认;
@@ -154,7 +156,7 @@ function 更新按钮行() {
          外显('更新记录', '更新记录') . '　' . 外显('返回更新', '返回更新') . '　' . 外显('返回菜单', '菜单');
 }
 
-function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at, $caption = '') {
+function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at, $caption = '', $remoteOk = true) {
   if ($caption === '') $caption = $at . "「更新系统」";
   文字($caption);
   $records = 更新记录('读取');
@@ -167,6 +169,7 @@ function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
     'fullUrl' => $cfg['fullUrl'],
     'changeLog' => $changelog,
     'hasUpdate' => $hasUpdate,
+    'remoteOk' => (bool)$remoteOk,
     'checkedAt' => 当前时间(),
     'lastUpdate' => $lastUpdate,
     'recordCount' => count($records),
@@ -174,8 +177,8 @@ function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
   if ($img !== '') {
     图片($img, '', '更新系统.png');
   } else {
-    文字("当前版本：" . $当前 . "\n更新包版本：" . $版本 . "\n" .
-      ($hasUpdate ? "⚠️ 发现新版本，可升级" : "✅ 已是最新版本") . "\n\n【更新内容】\n" . $changelog);
+    $状态行 = $hasUpdate ? ("⚠️ 发现新版本 v" . $版本) : ($remoteOk ? ("✅ 已是最新版本 v" . $当前) : "⚠️ 未能确认最新版本（更新源不可达）");
+    文字("当前版本：" . $当前 . "\n更新包版本：" . $版本 . "\n" . $状态行 . "\n\n【更新内容】\n" . $changelog);
   }
   Markdown("　" . 更新按钮行());
 }
@@ -184,7 +187,7 @@ function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
 
 // 更新菜单
 if ($消息 === '更新' || $消息 === '更新菜单' || $消息 === '返回更新') {
-  发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at);
+  发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at, '', $remoteOk);
   exit(0);
 }
 
@@ -250,10 +253,16 @@ if (前缀($消息, '更新补丁') || 前缀($消息, '更新全量')) {
 if ($消息 === '检查更新' || 前缀($消息, '检查更新')) {
   if ($hasUpdate) {
     发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
-      $at . "\n⚠️ 发现新版本 v" . $版本 . "（当前 v" . $当前 . "），可发送「更新补丁」或「更新全量」升级。");
+      $at . "\n⚠️ 发现新版本 v" . $版本 . "（当前 v" . $当前 . "），更新内容见下图，可发送「更新补丁」或「更新全量」升级。",
+      $remoteOk);
+  } elseif (!$remoteOk) {
+    发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
+      $at . "\n⚠️ 未能确认最新版本：更新源（update-config.json）不可达。当前部署 v" . $当前 . "。\n请稍后重试，或检查管理面板「系统设置 → 更新系统配置」的网络与地址。",
+      $remoteOk);
   } else {
     发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
-      $at . "\n✅ 已检查更新：当前版本 v" . $当前 . " 已是最新，无需升级。");
+      $at . "\n✅ 已检查更新：当前版本 v" . $当前 . " 已是最新，无需升级。",
+      $remoteOk);
   }
   exit(0);
 }
