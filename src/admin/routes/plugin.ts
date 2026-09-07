@@ -1563,6 +1563,112 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
     }
   });
 
+  // ------------------------------------------------------------
+  // 22. cid 词库管理（词典回复 dict.txt：key|value 行，支持中文）
+  //   GET/PUT /api/plugins/_dict/entries：读取/整体保存行集合（词条/注释/空行），保存后自动 reload 词典回复
+  // ------------------------------------------------------------
+
+  // 词库文件名白名单：仅允许 plugins 目录内单层 txt/cid 数据文件，杜绝路径穿越
+  function dictFilePath(fileName?: string): string {
+    const base = path.basename(String(fileName || 'dict.txt').trim() || 'dict.txt');
+    const ext = path.extname(base).toLowerCase();
+    if (ext !== '.txt' && ext !== '.cid') throw new Error('词库文件仅支持 .txt / .cid');
+    const full = path.resolve(pluginsDir, base);
+    if (full.indexOf(path.resolve(pluginsDir) + path.sep) !== 0 && full !== path.resolve(pluginsDir)) {
+      throw new Error('词库文件必须位于插件目录内');
+    }
+    return full;
+  }
+
+  // 解析词库行：空行/注释(# 开头) 原样保留；词条按首个 | 切分为 key/value
+  function parseDictLines(text: string): Array<{ t: 'e' | 'c' | 'b'; key?: string; value?: string; text?: string }> {
+    const lines = String(text || '').split(/\r?\n/);
+    const out: Array<{ t: 'e' | 'c' | 'b'; key?: string; value?: string; text?: string }> = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) { out.push({ t: 'b' }); continue; }
+      if (trimmed.startsWith('#')) { out.push({ t: 'c', text: line }); continue; }
+      const sep = line.indexOf('|');
+      if (sep < 0) { out.push({ t: 'c', text: line }); continue; }
+      out.push({ t: 'e', key: line.slice(0, sep).trim(), value: line.slice(sep + 1).trim() });
+    }
+    return out;
+  }
+
+  // 序列化行集合回词库文本
+  function serializeDictLines(lines: Array<{ t: string; key?: string; value?: string; text?: string }>): string {
+    const parts: string[] = [];
+    for (const it of lines || []) {
+      if (it.t === 'e') {
+        const key = String(it.key == null ? '' : it.key).trim();
+        const value = String(it.value == null ? '' : it.value).trim();
+        if (!key) continue; // 无关键词的词条行丢弃，避免生成无效行
+        if (key.indexOf('|') >= 0) continue;
+        parts.push(key + '|' + value);
+      } else if (it.t === 'c') {
+        parts.push(String(it.text == null ? '' : it.text));
+      } else {
+        parts.push('');
+      }
+    }
+    return parts.join('\n');
+  }
+
+  // 词库行级校验：给可读的条目数/问题数
+  function dictLineStats(lines: Array<{ t: string; key?: string; value?: string; text?: string }>): { entries: number; problems: number } {
+    let entries = 0;
+    let problems = 0;
+    for (const it of lines) {
+      if (it.t === 'e') {
+        entries++;
+        if (!String(it.key || '').trim() || String(it.key || '').indexOf('|') >= 0) problems++;
+      }
+    }
+    return { entries, problems };
+  }
+
+  router.get('/_dict/entries', (req: Request, res: Response) => {
+    try {
+      const file = dictFilePath(String(req.query.file || ''));
+      const raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : '';
+      const lines = parseDictLines(raw);
+      const stats = dictLineStats(lines);
+      res.json({ ok: true, fileName: path.basename(file), entries: lines, count: stats.entries, problems: stats.problems });
+    } catch (e: any) {
+      res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  router.put('/_dict/entries', requireSuperMaster, async (req: Request, res: Response) => {
+    try {
+      const file = dictFilePath(req.body && req.body.file);
+      const lines = Array.isArray(req.body && req.body.entries) ? (req.body.entries as Array<any>) : null;
+      if (!lines) {
+        res.status(400).json({ error: '缺少 entries 行集合' });
+        return;
+      }
+      const stats = dictLineStats(lines);
+      const text = serializeDictLines(lines);
+      const dir = path.dirname(file);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(file, text, 'utf-8');
+      // 写盘后 reload 词典回复插件，让新词库立即生效（找不到/未启用不影响保存结果）
+      let reload = 'skipped';
+      try {
+        const engine = getPluginEngine();
+        if (engine) {
+          await engine.reload('file-词典回复');
+          reload = 'reloaded';
+        }
+      } catch (e: any) {
+        reload = 'warn:' + String((e && e.message) || e);
+      }
+      res.json({ ok: true, fileName: path.basename(file), count: stats.entries, problems: stats.problems, reload });
+    } catch (e: any) {
+      res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
+
   // multer/上传错误统一返回 JSON（默认返回 HTML，会导致前端报 Failed to fetch / 解析失败）
   router.use((err: any, _req: Request, res: Response, _next: Function) => {
     if (err && err.code === 'LIMIT_FILE_SIZE') {

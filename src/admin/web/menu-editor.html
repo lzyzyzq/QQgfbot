@@ -219,6 +219,24 @@
   .rs-hide { font-size: 12px; color: #64748b; display: inline-flex; align-items: center; gap: 3px; }
   .rs-hide input { margin: 0; }
   .rs-branch-tip .btn { margin-right: 6px; }
+  /* ===== cid 词库管理（词典回复 dict.txt） ===== */
+  .btn-sm { padding: 2px 9px; font-size: 12px; }
+  .rs-dict-tabs { display: none; gap: 8px; align-items: center; margin: 4px 0 10px; }
+  .rs-dict-tab { display: inline-block; padding: 6px 16px; border-radius: 8px; font-size: 13px; background: #e2e8f0; color: #475569; cursor: pointer; user-select: none; }
+  .rs-dict-tab.active { background: #2563eb; color: #fff; }
+  .dc-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .dc-stat { font-size: 12px; color: #64748b; }
+  .dc-row { border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 9px; margin-bottom: 6px; background: #fff; display: flex; flex-direction: column; gap: 6px; }
+  .dc-row.filtered { display: none; }
+  .dc-lh { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .dc-tag { font-size: 11px; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+  .dc-tag.e { background: #dbeafe; color: #1d4ed8; }
+  .dc-tag.c { background: #f1f5f9; color: #64748b; }
+  .dc-tag.b { background: #fef3c7; color: #92400e; }
+  .dc-key { flex: 1; min-width: 120px; max-width: 300px; }
+  .dc-val { width: 100%; min-height: 36px; box-sizing: border-box; }
+  .dc-cmt { flex: 1; min-width: 200px; }
+  .dc-empty { color: #94a3b8; text-align: center; padding: 12px; }
 </style>
 </head>
 <body>
@@ -317,6 +335,34 @@
     <div class="hint" style="margin:6px 0">保存到服务器 config（plugin.file-xxx.reply）：插件运行时读它即时渲染（比内置源码优先级高）；「生成并写入源码」把当前模板固化进插件代码（写前自动备份，可用「撤销写回」还原）。</div>
     <div style="font-weight:600;font-size:13px;margin-bottom:4px">👁️ 真实回复预览 <span id="rsScope" style="font-weight:normal;color:#888"></span></div>
     <div class="preview" id="rsPreview" style="white-space:pre-wrap;font-family:monospace;font-size:12px"></div>
+  </div>
+
+  <div class="rs-dict-tabs" id="rsDictTabs">
+    <span class="rs-dict-tab active" id="rsDictTabReply" onclick="rsDictTab('reply')">✍️ 回复编辑器</span>
+    <span class="rs-dict-tab" id="rsDictTabDict" onclick="rsDictTab('dict')">📖 cid 词库管理</span>
+  </div>
+
+  <div class="card" id="dictCard" style="display:none">
+    <h2>📖 cid 词库管理 <span style="color:#999;font-size:12px">（词典回复 dict.txt）</span></h2>
+    <div class="hint" style="margin-bottom:8px">以行编辑「关键词|回复内容」词条（key|value，均支持中文；value 支持 <code>{{number}}</code> <code>{{time}}</code> <code>{{dice}}</code> <code>{{joke}}</code> <code>{{fortune}}</code> 占位符与 JSON 键盘/图文卡回复）。空行与 # 注释行原样保留；「💾 保存」即写盘并热重载词典回复插件。</div>
+    <div class="dc-bar">
+      <button class="btn btn-sm primary" onclick="dcAdd('e')">＋ 新增词条</button>
+      <button class="btn btn-sm" onclick="dcAdd('c')">＋ 注释行</button>
+      <button class="btn btn-sm" onclick="dcAdd('b')">＋ 空行</button>
+      <input type="text" id="dcSearch" placeholder="搜索关键词 / 回复内容…（空则显示全部）" style="flex:1;min-width:150px" oninput="dcRender()">
+      <span class="dc-stat" id="dcStat"></span>
+    </div>
+    <div id="dcRows"><div class="dc-empty">加载中…</div></div>
+    <div style="margin:6px 0"><button class="btn btn-sm primary" onclick="dcAdd('e')">＋ 在末尾再加一个词条</button></div>
+    <div class="toolbar" style="margin-top:4px;flex-wrap:wrap">
+      <button class="btn primary" onclick="dcSave()">💾 保存词库（写盘 + 热重载）</button>
+      <button class="btn" onclick="dcLoad()">↻ 重新加载</button>
+      <details style="margin-left:auto">
+        <summary style="cursor:pointer;font-size:12px;color:#64748b">🗒 原始文本预览</summary>
+        <div class="hint" style="margin:6px 0">整份文件按当前行内容还原的原文（只读）。批量替换请用群内「写入dic」指令，随后点「↻ 重新加载」同步。</div>
+        <textarea id="dcRaw" rows="8" style="width:100%;font-family:monospace;font-size:12px" readonly></textarea>
+      </details>
+    </div>
   </div>
 
   <div class="card">
@@ -1913,6 +1959,17 @@ function loadReplyEditor(name){
   name = name || curPlugin;
   var card = $('replyEditorCard');
   if (!card) return;
+  // 词典回复：cid 词库管理页（默认展示），回复编辑器为其预留后续适配
+  if (name === '词典回复'){
+    $('replyEditorCard').style.display = 'none';
+    rsState.loaded = false;
+    $('rsDictTabs').style.display = 'flex';
+    rsDictTab('dict');
+    return;
+  }
+  $('rsDictTabs').style.display = 'none';
+  var dcCard = $('dictCard');
+  if (dcCard) dcCard.style.display = 'none';
   if (name === '测试菜单' || name === '欢迎新用户'){
     card.style.display = 'none';
     rsState.loaded = false;
@@ -1950,6 +2007,147 @@ function loadReplyEditor(name){
     rsRerenderBranches();
     rsRenderLines();
   }).catch(function(e){ toast('回复模板加载失败：' + (e && e.message || e)); });
+}
+
+// ===== cid 词库管理（词典回复 dict.txt：key|value 行，支持中文） =====
+var dcState = { fileName: 'dict.txt', lines: [], loaded: false };
+
+function rsDictTab(which){
+  dcState.mode = which || 'dict';
+  var isReply = dcState.mode === 'reply';
+  var rc = $('replyEditorCard'), dc = $('dictCard');
+  if (rc) rc.style.display = isReply ? 'block' : 'none';
+  if (dc) dc.style.display = isReply ? 'none' : 'block';
+  var tr = $('rsDictTabReply'), td = $('rsDictTabDict');
+  if (tr) tr.className = 'rs-dict-tab' + (isReply ? ' active' : '');
+  if (td) td.className = 'rs-dict-tab' + (isReply ? '' : ' active');
+  if (!isReply && !dcState.loaded) dcLoad();
+}
+
+function dcEntryCount(lines){ var n = 0; for (var i = 0; i < lines.length; i++) if (lines[i].t === 'e') n++; return n; }
+
+function dcLoad(){
+  api('/api/plugins/_dict/entries').then(function(r){
+    if (r.ok && r.data && r.data.ok){
+      dcState.fileName = r.data.fileName || 'dict.txt';
+      dcState.lines = (r.data.entries || []).map(function(x){ return { t: x.t, key: x.key, value: x.value, text: x.text }; });
+      dcState.loaded = true;
+      dcRender();
+      dcRenderRaw();
+      return;
+    }
+    toast('词库加载失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+  }).catch(function(e){ toast('词库加载失败：' + (e && e.message || e)); });
+}
+
+function dcRenderRaw(){
+  var raw = $('dcRaw');
+  if (!raw) return;
+  var parts = [];
+  for (var i = 0; i < dcState.lines.length; i++){
+    var it = dcState.lines[i];
+    if (it.t === 'e') parts.push(String(it.key || '') + '|' + String(it.value || ''));
+    else if (it.t === 'c') parts.push(String(it.text || ''));
+    else parts.push('');
+  }
+  raw.value = parts.join('\n');
+}
+
+function dcRender(){
+  var box = $('dcRows');
+  if (!box) return;
+  if (!dcState.lines.length){
+    box.innerHTML = '<div class="dc-empty">词库当前为空：点「＋ 新增词条」添加第一条，或先通过群内「写入dic」导入后点「↻ 重新加载」。</div>';
+    $('dcStat').textContent = '0 行 · 0 个词条';
+    return;
+  }
+  var q = String(($('dcSearch') && $('dcSearch').value) || '').toLowerCase();
+  var rows = [];
+  for (var i = 0; i < dcState.lines.length; i++){
+    var it = dcState.lines[i];
+    var filtered = false;
+    if (q){
+      if (it.t === 'b') filtered = true;
+      else {
+        var hay = it.t === 'e' ? (String(it.key || '') + ' ' + String(it.value || '')) : String(it.text || '');
+        if (hay.toLowerCase().indexOf(q) < 0) filtered = true;
+      }
+    }
+    if (it.t === 'e'){
+      rows.push('<div class="dc-row' + (filtered ? ' filtered' : '') + '" data-i="' + i + '">'
+        + '<div class="dc-lh"><span class="dc-tag e">词条</span>'
+        + '<input class="rs-in dc-key" data-f="key" placeholder="触发关键词（支持中文）" value="' + escAttr(String(it.key || '')) + '">'
+        + '<span class="dc-arrow">→</span>'
+        + '<button class="btn btn-sm danger" onclick="dcRemoveAt(' + i + ')">🗑 删除</button></div>'
+        + '<textarea class="rs-in dc-val" data-f="value" rows="2" placeholder="回复内容：纯文本 / 占位符 / JSON 卡片">' + escAttr(String(it.value || '')) + '</textarea>'
+        + '</div>');
+    } else if (it.t === 'c'){
+      rows.push('<div class="dc-row' + (filtered ? ' filtered' : '') + '" data-i="' + i + '"><div class="dc-lh"><span class="dc-tag c">注释</span>'
+        + '<input class="rs-in dc-cmt" data-f="text" value="' + escAttr(String(it.text || '')) + '">'
+        + '<button class="btn btn-sm" onclick="dcRemoveAt(' + i + ')">🗑 删除</button></div></div>');
+    } else {
+      rows.push('<div class="dc-row' + (filtered ? ' filtered' : '') + '" data-i="' + i + '"><div class="dc-lh"><span class="dc-tag b">空行</span>'
+        + '<span style="flex:1;font-size:12px;color:#94a3b8">（占位空行）</span>'
+        + '<button class="btn btn-sm" onclick="dcRemoveAt(' + i + ')">🗑 删除</button></div></div>');
+    }
+  }
+  box.innerHTML = rows.join('');
+  var st = $('dcStat');
+  if (st) st.textContent = '共 ' + dcState.lines.length + ' 行 · ' + dcEntryCount(dcState.lines) + ' 个词条' + (q ? '（已按「' + $('dcSearch').value + '」过滤）' : '');
+}
+
+function dcAdd(t){
+  if (!dcState.loaded){ dcLoad(); return; }
+  if (t === 'e') dcState.lines.push({ t: 'e', key: '', value: '' });
+  else if (t === 'c') dcState.lines.push({ t: 'c', text: '# ' });
+  else dcState.lines.push({ t: 'b' });
+  dcRender();
+  dcRenderRaw();
+  var rows = $('dcRows');
+  if (rows) rows.scrollIntoView({ block: 'end', behavior: 'smooth' });
+}
+
+function dcRemoveAt(i){
+  if (i < 0 || i >= dcState.lines.length) return;
+  dcState.lines.splice(i, 1);
+  dcRender();
+  dcRenderRaw();
+}
+
+// 把当前 DOM 里所有行输入收集回 dcState.lines（词条行 key/value、注释行 text）
+function dcCollect(){
+  var box = $('dcRows');
+  if (!box) return;
+  var fields = box.querySelectorAll('input[data-f], textarea[data-f]');
+  for (var k = 0; k < fields.length; k++){
+    var el = fields[k];
+    var row = el.closest ? el.closest('.dc-row') : null;
+    if (!row) continue;
+    var i = parseInt(row.getAttribute('data-i'), 10);
+    if (!(i >= 0 && i < dcState.lines.length)) continue;
+    dcState.lines[i][el.getAttribute('data-f')] = el.value;
+  }
+}
+
+function dcSave(){
+  if (!dcState.loaded){ toast('词库尚未加载完成'); return; }
+  dcCollect();
+  var L = dcState.lines;
+  for (var i = 0; i < L.length; i++){
+    if (L[i].t === 'e'){
+      var key = String(L[i].key || '').trim();
+      if (!key){ toast('第 ' + (i + 1) + ' 行词条缺少触发关键词，请填写后再保存'); return; }
+      if (key.indexOf('|') >= 0){ toast('触发关键词不能包含 | 符号'); return; }
+    }
+  }
+  api('/api/plugins/_dict/entries', { method: 'PUT', body: JSON.stringify({ file: dcState.fileName, entries: L }) }).then(function(r){
+    if (r.ok && r.data && r.data.ok){
+      toast('✅ 已保存 ' + r.data.count + ' 个词条（重载：' + r.data.reload + '）');
+      dcLoad();
+    } else {
+      toast('保存失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  }).catch(function(e){ toast('保存失败：' + (e && e.message || e)); });
 }
 
 function rsRerenderBranches(){
