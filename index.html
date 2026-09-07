@@ -47,14 +47,13 @@
     <p style="margin-top:10px"><a class="btn btn-main" href="releases.html">版本列表 / 补丁列表</a>
     <a class="btn btn-main" href="downloads.html">补丁 / 插件下载</a>
     <a class="btn" href="https://github.com/lzyzyzq/QQgfbot">GitHub 仓库</a>
-    <a class="btn" href="https://github.com/lzyzyzq/QQgfbot/blob/main/README.md">项目说明（README）</a></p></div><div class="box"><h2>最新版本 4.2.75 更新内容</h2>
-    <div class="changelog">【4.2.75】ReplySpec 批量接入 12 插件 + 天气查询接口可配置：
-1) 回复可视化收编第二批：群主、绑定管理、充值系统、签到系统、关键词回复、列表读取、群信息、菜单模式、讲笑话、问候插件、实用工具、娱乐中心 共 12 个插件内置 REPLY_SPEC 行模板（累计 120+ 分支，覆盖各指令的成功/失败/权限/空态等真实回复），后台「回复编辑器」对这批插件即时可用：改行保存（config 覆盖）或一键写回源码（marker 段替换，可撤销）；渲染非空优先、空则回退原文兜底，业务逻辑零改动；
-2) 实用工具「查询天气 城市」数据源可配置：系统设置新增「天气文本接口地址 / 天气图片接口地址」（默认 wttr.in 恢复原样），占位符 {city}（URL 编码）/ {cityRaw}（原名）自由拼接口，也可在插件卡片·变量管理填全局变量 weather_api（仅文本接口，优先级低于系统设置）；
-3) 内置模板字典 builtinReplySpec 全量登记 13 插件（含 OpenID查询），新增全内置模板覆盖单测，vitest 全量 69 项通过。</div>
+    <a class="btn" href="https://github.com/lzyzyzq/QQgfbot/blob/main/README.md">项目说明（README）</a></p></div><div class="box"><h2>最新版本 4.2.76 更新内容</h2>
+    <div class="changelog">4.2.76：更新系统徽章三态修复 + 央视式天气插件 + cid 词库管理 + 菜单按钮模式恢复</div>
     <p style="margin-top:10px"><a class="btn btn-main" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">update-config.json（服务器自动更新源）</a>
     <a class="btn" href="https://lzyzyzq.github.io/QQgfbot/update-config.json">从 GitHub Pages 获取更新配置</a></p></div><div class="box"><h2>历史版本</h2>
-    <table><thead><tr><th>版本</th><th>下载</th><th></th></tr></thead><tbody><tr><td><b>4.2.69</b><br>2026-09-05</td>
+    <table><thead><tr><th>版本</th><th>下载</th><th></th></tr></thead><tbody><tr><td><b>4.2.76</b> <span class="tag tag-cur">当前</span><br>2026-09-07</td>
+      <td><a class="btn btn-main" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.76/qqbot-card-editor-patch-4.2.76.zip">补丁包</a><a class="btn" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.76/qqbot-card-editor-4.2.76.zip">全量包</a></td>
+      <td><a class="btn" href="releases.html">全部镜像与备用源</a></td></tr><tr><td><b>4.2.69</b><br>2026-09-05</td>
       <td><a class="btn btn-main" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-patch-4.2.69.zip">补丁包</a><a class="btn" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.69/qqbot-card-editor-4.2.69.zip">全量包</a></td>
       <td><a class="btn" href="releases.html">全部镜像与备用源</a></td></tr><tr><td><b>4.2.68</b><br>2026-09-04</td>
       <td><a class="btn btn-main" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.68/qqbot-card-editor-patch-4.2.68.zip">补丁包</a><a class="btn" href="https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.68/qqbot-card-editor-4.2.68.zip">全量包</a></td>
@@ -100,5 +99,5 @@
       data-input-position="top" data-theme="light" data-lang="zh-CN" data-loading="lazy" async>
     </script>
 </main>
-<footer>由 scripts/site-gen.mjs 自动生成（GitHub Actions 定时/发版触发，自动提交回仓库）· 生成时间 2026-09-05 00:00:00</footer>
+<footer>由 scripts/site-gen.mjs 自动生成（GitHub Actions 定时/发版触发，自动提交回仓库）· 生成时间 2026-09-07 00:00:00</footer>
 </body></html>
