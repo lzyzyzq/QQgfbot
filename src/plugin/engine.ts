@@ -1,7 +1,11 @@
 import { EventBus, getPluginGroupMode, resetGroupPolicyCache } from '../core/event-bus';
 import { Plugin, PluginInfo, PluginContext, BotAPI, PluginStorage, PluginEngineAPI } from './types';
 import { PluginSandbox } from './sandbox';
-import { getDb, getConfig, setConfig, getQQByOpenid, getOpenidsByQQ, getMappingByOpenid, querySystemLogs } from '../db/index';import { createLogger } from '../utils/logger';
+import { getDb, getConfig, setConfig, getQQByOpenid, getOpenidsByQQ, getMappingByOpenid, querySystemLogs } from '../db/index';
+// M3 引擎级统一渲染 API：复用 menu-config 的卡片配置读写与 block-render 纯渲染核心
+import { renderBlocksToMarkdown, type BlockRenderCtxLike, type BlockRenderData } from '../core/block-render';
+import { findPluginIdFor as findMenuConfigPluginId, readAll as readMenuConfigAll, mergeConfig as mergeMenuConfig } from '../api/menu-config';
+import { createLogger } from '../utils/logger';
 import { signClickPayload } from '../utils/click-sign';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
@@ -1759,6 +1763,67 @@ export class PluginEngine {
       },
     };
 
+    // ---- M3 引擎级统一渲染 API：闭包辅助（renderCard/renderMenu/renderBlocks 的底层实现） ----
+    // 当前插件展示名（无 manifest 时回退 pluginId 去 file- 前缀）
+    const selfPluginName = (() => {
+      try {
+        const selfEntry = this.plugins.get(pluginId);
+        if (selfEntry && selfEntry.plugin && selfEntry.plugin.manifest && selfEntry.plugin.manifest.name) return String(selfEntry.plugin.manifest.name);
+      } catch {}
+      return String(pluginId).replace(/^file-/, '');
+    })();
+    // 延迟自引用：engineApi 组装完成后赋值，渲染函数在插件运行时被调用时必然已初始化
+    let engineSelf: PluginEngineAPI;
+    // ctxLike.identity：OpenID 同人判定（与下方 ctx.identity.isSameUser 同规则）
+    const engineIdentityLike = {
+      isSameUser: (a: string, b: string) => {
+        if (!a || !b) return a === b;
+        if (a === b) return true;
+        try {
+          const qa = getQQByOpenid(a);
+          const qb = getQQByOpenid(b);
+          if (qa && qb) return qa === qb;
+          return false;
+        } catch { return false; }
+      },
+    };
+    // 读取指定插件 menu-config 配置（config 键 plugin.{file-id}.config，按 appid/botId 分组）：
+    // - botId 命中某个 appid 分组优先，否则取任意第一个分组；
+    // - 无任何配置时回退默认模板（与编辑器 GET 该插件 menu-config 行为一致）；
+    // - 整卡归一化后返回（含 pages/main_page），异常返回 null
+    const pickMenuConfig = (name: string, botId?: string): any => {
+      try {
+        const all = readMenuConfigAll(name);
+        const appids = Object.keys(all || {});
+        if (appids.length) {
+          const target = botId ? String(botId).trim() : '';
+          const chosen = target && all[target] ? all[target] : all[appids[0]];
+          const merged = mergeMenuConfig(chosen, name);
+          if (merged && merged.pages && typeof merged.pages === 'object' && Object.keys(merged.pages).length) return merged;
+        }
+        return mergeMenuConfig(null, name);
+      } catch { return null; }
+    };
+    // 渲染指定插件指定页面为 markdown 文本（空配置/异常返回空串，调用方按无卡片处理）
+    const renderMenuConfigToMarkdown = (targetName: string | undefined, botId: string | undefined, page: string | undefined, data?: BlockRenderData): string => {
+      try {
+        const name = (targetName && String(targetName).trim()) || selfPluginName;
+        const merged = pickMenuConfig(name, botId);
+        if (!merged || !merged.pages || typeof merged.pages !== 'object') return '';
+        const pages = merged.pages;
+        let pageKey = '';
+        if (page && pages[String(page)]) pageKey = String(page);
+        else if (merged.main_page && pages[merged.main_page]) pageKey = String(merged.main_page);
+        else pageKey = Object.keys(pages)[0] || '';
+        if (!pageKey) return '';
+        const pg = pages[pageKey];
+        const blocks = pg && Array.isArray(pg.blocks) ? pg.blocks : [];
+        if (!blocks.length) return '';
+        const ctxLike: BlockRenderCtxLike = { engine: engineSelf, identity: engineIdentityLike };
+        return renderBlocksToMarkdown(blocks, ctxLike, data || {});
+      } catch { return ''; }
+    };
+
     const engineApi: PluginEngineAPI = {
       enableAllExcept: async (exceptId: string) => {
         const db = getDb();
@@ -2176,7 +2241,61 @@ export class PluginEngine {
           };
         } catch { return null; }
       },
+      // ---- M3 引擎级统一渲染 API ----
+      // 读取该插件（缺省当前插件）menu-config 配置并渲染主页面为 markdown；
+      // appid 取 data.botId 对应分组（无则任意分组，无配置回退默认模板）；渲染失败/空返回 null
+      renderCard: async (pluginName?: string, data?: BlockRenderData, opts?: { page?: string }): Promise<{ md: string; avatarUrl: string | null } | null> => {
+        try {
+          const botId = data && data.botId ? String(data.botId) : undefined;
+          const page = opts && opts.page;
+          const md = renderMenuConfigToMarkdown(pluginName, botId, page, data);
+          if (!md) return null;
+          // avatarUrl 为调用方便捷附加信息（如按钮卡片头像）：无 author 时返回 null，md 中头像渲染不受影响
+          let avatarUrl: string | null = null;
+          try {
+            const d: any = data || {};
+            const author: any = d.author || {};
+            if (engineSelf && author.openid) {
+              avatarUrl = engineSelf.getGroupMemberAvatar(String(d.groupId || ''), String(author.openid)) || null;
+            }
+          } catch {}
+          return { md, avatarUrl };
+        } catch { return null; }
+      },
+      // 渲染后发送：群 → sendMarkdownGroup，私聊 → sendMarkdownPrivate；发送失败/无卡片返回 null
+      sendCard: async (pluginName?: string, data?: BlockRenderData, opts?: { page?: string }): Promise<any> => {
+        try {
+          const rendered = await engineApi.renderCard(pluginName, data, opts);
+          if (!rendered || !rendered.md) return null;
+          const d: any = data || {};
+          const md = rendered.md;
+          const msgId = d.id || undefined;
+          const botApi: any = this.botApi;
+          if (d.groupId && botApi) {
+            if (typeof botApi.sendMarkdownGroup === 'function') return await botApi.sendMarkdownGroup(d.groupId, md, undefined, undefined, msgId);
+            if (typeof botApi.sendGroupMessage === 'function') return await botApi.sendGroupMessage(d.groupId, md, msgId);
+          }
+          const uid = (d.author && d.author.openid) || d.openid || '';
+          if (uid && botApi) {
+            if (typeof botApi.sendMarkdownPrivate === 'function') return await botApi.sendMarkdownPrivate(uid, md, undefined, undefined, msgId);
+            if (typeof botApi.sendPrivateMessage === 'function') return await botApi.sendPrivateMessage(uid, md, msgId);
+          }
+          return { md };
+        } catch { return null; }
+      },
+      // 类似 renderCard，按页面名直接渲染指定页面为 markdown 文本（同步便捷版）
+      renderMenu: (pluginName?: string, page?: string, data?: BlockRenderData) => renderMenuConfigToMarkdown(pluginName, data && data.botId ? String(data.botId) : undefined, page, data),
+      // 直接渲染调用方传入的 blocks/config（供把配置存放在其他位置的插件与生成代码使用）
+      renderBlocks: (config: any, data?: BlockRenderData) => {
+        try {
+          const ctxLike: BlockRenderCtxLike = { engine: engineSelf, identity: engineIdentityLike };
+          return renderBlocksToMarkdown(config, ctxLike, data || {});
+        } catch { return ''; }
+      },
     };
+
+    // engineApi 组装完成，回填自引用（上方渲染辅助闭包依赖 engineSelf）
+    engineSelf = engineApi;
 
     return {
       pluginId,

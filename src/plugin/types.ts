@@ -1,4 +1,5 @@
 import { EventBus } from '../core/event-bus';
+import type { BlockRenderData } from '../core/block-render';
 
 export interface PluginManifest {
   id: string;
@@ -228,6 +229,15 @@ export interface PluginEngineAPI {
   getGroupMemberOpenidByNickname(groupId: string, nickname: string): string | null;
   /** 群信息聚合：群OpenID → { id, group_number, name, avatar, member_count, active_members, first_seen, last_active, bot_id, logs } */
   getGroupProfile(groupId: string, limit?: number): any;
+  // ---- M3 引擎级统一渲染 API：任意插件复用同一份 blocks 渲染逻辑 ----
+  /** 读取该插件（缺省当前插件）menu-config 配置并渲染主页面为 markdown；appid 取 data.botId 对应分组（无则任意分组，无配置回退默认模板）；无卡片/异常返回 null */
+  renderCard(pluginName?: string, data?: BlockRenderData, opts?: { page?: string }): Promise<{ md: string; avatarUrl: string | null } | null>;
+  /** 渲染后发送卡片：群 → sendMarkdownGroup，私聊 → sendMarkdownPrivate；失败/无卡片返回 null */
+  sendCard(pluginName?: string, data?: BlockRenderData, opts?: { page?: string }): Promise<any>;
+  /** 类似 renderCard，按页面名直接渲染指定页面为 markdown 文本（同步便捷版，异常返回空串） */
+  renderMenu(pluginName?: string, page?: string, data?: BlockRenderData): string;
+  /** 直接渲染调用方传入的 blocks 数组（或含 pages 的整卡配置）为 markdown 文本；异常返回空串 */
+  renderBlocks(config: any, data?: BlockRenderData): string;
 }
 
 export interface PluginIdentity {

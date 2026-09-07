@@ -2761,8 +2761,10 @@ async function doPluginTest(){const msg=docById('pluginTestMsg').value.trim();if
     let html='<span style="color:var(--accent)">>> '+esc(msg)+'</span>';
     if(data.messages&&data.messages.length>0){data.messages.forEach(m=>{if(m.type.endsWith('_keyboard')){html+='\n<span style="color:var(--success)">[键盘消息]</span>';if(m.keyboard){if(m.keyboard.content)html+='\n<span style="color:var(--text2);padding-left:16px">'+esc(m.keyboard.content)+'</span>';if(m.keyboard.rows){m.keyboard.rows.forEach(row=>{const btns=Array.isArray(row)?row:(row.buttons||[]);const labels=btns.map(b=>b.render_data?b.render_data.label:b.id).join(' | ');html+='\n<span style="color:var(--text2);padding-left:16px">'+esc(labels)+'</span>'})}}}else if(m.type.endsWith('_markdown')){html+='\n<span style="color:var(--success)">[Markdown]</span> <span style="color:var(--text2);font-size:12px">'+esc((m.markdown||'').substring(0,100))+'</span>'}else if(m.type.includes('mute')||m.type.includes('kick')||m.type.includes('announce')){html+='\n<span style="color:var(--warn)">[群管] '+esc(m.type)+': '+esc(m.memberId||m.content||'操作')+'</span>'}else{html+='\n<span style="color:var(--success)">'+esc(m.content||'[消息]')+'</span>'}})}else if(data.replies&&data.replies.length>0){data.replies.forEach(r=>html+='\n<span style="color:var(--success)">'+esc(r)+'</span>')}else if(data.status==='no_handler'){html+='\n<span style="color:var(--warn)">插件未处理此消息（检查消息匹配或在群/私聊环境）</span>'}else if(data.error){html+='\n<span style="color:var(--danger)">错误: '+esc(data.error)+'</span>'}else{html+='\n<span style="color:var(--text2)">未收到回复</span>'}
     result.innerHTML=html;
-  }catch(e){result.innerHTML='<span style="color:var(--accent)">>> '+esc(msg)+'</span>\n<span style="color:var(--danger)">请求失败: '+esc(e.message)+'</span>'}
+    pushBubbles(msg,data);
+  }catch(e){result.innerHTML='<span style="color:var(--accent)">>> '+esc(msg)+'</span>\n<span style="color:var(--danger)">请求失败: '+esc(e.message)+'</span>';if(window.QQTester)QQTester.showReplies(testingPluginName,{input:msg,error:e.message,botId:'管理面板默认',note:'请求失败：'})}
   result.scrollTop=result.scrollHeight}
+function pushBubbles(msg,data,err){if(!window.QQTester)return;const out=[];if(data&&Array.isArray(data.messages)){data.messages.forEach(function(m){if(!m||typeof m!=='object')return;const t=m.type||'消息';let c=null;if(String(t).endsWith('_keyboard')){const k=[];if(m.keyboard&&m.keyboard.content!=null)k.push(String(m.keyboard.content));if(m.keyboard&&m.keyboard.rows){m.keyboard.rows.forEach(function(row){const bs=Array.isArray(row)?row:((row&&row.buttons)||[]);k.push(bs.map(function(b){return (b&&(b.render_data?b.render_data.label:b.id))||''}).filter(Boolean).join(' | '))})}c=k.join('\n')||'[键盘消息]';}else if(String(t).endsWith('_markdown')){c=m.markdown?String(m.markdown).substring(0,200):'[Markdown 消息]';}else if(m.content!=null){c=String(m.content);}else{c='[消息]';}out.push({type:t,content:c})})}QQTester.showReplies(testingPluginName,{input:msg,note:'index 管理面板测试联动气泡：',messages:out,replies:(data&&Array.isArray(data.replies))?data.replies:[],error:err?(err.message||String(err)):(data&&data.error),status:data&&data.status,botId:'管理面板默认'})}
 
 
 var fileDir='/',selectedFiles=new Set();
@@ -3658,5 +3660,6 @@ function mdToHtml(md){return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 
 showLogin();
 </script>
+<script src="tester.js"></script>
 </body>
 </html>

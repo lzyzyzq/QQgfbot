@@ -179,6 +179,30 @@
   .var-table .var-val { word-break: break-all; color: #334155; }
   .var-hint { font-size: 11px; color: #94a3b8; background: #f8fafc; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; line-height: 1.6; }
   .var-hint code { background: #eef2ff; color: #3730a3; border-radius: 4px; padding: 0 5px; font-size: 11px; }
+  /* ===== 全插件工作台 ===== */
+  .pl-filter { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .pl-filter input { flex: 1; min-width: 160px; }
+  .pl-count { font-size: 12px; color: #64748b; }
+  .pl-table-wrap { overflow-x: auto; border: 1px solid #eef0f3; border-radius: 10px; }
+  .pl-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+  .pl-table th, .pl-table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid #f0f2f5; font-size: 13px; vertical-align: middle; }
+  .pl-table th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .pl-table tbody tr { cursor: pointer; }
+  .pl-table tbody tr:hover { background: #f8fafc; }
+  .pl-table tbody tr.active { background: #eef2ff; box-shadow: inset 3px 0 0 #2563eb; }
+  .pl-table tbody tr:last-child td { border-bottom: none; }
+  .pl-row-name { font-weight: 600; color: #1e3a8a; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-row-desc { color: #64748b; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .pl-badge { display: inline-block; padding: 1px 7px; border-radius: 8px; font-size: 11px; font-family: Consolas,Menlo,monospace; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .pl-badge.js, .pl-badge.mjs { background: #fef9c3; color: #854d0e; border-color: #fde047; }
+  .pl-badge.py { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+  .pl-badge.php { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+  .pl-badge.zip { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .pl-badge.file { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
+  .pl-on { font-size: 10px; vertical-align: 1px; }
+  .pl-ops { white-space: nowrap; }
+  .pl-ops .btn { margin: 1px 2px; }
+  .pv-modal-body { padding: 14px 18px; overflow-y: auto; background: #f8fafc; color: #334155; white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.7; max-height: 60vh; font-family: Consolas,Menlo,monospace; }
 </style>
 </head>
 <body>
@@ -214,6 +238,21 @@
 </div>
 
 <div class="wrap">
+  <div class="card">
+    <h2>全部插件库 <span style="color:#999;font-size:12px">（统一后台：js / mjs / py / php / 目录 zip / 文件 file 全类型）</span> <span class="pl-count" id="plCount"></span></h2>
+    <div class="pl-filter">
+      <input type="text" id="plSearch" placeholder="按名称 / 描述 / 类型过滤插件…" oninput="renderAllPlugins()">
+      <button class="btn" onclick="loadAllPlugins()">↻ 刷新列表</button>
+      <span class="hint">点选整行 = 进入该插件的「卡片可视化编辑」（js/py 等卡片类插件）。不支持卡片编辑的类型可用行内 代码/测试 等操作。</span>
+    </div>
+    <div class="pl-table-wrap">
+      <table class="pl-table">
+        <thead><tr><th style="width:24px"></th><th>插件</th><th>类型</th><th>版本</th><th>作者</th><th>描述</th><th>状态</th><th style="width:250px">操作</th></tr></thead>
+        <tbody id="plBody"><tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:16px">加载中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="card">
     <h2>🧩 选择插件</h2>
     <div class="row">
@@ -1209,6 +1248,227 @@ function renderPreview(){
   }).join('\n');
 }
 
+// ========== 全部插件库（admin /api/plugins 全类型工作台） ==========
+var allPlugins = [];
+var isSuper = false;
+var wsAutoPickName = '';
+var _plBound = false;
+
+function plKind(p){ return (p && p.fileType) || ''; }
+function plBadgeClass(p){
+  var k = plKind(p), t = (p && p.type) || '';
+  if (t === 'zip') return 'zip';
+  if (k === 'js' || k === 'mjs') return 'js';
+  if (k === 'py') return 'py';
+  if (k === 'php') return 'php';
+  return 'file';
+}
+function plTypeLabel(p){
+  var k = plKind(p), t = (p && p.type) || '';
+  if (t === 'zip') return 'ZIP目录' + (k ? ' · ' + k : '');
+  if (k === 'js' || k === 'mjs' || k === 'py' || k === 'php') return k.toUpperCase();
+  if (k) return k.toLowerCase();
+  return t === 'file' ? 'file' : (t || '?');
+}
+function plRowHtml(p){
+  var on = p.enabled
+    ? '<span class="pl-on" style="color:#16a34a">● 启用</span>'
+    : '<span class="pl-on" style="color:#cbd5e1">○ 停用</span>';
+  var approved = (p.status === 'pending') ? ' <span style="color:#f59e0b">待审批</span>' : '';
+  var canCode = !!p.canEdit || !!isSuper;
+  var btn = function(label, ttl, fn, dis){
+    return '<button class="btn sm' + (dis ? '" disabled' : '') + '" title="' + ttl + '" onclick="event.stopPropagation();' + fn + '">' + label + '</button>';
+  };
+  var ops =
+    btn('文档', '查看 README 说明文档（README.md）', 'pvDoc(\'' + escAttr(p.name) + '\')') + ' ' +
+    btn('代码', canCode ? '打开代码编辑并热重载（js/mjs/py/php；目录插件编辑入口文件）' : '只读查看源码（无编辑权限）', 'pvCode(\'' + escAttr(p.name) + '\', ' + (canCode ? 'true' : 'false') + ')') + ' ' +
+    btn('日志', '查看插件 CHANGELOG.md 更新日志', 'pvLog(\'' + escAttr(p.name) + '\')') + ' ' +
+    btn('测试', '打开模拟群消息气泡测试', 'pvTest(\'' + escAttr(p.name) + '\')');
+  if (isSuper && !p.version){
+    ops += ' ' + btn('登记', '缺 DB 记录/plugin.json：从插件内代码解析 manifest 并登记串联（启停/审批/信息可用）', 'pvRegister(\'' + escAttr(p.name) + '\')');
+  }
+  if (isSuper && p.type === 'zip'){
+    ops += ' ' + btn('生成文档', '生成 README.md + CHANGELOG.md 开发文档（沿用插件内代码解析）', 'pvDocs(\'' + escAttr(p.name) + '\')');
+  }
+  if (isSuper && (plKind(p) === 'js' || plKind(p) === 'mjs' || p.type === 'zip')){
+    ops += ' ' + btn('生成卡片代码', '把当前可视化卡片配置生成/更新到插件源码（js 插件注入 renderUniversalMenu，支持撤销）', 'pvGenCard(\'' + escAttr(p.name) + '\')') +
+      ' ' + btn('撤销生成', '撤销最近一次「生成卡片代码」，还原插件原代码', 'pvUndoCard(\'' + escAttr(p.name) + '\')');
+  }
+  if (isSuper){
+    ops += ' ' + btn(p.enabled ? '停用' : '启用', p.enabled ? '停用该插件' : '启用该插件', 'pvToggle(\'' + escAttr(p.name) + '\')', !p.id) +
+      ' ' + btn('删除', '删除插件（文件/目录/数据库记录）', 'pvDelete(\'' + escAttr(p.name) + '\')');
+  }
+  var active = (p.name === curPlugin) ? ' class="active"' : '';
+  return '<tr' + active + ' data-name="' + escAttr(p.name) + '"><td>' + on + '</td>' +
+    '<td><div class="pl-row-name">' + esc(p.name) + '</div></td>' +
+    '<td><span class="pl-badge ' + plBadgeClass(p) + '">' + esc(plTypeLabel(p)) + '</span></td>' +
+    '<td>' + esc(p.version || '') + '</td>' +
+    '<td>' + esc(p.owner && p.owner !== 'system' ? p.owner : (p.author || '')) + '</td>' +
+    '<td><div class="pl-row-desc" title="' + escAttr(p.description || '') + '">' + esc(p.description || '') + '</div>' + approved + '</td>' +
+    '<td>' + (p.enabled ? '启用' : '停用') + '</td>' +
+    '<td class="pl-ops">' + ops + '</td></tr>';
+}
+function renderAllPlugins(){
+  var q = ($('plSearch') ? $('plSearch').value : '').trim().toLowerCase();
+  var list = allPlugins;
+  if (q) list = list.filter(function(p){
+    return (p.name || '').toLowerCase().indexOf(q) >= 0 ||
+      String(p.description || '').toLowerCase().indexOf(q) >= 0 ||
+      String(p.type || '').toLowerCase().indexOf(q) >= 0 ||
+      String(p.fileType || '').toLowerCase().indexOf(q) >= 0 ||
+      plTypeLabel(p).toLowerCase().indexOf(q) >= 0;
+  });
+  var body = $('plBody');
+  body.innerHTML = list.map(plRowHtml).join('') ||
+    '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:16px">暂无插件</td></tr>';
+  $('plCount').textContent = allPlugins.length ? (allPlugins.length + ' 个插件' + (q ? '，命中 ' + list.length + ' 个' : '')) : '';
+  if (!_plBound && body){
+    _plBound = true;
+    body.addEventListener('click', function(e){
+      var tr = e.target && e.target.closest ? e.target.closest('tr') : null;
+      if (!tr || tr.dataset.name === undefined || !tr.getAttribute('data-name')) return;
+      pickPluginRow(tr.getAttribute('data-name'));
+    });
+  }
+}
+function loadAllPlugins(){
+  api('/api/plugins').then(function(r){
+    if (!r.ok || !Array.isArray(r.data)){
+      $('plBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#dc2626;padding:16px">列表加载失败：' + esc((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)) + '</td></tr>';
+      return;
+    }
+    allPlugins = r.data;
+    renderAllPlugins();
+  }).catch(function(e){
+    $('plBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#dc2626;padding:16px">列表加载失败：' + esc(e && e.message || e) + '</td></tr>';
+  });
+}
+function syncActiveRow(){
+  var rows = document.querySelectorAll('#plBody tr[data-name]');
+  Array.prototype.forEach.call(rows, function(tr){
+    tr.classList.toggle('active', tr.getAttribute('data-name') === curPlugin);
+  });
+}
+function pickPluginRow(name){
+  if (!name) return;
+  // menu-config 未收录的插件（如 file 资源型）也允许进入通用卡片模板编辑，后端按 file-{name} 兜底保存配置
+  selectPlugin(name);
+  syncActiveRow();
+}
+function pvDoc(name){
+  api('/api/plugins/' + encodeURIComponent(name) + '/doc').then(function(r){
+    if (r.ok && r.data && typeof r.data.content === 'string'){
+      pvModalOpen(name + ' · README.md 文档', r.data.content);
+    } else {
+      toast('该插件暂无文档（README.md）：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  });
+}
+function pvLog(name){
+  api('/api/plugins/' + encodeURIComponent(name) + '/changelog').then(function(r){
+    if (r.ok && r.data && typeof r.data.content === 'string'){
+      pvModalOpen(name + ' · CHANGELOG.md 更新日志', r.data.content);
+    } else {
+      toast('该插件暂无更新日志（CHANGELOG.md）：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  });
+}
+function pvTest(name){
+  if (window.QQTester) QQTester.open(name, { selectId: 'botSel' });
+  else toast('测试视图组件未加载，请刷新页面后重试');
+}
+function pvToggle(name){
+  var p = null;
+  allPlugins.forEach(function(x){ if (x.name === name) p = x; });
+  if (!p || !p.id){ toast('该插件无数据库记录（启动后手动放入目录），无法启停'); return; }
+  api('/api/plugins/' + encodeURIComponent(p.id) + '/toggle', { method: 'POST' }).then(function(r){
+    if (r.ok && r.data && r.data.ok){
+      toast('已切换「' + name + '」启用状态');
+      loadAllPlugins();
+    } else {
+      toast('操作失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  });
+}
+function pvDelete(name){
+  if (!confirm('确定删除插件「' + name + '」？\n将同时删除其文件/目录与数据库记录，且不可恢复！')) return;
+  api('/api/plugins/' + encodeURIComponent(name), { method: 'DELETE' }).then(function(r){
+    if (r.ok && r.data && r.data.ok){
+      toast('已删除插件「' + name + '」');
+      if (curPlugin === name){
+        var sel = $('pluginSel');
+        if (sel.options.length) selectPlugin(sel.options[0].value || '');
+        else { curPlugin = '测试菜单'; cfg = { main_page: '主菜单', pages: {} }; curPage = '主菜单'; }
+      }
+      loadAllPlugins();
+      if (typeof loadPlugins === 'function') loadPlugins();
+    } else {
+      toast('删除失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  });
+}
+function pvCode(name, canEdit){
+  if (canEdit){
+    wsAutoPickName = name;
+    openWorkshop();
+  } else {
+    api('/api/plugins/' + encodeURIComponent(name) + '/code').then(function(r){
+      if (r.ok && r.data && typeof r.data.code === 'string'){
+        pvModalOpen(name + ' · ' + (r.data.fileName || name + '.js') + '（只读）', r.data.code);
+      } else {
+        toast('读取代码失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+      }
+    });
+  }
+}
+function pvGenCard(name){
+  if (!confirm('将当前「' + name + '」的可视化卡片配置生成并写入插件源码（注入 renderUniversalMenu 代码段）？\n生成前会自动备份原代码，可用「撤销生成」还原。')) return;
+  api('/api/plugins/' + encodeURIComponent(name) + '/gen-card', { method: 'POST' }).then(function(r){
+    if (r.ok && r.data && r.data.ok){
+      toast('已生成并热重载：' + (r.data.fileName || ''));
+    } else {
+      toast('生成失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  });
+}
+function pvUndoCard(name){
+  if (!confirm('撤销「' + name + '」最近一次“生成卡片代码”，还原其原始插件代码？')) return;
+  api('/api/plugins/' + encodeURIComponent(name) + '/gen-card/undo', { method: 'POST' }).then(function(r){
+    if (r.ok && r.data && r.data.ok){
+      toast('已还原原代码：' + (r.data.fileName || ''));
+    } else {
+      toast('撤销失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  });
+}
+function pvRegister(name){
+  api('/api/plugins/' + encodeURIComponent(name) + '/register', { method: 'POST' }).then(function(r){
+    if (r.ok && r.data && r.data.ok){
+      toast('已登记：' + (r.data.note || '') + (r.data.version ? ' · v' + r.data.version : ''));
+      loadAllPlugins();
+      if (typeof loadPlugins === 'function') loadPlugins();
+    } else {
+      toast('登记失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  });
+}
+function pvDocs(name){
+  api('/api/plugins/' + encodeURIComponent(name) + '/docs', { method: 'POST' }).then(function(r){
+    if (r.ok && r.data && r.data.ok){
+      toast('文档：README ' + r.data.readme + '；CHANGELOG ' + r.data.changelog);
+      loadAllPlugins();
+    } else {
+      toast('生成失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
+    }
+  });
+}
+function pvModalOpen(title, text){
+  $('pvModalTitle').textContent = title;
+  $('pvModalBody').textContent = text;
+  $('modalPv').classList.add('active');
+}
+function pvModalClose(){ $('modalPv').classList.remove('active'); }
+
 // ========== 加载与保存 ==========
 function loadBots(){
   api('/api/bots').then(function(r){
@@ -1271,6 +1531,7 @@ $('pluginSel').addEventListener('change', function(){
   curPage = '主菜单';
   loadConfig();
   loadMeta();
+  syncActiveRow();
 });
 
 function loadMeta(){
@@ -1465,6 +1726,15 @@ async function loadWorkshopPlugins(){
   }).join('') || '<div style="padding:20px;text-align:center;color:#999;font-size:13px">暂无插件</div>';
   $('wsCount').textContent = ws.plugins.length + ' 个插件';
   wsStatus('✅ 已加载 ' + ws.plugins.length + ' 个插件（●启用 ○禁用），点击左侧查看代码', 'ok');
+  if (wsAutoPickName){
+    var want = wsAutoPickName;
+    wsAutoPickName = '';
+    var items = document.querySelectorAll('#wsSide .ws-item');
+    var el = null;
+    for (var i = 0; i < items.length; i++){ if (items[i].getAttribute('data-name') === want){ el = items[i]; break; } }
+    if (el) wsPick(el);
+    else wsStatus('未在工坊列表找到插件「' + want + '」（可能已不在 plugins 目录）', 'err');
+  }
 }
 async function wsPick(el){
   ws.name = el.getAttribute('data-name');
@@ -1617,6 +1887,7 @@ function selectPlugin(name){
   loadConfig();
   loadMeta();
   renderSidebarPlugins();
+  syncActiveRow();
 }
 
 function loadExternLinks(){
@@ -1689,10 +1960,13 @@ function delVar(name){
 // 仅超级主人显示「插件工坊」入口
 api('/api/auth/me').then(function(r){
   if (r.ok && r.data && r.data.role === 'super_master'){
+    isSuper = true;
     $('btnWorkshop').style.display = 'inline-block';
+    renderAllPlugins();
   }
 }).catch(function(){});
 
+loadAllPlugins();
 loadBots();
 loadVars();
 </script>
@@ -1722,5 +1996,17 @@ loadVars();
     </div>
   </div>
 </div>
+
+<div class="workshop-overlay" id="modalPv">
+  <div class="workshop" style="max-width:760px">
+    <div class="workshop-head">
+      <h3 id="pvModalTitle">查看</h3>
+      <button class="ws-x" onclick="pvModalClose()">✕</button>
+    </div>
+    <div class="pv-modal-body" id="pvModalBody"></div>
+  </div>
+</div>
+
+<script src="tester.js"></script>
 </body>
 </html>

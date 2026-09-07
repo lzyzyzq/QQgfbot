@@ -6,8 +6,10 @@ import type { PluginManifest } from '../config';
 import { ROLE_PERMISSIONS } from '../config';
 import { requireSuperMaster, getUserPermissions } from '../middleware';
 import { getPluginEngine } from '../../api/index';
-import { getDb } from '../../db/index';
+import { getDb, getConfig, setConfig } from '../../db/index';
 import { v4 as uuidv4 } from 'uuid';
+import { generatePluginBlockCode, injectCodeSegment, hasUCardSegment, assertInjectableSourceFile } from '../plugin-codegen';
+import { findPluginIdFor as findMenuConfigPluginId, readAll as readMenuConfigAll, mergeConfig as mergeMenuConfig } from '../../api/menu-config';
 
 // ===================== 插件审批存储 =====================
 interface PluginApproval {
@@ -145,6 +147,62 @@ function canEditPlugin(req: Request, name: string, auth?: AdminAuth): boolean {
 }
 
 import type { AdminAuth } from '../auth';
+
+// 定位插件入口文件（供代码读写 GET/PUT /:name/code 与 gen-card 注入共用）：
+// 1) plugins.source_path（存在且为文件） 2) {name}.js/.mjs/.py/.php 直接文件
+// 3) {name} 本身为文件 4) ZIP 目录插件入口（index.js/index.mjs/index.ts/src/index.ts，兼容单层顶层子目录如 MKbot/xxx）
+function locatePluginEntryFile(name: string, pluginsDir: string): string | null {
+  const row = getDb().prepare('SELECT source_path FROM plugins WHERE name = ?').get(name) as any;
+  let target: string | null = null;
+  if (row?.source_path) {
+    try {
+      if (fs.existsSync(row.source_path) && fs.statSync(row.source_path).isFile()) {
+        target = row.source_path;
+      }
+    } catch {}
+  }
+  if (!target) {
+    const jsPath = path.join(pluginsDir, name + '.js');
+    const mjsPath = path.join(pluginsDir, name + '.mjs');
+    const pyPath = path.join(pluginsDir, name + '.py');
+    const phpPath = path.join(pluginsDir, name + '.php');
+    const directPath = path.join(pluginsDir, name);
+    target = fs.existsSync(jsPath) ? jsPath
+      : (fs.existsSync(mjsPath) ? mjsPath
+      : (fs.existsSync(pyPath) ? pyPath
+      : (fs.existsSync(phpPath) ? phpPath
+      : (fs.existsSync(directPath) && fs.statSync(directPath).isFile() ? directPath : null))));
+  }
+  if (!target) {
+    const dirPath = path.join(pluginsDir, name);
+    try {
+      if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+        const scanDirs: string[] = [dirPath];
+        try {
+          const subs = fs.readdirSync(dirPath).filter((n: string) => {
+            try { return fs.statSync(path.join(dirPath, n)).isDirectory(); } catch { return false; }
+          });
+          if (subs.length === 1 &&
+              !fs.existsSync(path.join(dirPath, 'index.js')) &&
+              !fs.existsSync(path.join(dirPath, 'index.mjs'))) {
+            scanDirs.push(path.join(dirPath, subs[0]));
+          }
+        } catch {}
+        const entryCandidates = ['index.js', 'index.mjs', 'index.ts', path.join('src', 'index.ts')];
+        for (const d of scanDirs) {
+          for (const e of entryCandidates) {
+            const ep = path.join(d, e);
+            try {
+              if (fs.existsSync(ep) && fs.statSync(ep).isFile()) { target = ep; break; }
+            } catch {}
+          }
+          if (target) break;
+        }
+      }
+    } catch {}
+  }
+  return target;
+}
 
 // ===================== 路由工厂 =====================
 export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router {
@@ -851,56 +909,7 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
   // ------------------------------------------------------------
   router.get('/:name/code', (req: Request, res: Response) => {
     const name = req.params.name;
-    const row = getDb().prepare('SELECT source_path, type FROM plugins WHERE name = ?').get(name) as any;
-    let target: string | null = null;
-    if (row?.source_path) {
-      try {
-        if (fs.existsSync(row.source_path) && fs.statSync(row.source_path).isFile()) {
-          target = row.source_path;
-        }
-      } catch {}
-    }
-    if (!target) {
-      const jsPath = path.join(pluginsDir, name + '.js');
-      const mjsPath = path.join(pluginsDir, name + '.mjs');
-      const pyPath = path.join(pluginsDir, name + '.py');
-      const phpPath = path.join(pluginsDir, name + '.php');
-      const directPath = path.join(pluginsDir, name);
-      target = fs.existsSync(jsPath) ? jsPath
-        : (fs.existsSync(mjsPath) ? mjsPath
-        : (fs.existsSync(pyPath) ? pyPath
-        : (fs.existsSync(phpPath) ? phpPath
-        : (fs.existsSync(directPath) && fs.statSync(directPath).isFile() ? directPath : null))));
-    }
-    if (!target) {
-      // ZIP 目录插件：定位入口文件（index.js/index.mjs/index.ts/src/index.ts，兼容单层顶层子目录如 MKbot/xxx）
-      const dirPath = path.join(pluginsDir, name);
-      try {
-        if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
-          const scanDirs: string[] = [dirPath];
-          try {
-            const subs = fs.readdirSync(dirPath).filter((n: string) => {
-              try { return fs.statSync(path.join(dirPath, n)).isDirectory(); } catch { return false; }
-            });
-            if (subs.length === 1 &&
-                !fs.existsSync(path.join(dirPath, 'index.js')) &&
-                !fs.existsSync(path.join(dirPath, 'index.mjs'))) {
-              scanDirs.push(path.join(dirPath, subs[0]));
-            }
-          } catch {}
-          const entryCandidates = ['index.js', 'index.mjs', 'index.ts', path.join('src', 'index.ts')];
-          for (const d of scanDirs) {
-            for (const e of entryCandidates) {
-              const ep = path.join(d, e);
-              try {
-                if (fs.existsSync(ep) && fs.statSync(ep).isFile()) { target = ep; break; }
-              } catch {}
-            }
-            if (target) break;
-          }
-        }
-      } catch {}
-    }
+    const target = locatePluginEntryFile(name, pluginsDir);
     if (!target) {
       res.status(404).json({ error: 'Plugin file not found' });
       return;
@@ -923,56 +932,7 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
       res.status(403).json({ error: '无权限编辑该插件代码（需超级主人授权或拥有该插件）' });
       return;
     }
-    const rowForTarget = getDb().prepare('SELECT source_path, type FROM plugins WHERE name = ?').get(name) as any;
-    let target: string | null = null;
-    if (rowForTarget?.source_path) {
-      try {
-        if (fs.existsSync(rowForTarget.source_path) && fs.statSync(rowForTarget.source_path).isFile()) {
-          target = rowForTarget.source_path;
-        }
-      } catch {}
-    }
-    if (!target) {
-      const jsPath = path.join(pluginsDir, name + '.js');
-      const mjsPath = path.join(pluginsDir, name + '.mjs');
-      const pyPath = path.join(pluginsDir, name + '.py');
-      const phpPath = path.join(pluginsDir, name + '.php');
-      const directPath = path.join(pluginsDir, name);
-      target = fs.existsSync(jsPath) ? jsPath
-        : (fs.existsSync(mjsPath) ? mjsPath
-        : (fs.existsSync(pyPath) ? pyPath
-        : (fs.existsSync(phpPath) ? phpPath
-        : (fs.existsSync(directPath) && fs.statSync(directPath).isFile() ? directPath : null))));
-    }
-    if (!target) {
-      // ZIP 目录插件：定位入口文件（index.js/index.mjs/index.ts/src/index.ts，兼容单层顶层子目录如 MKbot/xxx）
-      const dirPath = path.join(pluginsDir, name);
-      try {
-        if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
-          const scanDirs: string[] = [dirPath];
-          try {
-            const subs = fs.readdirSync(dirPath).filter((n: string) => {
-              try { return fs.statSync(path.join(dirPath, n)).isDirectory(); } catch { return false; }
-            });
-            if (subs.length === 1 &&
-                !fs.existsSync(path.join(dirPath, 'index.js')) &&
-                !fs.existsSync(path.join(dirPath, 'index.mjs'))) {
-              scanDirs.push(path.join(dirPath, subs[0]));
-            }
-          } catch {}
-          const entryCandidates = ['index.js', 'index.mjs', 'index.ts', path.join('src', 'index.ts')];
-          for (const d of scanDirs) {
-            for (const e of entryCandidates) {
-              const ep = path.join(d, e);
-              try {
-                if (fs.existsSync(ep) && fs.statSync(ep).isFile()) { target = ep; break; }
-              } catch {}
-            }
-            if (target) break;
-          }
-        }
-      } catch {}
-    }
+    const target = locatePluginEntryFile(name, pluginsDir);
     if (!target) {
       res.status(404).json({ error: 'Plugin file not found' });
       return;
@@ -1193,6 +1153,306 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
     } catch (err: any) {
       res.status(err.message.includes('not found') ? 404 : 500).json({ error: err.message });
     }
+  });
+
+  // M3 gen-card 辅助：写回 js/mjs 入口文件后触发与 PUT /:name/code 一致的 reload 语义
+  async function reloadAfterEntryCodeWrite(name: string): Promise<{ message: string }> {
+    const engine = getPluginEngine();
+    const pluginId = engine.findPluginByName(name);
+    if (!pluginId) {
+      return { message: '数据库无该插件记录，代码已保存（重启后自动发现）' };
+    }
+    const trow = getDb().prepare('SELECT type FROM plugins WHERE id = ?').get(pluginId) as any;
+    if (trow?.type === 'file') return { message: '代码已更新（文件资源插件不可执行，仅保存）' };
+    if (trow?.type === 'php') return { message: '代码已更新（PHP 插件每次执行时从磁盘读取，下次消息即生效）' };
+    await engine.reload(pluginId);
+    return { message: '代码已更新并重新加载插件' };
+  }
+
+  // ------------------------------------------------------------
+  // M3: 生成并注入「可视化卡片渲染」代码段（gen-card）
+  // 读取该插件 menu-config 配置（无则用默认模板）→ 生成含幂等 marker 的 JS 段 →
+  // 首次注入前备份原码到 config plugin.{id}.ucard_backup → 注入入口源码 → reload。
+  // 仅 js/mjs 入口可注入；py/php/file/zip（ts 入口）返回 400 提示改用配置方式渲染。
+  // ------------------------------------------------------------
+  router.post('/:name/gen-card', async (req: Request, res: Response) => {
+    const name = req.params.name;
+    if (!canEditPlugin(req, name, auth)) {
+      res.status(403).json({ error: '无权限修改该插件代码（需超级主人授权或拥有该插件）' });
+      return;
+    }
+    const target = locatePluginEntryFile(name, pluginsDir);
+    if (!target) {
+      res.status(404).json({ error: 'Plugin file not found' });
+      return;
+    }
+    const fileName = path.basename(target);
+    try {
+      assertInjectableSourceFile(fileName);
+    } catch (err: any) {
+      res.status((err && err.code === 'ERR_UCARD_UNSUPPORTED') ? 400 : 500)
+        .json({ error: String((err && err.message) || err) });
+      return;
+    }
+    try {
+      const pluginId = findMenuConfigPluginId(name);
+      const all = readMenuConfigAll(name);
+      const appids = Object.keys(all || {});
+      // 与编辑器 GET 该插件 menu-config 一致：无配置回退默认模板
+      let config: any = null;
+      if (appids.length) config = mergeMenuConfig(all[appids[0]], name);
+      if (!config) config = mergeMenuConfig(null, name);
+      const segment = generatePluginBlockCode(name, config);
+      const original = fs.readFileSync(target, 'utf-8');
+      const backupKey = `plugin.${pluginId}.ucard_backup`;
+      if (!hasUCardSegment(original)) {
+        // 仅首次注入前备份原码（重复生成只原位更新段，不动备份）
+        setConfig(backupKey, JSON.stringify({ fileName, code: original, at: new Date().toISOString() }));
+      }
+      const next = injectCodeSegment(original, segment);
+      fs.writeFileSync(target, next, 'utf-8');
+      const reloadResult = await reloadAfterEntryCodeWrite(name);
+      res.json({
+        ok: true,
+        message: reloadResult.message,
+        pluginId,
+        fileName,
+        backupKey,
+        inserted: !hasUCardSegment(original),
+      });
+    } catch (err: any) {
+      console.error('[GenCard Error]', err);
+      res.status(500).json({ error: `Failed to generate card code: ${err.message}` });
+    }
+  });
+
+  // ------------------------------------------------------------
+  // M3: 撤销上一步 gen-card 注入
+  // 读备份 config plugin.{id}.ucard_backup 还原入口源码并 reload，成功后清除备份。
+  // ------------------------------------------------------------
+  router.post('/:name/gen-card/undo', async (req: Request, res: Response) => {
+    const name = req.params.name;
+    if (!canEditPlugin(req, name, auth)) {
+      res.status(403).json({ error: '无权限修改该插件代码（需超级主人授权或拥有该插件）' });
+      return;
+    }
+    const target = locatePluginEntryFile(name, pluginsDir);
+    if (!target) {
+      res.status(404).json({ error: 'Plugin file not found' });
+      return;
+    }
+    const fileName = path.basename(target);
+    try {
+      assertInjectableSourceFile(fileName);
+    } catch (err: any) {
+      res.status((err && err.code === 'ERR_UCARD_UNSUPPORTED') ? 400 : 500)
+        .json({ error: String((err && err.message) || err) });
+      return;
+    }
+    const pluginId = findMenuConfigPluginId(name);
+    const backupKey = `plugin.${pluginId}.ucard_backup`;
+    const backupRaw = getConfig(backupKey);
+    if (!backupRaw) {
+      res.status(404).json({ error: '没有可回退的生成备份（可能已回退或从未生成过）' });
+      return;
+    }
+    let backup: any = null;
+    try { backup = JSON.parse(backupRaw); } catch {}
+    if (!backup || typeof backup.code !== 'string') {
+      res.status(500).json({ error: '生成备份已损坏，无法自动回退，请手工恢复' });
+      return;
+    }
+    const current = fs.readFileSync(target, 'utf-8');
+    if (!hasUCardSegment(current)) {
+      res.status(400).json({ error: '当前源码已不含生成段（可能被手工修改或已回退），为避免覆盖你的改动已中止回退' });
+      return;
+    }
+    try {
+      fs.writeFileSync(target, backup.code, 'utf-8');
+      getDb().prepare('DELETE FROM config WHERE key = ?').run(backupKey);
+      const reloadResult = await reloadAfterEntryCodeWrite(name);
+      res.json({ ok: true, message: '已还原生成前的代码。' + reloadResult.message, pluginId, fileName });
+    } catch (err: any) {
+      console.error('[GenCard Undo Error]', err);
+      res.status(500).json({ error: `Failed to undo generated card code: ${err.message}` });
+    }
+  });
+
+  // ------------------------------------------------------------
+  // 19. 一键登记补全：无 DB 记录 / 缺 plugin.json 的插件，沿用插件内代码解析 manifest 串联登记
+  // ------------------------------------------------------------
+  function parseManifestFromEntry(name: string): any {
+    const mfPath = path.join(pluginsDir, name, 'plugin.json');
+    if (fs.existsSync(mfPath)) {
+      try {
+        const p = JSON.parse(fs.readFileSync(mfPath, 'utf-8'));
+        if (p && typeof p === 'object') return p;
+      } catch {}
+    }
+    const m: any = { name: String(name).replace(/\.(js|mjs|py|php)$/i, ''), version: '1.0.0' };
+    try {
+      const target = locatePluginEntryFile(name, pluginsDir);
+      if (target) {
+        const code = fs.readFileSync(target, 'utf-8').slice(0, 4000);
+        const mm = code.match(/manifest\s*:\s*\{([\s\S]{0,1200}?)\}/);
+        if (mm) {
+          const seg = mm[1];
+          const g = (re: RegExp) => { const x = seg.match(re); return x ? x[1] : ''; };
+          const nm = g(/name\s*:\s*['"]([^'"]+)['"]/); if (nm) m.name = nm;
+          const vv = g(/version\s*:\s*['"]([^'"]+)['"]/); if (vv) m.version = vv;
+          const aa = g(/author\s*:\s*['"]([^'"]+)['"]/); if (aa) m.author = aa;
+          const dd = g(/description\s*:\s*['"]([^'"]+)['"]/); if (dd) m.description = dd;
+        } else {
+          const desc = code.match(/@description\s+(.+)/); if (desc) m.description = desc[1].trim();
+          const ver = code.match(/@version\s+(.+)/); if (ver) m.version = ver[1].trim();
+          const aut = code.match(/@author\s+(.+)/); if (aut) m.author = aut[1].trim();
+        }
+      }
+    } catch {}
+    return m;
+  }
+
+  router.post('/:name/register', async (req: Request, res: Response) => {
+    const name = req.params.name;
+    try {
+      const db = getDb();
+      const dirPath = path.join(pluginsDir, name);
+      const dirMode = fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory();
+      const m = parseManifestFromEntry(name);
+      const username = (req.adminUser && req.adminUser.username) || 'system';
+      const bare = String(m.name || name).replace(/\.(js|mjs|py|php)$/i, '');
+      const engine = getPluginEngine();
+      let registeredId = '';
+      let kind = 'single';
+      let note = '已登记到数据库（文件插件）';
+
+      if (dirMode) {
+        kind = 'zip';
+        const mfPath = path.join(dirPath, 'plugin.json');
+        let prev: any = {};
+        if (fs.existsSync(mfPath)) { try { prev = JSON.parse(fs.readFileSync(mfPath, 'utf-8')) || {}; } catch {} }
+        const merged = Object.assign({}, prev, { name: m.name || name, version: m.version || '1.0.0' }, { author: m.author || prev.author || '', description: m.description || prev.description || '' });
+        fs.writeFileSync(mfPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
+        let row: any = null;
+        try {
+          row = db.prepare('SELECT id FROM plugins WHERE name = ?').get(name)
+            || db.prepare('SELECT id FROM plugins WHERE id = ?').get(name);
+        } catch {}
+        const ver = String(merged.version || '1.0.0');
+        if (row && row.id) {
+          registeredId = row.id;
+          db.prepare('UPDATE plugins SET version = ?, description = COALESCE(?, description), approved = 1, type = ? WHERE id = ?')
+            .run(ver, merged.description || null, 'zip', row.id);
+        } else {
+          registeredId = uuidv4();
+          db.prepare(
+            'INSERT INTO plugins (id, name, description, code, enabled, version, type, source_path, approved, owner) VALUES (?, ?, ?, \'\', 0, ?, \'zip\', ?, 1, ?)'
+          ).run(registeredId, name, merged.description || '', ver, dirPath, username);
+        }
+        note = '已生成 plugin.json（' + (Object.keys(prev).length ? '补全既有 manifest' : '新建 manifest') + '）并登记数据库，服务重启后完整生效';
+      } else {
+        const exId = engine.findPluginByName(bare) || engine.findPluginByName(name);
+        if (exId) {
+          registeredId = exId;
+          db.prepare('UPDATE plugins SET version = ?, approved = 1, owner = ? WHERE id = ?')
+            .run(String(m.version || '1.0.0'), username, exId);
+          note = '插件已由引擎加载，已补全版本/审批/归属登记';
+        } else {
+          const target = locatePluginEntryFile(name, pluginsDir);
+          const ext = target ? path.extname(target).toLowerCase() : '';
+          if (ext === '.mjs') {
+            registeredId = await engine.registerMjsFile(bare, m.description);
+          } else if (ext === '.py') {
+            const code = target ? fs.readFileSync(target, 'utf-8') : '';
+            registeredId = await engine.registerPyFile(bare, code, m.description);
+          } else if (ext === '.php') {
+            const pId = 'php-' + bare;
+            db.prepare(
+              'INSERT INTO plugins (id, name, description, code, enabled, version, type, source_path, approved, owner) VALUES (?, ?, ?, \'\', 0, ?, \'php\', ?, 1, ?) ON CONFLICT(id) DO UPDATE SET version = excluded.version, approved = 1, owner = excluded.owner'
+            ).run(pId, bare + '.php', m.description || 'PHP 插件', String(m.version || '1.0.0'), target || '', username);
+            registeredId = pId;
+          } else {
+            registeredId = 'file-' + bare;
+            db.prepare(
+              'INSERT INTO plugins (id, name, description, code, enabled, version, type, has_webui, approved, owner) VALUES (?, ?, ?, \'\', 0, ?, \'code\', 0, 1, ?) ON CONFLICT(id) DO UPDATE SET version = excluded.version, approved = 1, owner = excluded.owner'
+            ).run(registeredId, bare, m.description || '', String(m.version || '1.0.0'), username);
+            note = '已登记数据库（js 文件插件，重启服务后由引擎扫描加载生效）';
+          }
+        }
+      }
+      try { approvalStore.approve(name, username); } catch {}
+      res.json({ ok: true, kind, id: registeredId, name, manifest: m, note });
+    } catch (e: any) {
+      res.status(500).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  // ------------------------------------------------------------
+  // 20. 生成开发文档（README.md + CHANGELOG.md，沿用插件内代码解析）——仅目录型插件
+  // ------------------------------------------------------------
+  router.post('/:name/docs', async (req: Request, res: Response) => {
+    const name = req.params.name;
+    const dirPath = path.join(pluginsDir, name);
+    if (!(fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory())) {
+      res.status(400).json({ error: '开发文档仅支持目录（zip）型插件；单文件插件的 README 落在 plugins/{name}/ 目录，请先使用「登记」转换。' });
+      return;
+    }
+    const m = parseManifestFromEntry(name);
+    const target = locatePluginEntryFile(name, pluginsDir);
+    let deps = '- 无外部依赖';
+    const caps: string[] = [];
+    if (target) {
+      const code = fs.readFileSync(target, 'utf-8');
+      const mods: string[] = [];
+      const re = /require\s*\(\s*['"]([^'"]+)['"]\s*\)|from\s+['"]([^'"]+)['"]/g;
+      let mm: RegExpExecArray | null;
+      while ((mm = re.exec(code))) { const d = mm[1] || mm[2]; if (d && mods.indexOf(d) < 0) mods.push(d); }
+      if (mods.length) deps = mods.map((d) => '- `' + d + '`').join('\n');
+      const capRe = /ctx\.bot\.([A-Za-z_$][\w$]*)/g;
+      while ((mm = capRe.exec(code))) { if (caps.indexOf(mm[1]) < 0) caps.push(mm[1]); }
+    }
+    const date = new Date().toISOString().slice(0, 10);
+    const readmePath = path.join(dirPath, 'README.md');
+    const clPath = path.join(dirPath, 'CHANGELOG.md');
+    const readmeExisted = fs.existsSync(readmePath);
+    const clExisted = fs.existsSync(clPath);
+    if (!readmeExisted) {
+      const readme = [
+        '# ' + (m.name || name), '',
+        '> ' + (m.description || '（该插件暂无描述，可在 manifest 中补充）'), '',
+        '## 基本信息', '',
+        '- **版本**：' + (m.version || '1.0.0'),
+        '- **作者**：' + (m.author || '未知'),
+        '- **类型**：目录（zip）插件',
+        '- **入口文件**：' + (target ? path.basename(target) : 'index.js'), '',
+        '## 功能说明', '',
+        '（请依据插件内 manifest.description 或实际行为在此补充功能说明）', '',
+        '## 触发方式', '',
+        '- 群聊 / 私聊发送消息触发（具体指令以插件逻辑为准）', '',
+        '## 依赖', '', deps, '',
+        '## 使用的机器人能力', '',
+        (caps.length ? caps.map((c) => '- `ctx.bot.' + c + '`').join('\n') : '- 无'), '',
+        '---', '',
+        '文档由后台编辑器「生成开发文档」依据插件内代码自动生成（' + date + '），可继续手工维护。', ''
+      ].join('\n');
+      fs.writeFileSync(readmePath, readme, 'utf-8');
+    }
+    if (!clExisted) {
+      const changelog = [
+        '# ' + (m.name || name) + ' 更新日志', '',
+        '## ' + date, '',
+        '### v' + (m.version || '1.0.0'),
+        '- 初始版本（由后台编辑器依据插件内 manifest 自动生成）', ''
+      ].join('\n');
+      fs.writeFileSync(clPath, changelog, 'utf-8');
+    }
+    res.json({
+      ok: true,
+      name,
+      readme: readmeExisted ? '已存在，未覆盖' : '已生成',
+      changelog: clExisted ? '已存在，未覆盖' : '已生成',
+      version: m.version || '1.0.0',
+    });
   });
 
   // multer/上传错误统一返回 JSON（默认返回 HTML，会导致前端报 Failed to fetch / 解析失败）

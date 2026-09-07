@@ -1,5 +1,15 @@
 # 更新日志
 
+## 2026-09-07
+
+### 4.2.73：全插件统一后台编辑器（menu-editor 升级）+ 渲染引擎 API + 卡片代码生成
+- **menu-editor 顶部新增「全部插件库」统一工作台**：一次展示 js / mjs / py / php / 目录 zip / 文件 file 全类型插件（数据源与行内权限同管理面板），支持搜索过滤；点选整行进入该插件卡片可视化编辑；行内操作：查看 README 文档、打开/查看源码、查看 CHANGELOG 日志、模拟消息测试、启停、删除（超主），并支持一键「生成卡片代码 / 撤销生成」
+- **共享气泡测试视图 QQTester（tester.js）**：管理面板与 menu-editor 两页共用，把 `/api/plugins/test` 的回复以「用户消息→机器人回复」气泡会话呈现；index 测试弹窗保留原摘要并联动打开气泡视图，支持群聊/私聊场景与机器人选择
+- **渲染引擎 API（ctx.engine.renderCard / sendCard / renderMenu / renderBlocks）**：新增 src/core/block-render.ts 统一把可视化 blocks 配置渲染为卡片 markdown 文本（缺页回退默认模板、{time} 北京时间占位、脏输入容错），插件可在沙箱内直接读取并发送当前可视化卡片
+- **代码生成器（gen-card / gen-card/undo）**：admin `/api/plugins/:name/gen-card` 把可视化配置幂等注入 js/mjs 插件源码（marker `/*__UCARD_BEGIN__*/…/*__UCARD_END__*/`，内置 renderUniversalMenu 并备份原码到 config 表）；`/gen-card/undo` 校验 marker 后还原；py/php/zip 非 js 入口返回 400 提示走配置渲染
+- **一键登记串联（register）+ 开发文档生成（docs）**：对「缺 DB 记录 / 缺 plugin.json」的插件，表格行「登记」按钮沿用插件内 manifest/头注释解析 name/version/author/description：目录型补全 plugin.json 并入库，js/mjs/py 走引擎注册、php 入库，补全后启停/审批/信息全链路可用；目录型插件「生成文档」按钮依据插件内代码解析依赖与 ctx.bot 能力，自动生成 README.md + CHANGELOG.md（已存在则不覆盖）
+- 复用的菜单配置清洗/归一化函数（cleanBlock/mergeConfig/findPluginIdFor/readAll）导出供引擎与生成器复用
+
 ## 2026-09-06
 
 ### 4.2.72：定时任务按机器人隔离群目标，修复多机器人下所有群被误判「已注销」停发

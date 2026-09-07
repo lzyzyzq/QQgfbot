@@ -218,7 +218,8 @@ function defaultConfigFor(name: string): any {
 }
 
 // 查询插件 id（name 匹配，回退 file-{name}）
-function findPluginIdFor(name: string): string {
+// 导出供引擎级统一渲染 API（renderCard/renderMenu 读 plugin.{id}.config）与 gen-card 路由复用
+export function findPluginIdFor(name: string): string {
   try {
     const db = getDb();
     // .py 单文件插件 name 带扩展名（如 测试.py），但引擎注册 id 为 file-测试（去扩展名），两种都尝试
@@ -235,7 +236,8 @@ function findPluginIdFor(name: string): string {
 }
 
 // 读取全部配置（按 appid/botId 分组）
-function readAll(pluginName: string): Record<string, any> {
+// 导出供引擎级统一渲染 API 读取「该插件当前 menu-config 配置」
+export function readAll(pluginName: string): Record<string, any> {
   const id = findPluginIdFor(pluginName);
   try {
     const db = getDb();
@@ -276,6 +278,11 @@ function cleanItem(it: any): any | null {
 
 // 用户信息行（meta）合法数据源 key
 const META_KEYS = ['nickname', 'userid', 'group', 'role', 'points', 'checkin_streak', 'checkin_date', 'fish_coins', 'fish_catches', 'farm_coins', '__custom'];
+
+// 清洗单个区块（sanitize 导出别名，供代码生成器/引擎渲染侧复用同一清洗规则）
+export function sanitizeBlock(b: any, allowGroup = true): any | null {
+  return cleanBlock(b, allowGroup);
+}
 
 // 清洗单个区块
 function cleanBlock(b: any, allowGroup = true): any | null {
@@ -388,7 +395,9 @@ function cleanPage(pg: any): any | null {
   return s;
 }
 
-function mergeConfig(cfg: any, pluginName: string): any {
+// 归一化整卡配置：缺页/缺 main_page 时回退默认模板
+// 导出供引擎级统一渲染 API 与 gen-card 路由归一化读取结果
+export function mergeConfig(cfg: any, pluginName: string): any {
   const def = defaultConfigFor(pluginName);
   const pages = (cfg && cfg.pages && typeof cfg.pages === 'object') ? cfg.pages : def.pages;
   const main = (cfg && cfg.main_page && pages[cfg.main_page]) ? cfg.main_page : def.main_page;
