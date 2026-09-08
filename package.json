@@ -12,7 +12,8 @@
     "setup": "npm install && cd web && npm install",
     "serve": "npm run build:all && npm start",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke:lzyqzb": "node scripts/smoke-lzyqzb.js"
   },
   "dependencies": {
     "adm-zip": "^0.6.0",

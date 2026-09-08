@@ -1652,13 +1652,16 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
       const dir = path.dirname(file);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(file, text, 'utf-8');
-      // 写盘后 reload 词典回复插件，让新词库立即生效（找不到/未启用不影响保存结果）
+      // 写盘后 reload 词库加载方插件，让新词库立即生效（找不到/未启用不影响保存结果）
+      //   dict.txt → file-词典回复；其它 N.txt → 按文件名命名的加载方插件（如 file-娱乐群管）
       let reload = 'skipped';
       try {
         const engine = getPluginEngine();
         if (engine) {
-          await engine.reload('file-词典回复');
-          reload = 'reloaded';
+          const baseName = path.basename(file);
+          const loader = baseName === 'dict.txt' ? 'file-词典回复' : 'file-' + baseName.replace(/\.(txt|cid)$/i, '');
+          await engine.reload(loader);
+          reload = 'reloaded(' + loader + ')';
         }
       } catch (e: any) {
         reload = 'warn:' + String((e && e.message) || e);

@@ -1,0 +1,103 @@
+// 娱乐群管 lzyqzb 引擎离线冒烟
+const os=require('os');process.env.LZYQZB_DATA_DIR = os.tmpdir() + '/lzyqzb-smoke-' + process.pid;
+const path = require('path');
+const { EventEmitter } = require('events');
+const bus = new EventEmitter();
+
+const sent = [];
+const kb = [];
+const bot = {
+  sendGroupMessage: async (g, c) => { sent.push({ g, c }); },
+  sendMarkdownGroup: async (g, m) => { sent.push({ g, m: 'md:' + m }); },
+  sendKeyboardGroup: async (g, k) => { kb.push({ g, rows: k && k.rows }); },
+  deleteMessage: async () => {},
+  muteMember: async () => { sent.push({ act: 'mute' }); },
+  unmuteMember: async () => {},
+  kickMember: async () => {},
+  muteAll: async () => {},
+  getStatus: async () => 'ok',
+};
+const ctx = {
+  config: {},
+  bot,
+  eventBus: bus,
+  engine: {},
+  link: { linkify: (t) => t },
+  logger: { info: (...a) => console.log('  [log]', ...a), error: (...a) => console.log('  [logE]', ...a), warn: (...a) => console.log('  [logW]', ...a) },
+};
+const mod = require(require('path').join(__dirname, '..', 'plugins', '娱乐群管.js'));
+mod.onEnable(ctx);
+
+function fire(content, authorId) {
+  sent.length = 0; kb.length = 0;
+  bus.emit('message.group', { id: 'msg_1', content, groupId: 'grpA', author: { id: authorId || 'AABBCCDDEEFF001122334455667788', name: '小明' }, type: 'message.group' });
+  return new Promise((r) => setTimeout(r, 30)).then(() => ({ sent: sent.slice(), kb: kb.slice() }));
+}
+
+(async () => {
+  let r, ok = 0, fail = 0;
+  const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', name); } else { fail++; console.log('FAIL', name, extra !== undefined ? JSON.stringify(extra) : ''); } };
+
+  r = await fire('菜单');
+  check('菜单->按钮键盘', r.kb.length === 1 && r.kb[0].rows.length >= 3, r);
+  const act = r.kb[0].rows.map((row) => row.map((b) => b.action.data)).flat();
+  check('菜单按钮含抓猪/我的信息', act.indexOf('抓猪') >= 0 && act.indexOf('我的信息') >= 0, act);
+
+  r = await fire('管理菜单');
+  check('管理菜单按钮(主人判定读为空仍出按钮)', r.kb.length === 1, r);
+
+  r = await fire('主人面板');
+  check('主人面板(未认证→❌)', r.sent.length === 1 && r.sent[0].c.indexOf('您不是本机器人主人') >= 0, r.sent);
+
+  r = await fire('设置主人 999999');
+  check('设置主人错误码→❌ 且不写盘', r.sent.length === 1 && r.sent[0].c.indexOf('认证码错误') >= 0, r.sent);
+
+  r = await fire('抓猪');
+  const c = r.sent.map((x) => x.c).join('\n');
+  check('抓猪两条回复且统计累计', /🐷 .*只|🐷/.test(c) && /累计抓猪 1 次/.test(c), r.sent);
+
+  r = await fire('钓鱼');
+  check('钓鱼累计', r.sent.map((x) => x.c).join('\n').indexOf('累计钓鱼 1 次') >= 0, r.sent);
+
+  r = await fire('我的信息');
+  check('我的信息 昵称/抓猪数回读', /小明/.test(r.sent[0].c) && /抓猪：1 次/.test(r.sent[0].c), r.sent);
+
+  r = await fire('查天气 北京');
+  check('查天气(本地随机)', r.sent.map((x) => x.c).join('\n').indexOf('北京') >= 0, r.sent);
+
+  r = await fire('掷骰子');
+  check('掷骰子 1-6', /[1-6] 点/.test(r.sent[0] && r.sent[0].c), r.sent);
+
+  r = await fire('抛硬币');
+  check('抛硬币 正面/反面', /(正面|反面)/.test(r.sent[0] && r.sent[0].c), r.sent);
+
+  r = await fire('随机数 1 100');
+  check('随机数生成规则', /🎲/.test(r.sent[0] && r.sent[0].c), r.sent);
+
+  r = await fire('计算 (2+3)*4');
+  check('计算规则', r.sent[0] && r.sent[0].c.indexOf('20') >= 0, r.sent);
+
+  r = await fire('留言 @AABBCCDDEEFF001122334455667788 明天吃饭');
+  check('留言(改进版)+写盘', r.sent.length === 1 && r.sent[0].c.indexOf('✅') >= 0, r.sent);
+
+  r = await fire('查看留言');
+  check('查看留言 从列表读回', r.sent[0] && r.sent[0].c.indexOf('明天吃饭') >= 0, r.sent);
+
+  r = await fire('清屏');
+  check('清屏 输出换行文本', r.sent.length === 1 && r.sent[0].c.indexOf('屏幕已清理') >= 0, r.sent);
+
+  r = await fire('不存在的指令xyzq');
+  check('无关消息零回复', r.sent.length === 0 && r.kb.length === 0, r);
+
+  r = await fire('禁言 <@DDEEFF00112233445566778899AABB>');
+  check('禁言(主人未认证→只回权限拒绝不动作)', r.sent.length === 1 && r.sent[0].c.indexOf('无权') >= 0, r.sent);
+
+  // 认证成功路径：绑定主人（词库认证码 = 511742399）
+  r = await fire('设置主人 511742399');
+  check('设置主人 绑定成功写盘', r.sent.length === 1 && r.sent[0].c.indexOf('✅') >= 0, r.sent);
+  r = await fire('禁言 <@DDEEFF00112233445566778899AABB>', 'AABBCCDDEEFF001122334455667788');
+  check('绑定后 禁言动作(mock)执行', r.sent.some((x) => x.act === 'mute'), r.sent);
+
+  require('fs').rmSync(process.env.LZYQZB_DATA_DIR,{recursive:true,force:true});console.log('\n== ' + ok + ' passed, ' + fail + ' failed ==');
+  process.exit(fail ? 1 : 0);
+})().catch((e) => { console.error(e); process.exit(2); });

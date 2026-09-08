@@ -345,8 +345,13 @@
 
   <div class="card" id="dictCard" style="display:none">
     <h2>📖 cid 词库管理 <span style="color:#999;font-size:12px">（词典回复 dict.txt · 通过 DIC管理 / 词典回复 插件进入）</span></h2>
-    <div class="hint" style="margin-bottom:8px">以行编辑「关键词|回复内容」词条（key|value，均支持中文；value 支持 <code>{{number}}</code> <code>{{time}}</code> <code>{{dice}}</code> <code>{{joke}}</code> <code>{{fortune}}</code> 占位符与 JSON 键盘/图文卡回复）。空行与 # 注释行原样保留；「💾 保存」即写盘并热重载词典回复插件。</div>
-    <div class="dc-bar">
+    <div class="hint" style="margin-bottom:8px">管理引擎词库文件：<b>dict.txt</b> 为词典回复的「关键词|回复」两列词库；<b>娱乐群管.txt</b> 为 lzyqzb TXT 规则词库（规则/触发/回复文本/$写$/$读$/$按钮$…，由「娱乐群管」插件解释执行）。两种格式的注释/规则行原样保留，可无伤往返编辑；「💾 保存」写盘并热重载对应插件。</div>
+    <div class="dc-bar" style="gap:6px">
+      <label style="font-size:12px;color:#64748b">文件</label>
+      <select id="dcFileSel" style="max-width:230px" onchange="dcSwitchFile()">
+        <option value="dict.txt">dict.txt · 词典回复（key|value）</option>
+        <option value="娱乐群管.txt">娱乐群管.txt · lzyqzb 规则引擎</option>
+      </select>
       <button class="btn btn-sm primary" onclick="dcAdd('e')">＋ 新增词条</button>
       <button class="btn btn-sm" onclick="dcAdd('c')">＋ 注释行</button>
       <button class="btn btn-sm" onclick="dcAdd('b')">＋ 空行</button>
@@ -2056,12 +2061,37 @@ function rsDictTab(which){
 
 function dcEntryCount(lines){ var n = 0; for (var i = 0; i < lines.length; i++) if (lines[i].t === 'e') n++; return n; }
 
+function dcSwitchFile(){
+  var sel = $('dcFileSel');
+  var v = (sel && sel.value) || dcState.fileName;
+  if (v === dcState.fileName && dcState.loaded) return;
+  dcState.fileName = v;
+  dcState.loaded = false;
+  dcStatHint();
+  dcLoad();
+}
+function dcStatHint(){
+  var st = $('dcStat');
+  if (st) st.textContent = '加载中…';
+}
+
 function dcLoad(){
-  api('/api/plugins/_dict/entries').then(function(r){
+  api('/api/plugins/_dict/entries?file=' + encodeURIComponent(dcState.fileName)).then(function(r){
     if (r.ok && r.data && r.data.ok){
-      dcState.fileName = r.data.fileName || 'dict.txt';
+      dcState.fileName = r.data.fileName || dcState.fileName || 'dict.txt';
       dcState.lines = (r.data.entries || []).map(function(x){ return { t: x.t, key: x.key, value: x.value, text: x.text }; });
       dcState.loaded = true;
+      var sel = $('dcFileSel');
+      if (sel){
+        var found = false;
+        for (var i = 0; i < sel.options.length; i++) if (sel.options[i].value === dcState.fileName) { found = true; break; }
+        if (!found){
+          var op = document.createElement('option');
+          op.value = dcState.fileName; op.textContent = dcState.fileName;
+          sel.appendChild(op);
+        }
+        sel.value = dcState.fileName;
+      }
       dcRender();
       dcRenderRaw();
       return;
