@@ -1,1 +1,3 @@
+# 词典回复词库：每行一条 key|value；# 开头为注释行
+# 群内说中 key 即回复 value（支持 {{number}} {{time}} {{dice}} {{joke}} {{fortune}} 与 JSON 键盘/图文卡）
 空空|我是空空爱追剧娱乐机器人，主人QQ511742399！
