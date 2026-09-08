@@ -8,15 +8,49 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "4.2.76",
-    "changeLog": "4.2.76：更新系统徽章三态修复 + 央视式天气插件 + cid 词库管理 + 菜单按钮模式恢复"
+    "version": "4.2.77",
+    "changeLog": "娱乐群管 lzyqzb TXT 词库解释引擎插件上线（规则/触发/回复文本/$读$/$写$/$按钮$/条件/群管动作，20 项冒烟全过）；词库管理页新增文件切换（dict.txt 词典回复 / 娱乐群管.txt lzyqzb 引擎）并按文件名热重载；还原 dict.txt 官方占位"
   },
   "releases": [
+    {
+      "version": "4.2.77",
+      "tag": "v4.2.77",
+      "date": "2026-09-08",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.77/qqbot-card-editor-patch-4.2.77.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.77/qqbot-card-editor-patch-4.2.77.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.77/qqbot-card-editor-patch-4.2.77.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.77.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.77/qqbot-card-editor-4.2.77.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.77/qqbot-card-editor-4.2.77.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.77/qqbot-card-editor-4.2.77.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.77.zip"
+      }
+    },
     {
       "version": "4.2.76",
       "tag": "v4.2.76",
       "date": "2026-09-07",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.76/qqbot-card-editor-patch-4.2.76.zip",
         "mirrors": [
@@ -648,5 +682,5 @@
     "category": "General",
     "categoryId": "DIC_kwDOULngW84DEvUl"
   },
-  "generatedAt": "2026-09-07T00:00:00.000Z"
+  "generatedAt": "2026-09-08T00:00:00.000Z"
 }
