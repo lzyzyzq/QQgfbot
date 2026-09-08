@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.77",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.77.zip",
+  "version": "4.2.78",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.78.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.77.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.78.zip"
     }
   ],
-  "changeLog": "娱乐群管 lzyqzb TXT 词库解释引擎插件上线（规则/触发/回复文本/$读$/$写$/$按钮$/条件/群管动作，20 项冒烟全过）；词库管理页新增文件切换（dict.txt 词典回复 / 娱乐群管.txt lzyqzb 引擎）并按文件名热重载；还原 dict.txt 官方占位"
+  "changeLog": "修复线上 DIC 词库污染：dict.txt 覆盖为干净占位（空空|我是空空爱追剧娱乐机器人，主人QQ511742399！），清除被官方解析误拆的 8 个 lzyzqzb 语法行与 280 余注释行；同包固化 娱乐群管 lzyqzb TXT 词库与解释引擎插件（file-娱乐群管 自动注册启用）及词库管理页文件切换（dict.txt / 娱乐群管.txt）。线上建议升级完成后重启一次服务并重进词库管理页确认"
 }
