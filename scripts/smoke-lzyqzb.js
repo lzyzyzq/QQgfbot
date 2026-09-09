@@ -98,6 +98,36 @@ function fire(content, authorId) {
   r = await fire('禁言 <@DDEEFF00112233445566778899AABB>', 'AABBCCDDEEFF001122334455667788');
   check('绑定后 禁言动作(mock)执行', r.sent.some((x) => x.act === 'mute'), r.sent);
 
+  // ---- 新词库扩展功能（签到/猜大小/发积分/追加留言换行/延时） ----
+  r = await fire('签到');
+  check('签到 首次+10 写盘', r.sent.length === 1 && r.sent[0].c.indexOf('签到成功') >= 0 && r.sent[0].c.indexOf('+10') >= 0, r.sent);
+  r = await fire('签到');
+  check('签到 同日重复拦截', r.sent.length === 1 && r.sent[0].c.indexOf('已经签到过') >= 0, r.sent);
+
+  r = await fire('猜大小 大 5');
+  const gz = r.sent.map((x) => x.c).join('\n');
+  check('猜大小 结算正常(非积分不足/无响应)', gz.indexOf('🎲') >= 0 && gz.indexOf('积分不足') < 0, r.sent);
+
+  r = await fire('发积分 @CCDDEEFF00112233445566778899AABB 5');
+  check('发积分 @目标清洗+写盘', r.sent.length === 1 && r.sent[0].c.indexOf('已向对方发放 5 积分') >= 0, r.sent);
+  r = await fire('我的信息', 'CCDDEEFF00112233445566778899AABB');
+  check('我的信息 他群成员积分回读=5', r.sent[0].c.indexOf('积分：5') >= 0, r.sent[0].c);
+
+  r = await fire('留言 @AABBCCDDEEFF001122334455667788 一起看电影', 'CCDDEEFF00112233445566778899AABB');
+  check('留言 第二条追加(|分隔内容含空格)', r.sent.length === 1 && r.sent[0].c.indexOf('✅') >= 0, r.sent);
+  r = await fire('查看留言');
+  const ml = r.sent[0] ? r.sent[0].c : '';
+  check('查看留言 两条记录换行合并回读', ml.indexOf('明天吃饭') >= 0 && ml.indexOf('一起看电影') >= 0 && ml.indexOf('\n') >= 0, ml);
+
+  r = await fire('放烟花');
+  check('延时命令 受理回执', r.sent.length === 1 && r.sent[0].c.indexOf('5 秒后') >= 0, r.sent);
+
+  r = await fire('今日运势');
+  check('今日运势 签文输出', r.sent[0] && r.sent[0].c.indexOf('今日运势') >= 0, r.sent);
+
+  r = await fire('解禁 <@DDEEFF00112233445566778899AABB>', 'AABBCCDDEEFF001122334455667788');
+  check('绑定后 解除禁言回执', r.sent.some((x) => x.c && x.c.indexOf('已受理') >= 0), r.sent);
+
   require('fs').rmSync(process.env.LZYQZB_DATA_DIR,{recursive:true,force:true});console.log('\n== ' + ok + ' passed, ' + fail + ' failed ==');
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(2); });
