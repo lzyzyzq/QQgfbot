@@ -1,5 +1,5 @@
 // ============================================================
-// GitHub绑定 v1.0.1 - 群内把 QQ/OpenID 绑定到 GitHub 用户名（轻量验证）
+// GitHub绑定 v1.0.2 - 群内把 QQ/OpenID 绑定到 GitHub 用户名（轻量验证）
 // ------------------------------------------------------------
 // 普通用户命令：
 //   绑定GitHub <用户名>       → 绑定（例：绑定GitHub lzyzyzq）
@@ -9,6 +9,7 @@
 //   GitHub绑定列表            → 查看全部绑定（OpenID → GitHub）
 // v1.0.1 修复：QQ 会往「绑定」等词中间插空格/不可见字符拆分（如 "GitHub绑 定 xxx"），
 //   解析改为先清除空白后容错匹配；无法识别的 github/gh/绑定 开头消息一律给帮助（不再被主人权限拦截静默）。
+// v1.0.2 修复：兜底帮助收窄为 github/gh 相关词，避免抢答「绑定主人」等其他插件的「绑定+名词」指令。
 // 说明：用户名存在性用 GitHub 公开 API 校验（无需仓库 token，也不入库任何密钥）；
 //   绑定结果存 ctx.storage：ghbind_<openid>=用户名（正向），ghbinv_<小写名>=openid（反向）。
 //   本绑定供「公开流水挂名 / 昵称展示 / 授权标签」等场景使用。
@@ -39,7 +40,7 @@ module.exports = {
   manifest: {
     id: 'gh-bind',
     name: 'GitHub绑定',
-    version: '1.0.1',
+    version: '1.0.2',
     description: '绑定GitHub：OpenID/QQ 绑定到 GitHub 用户名；我的GitHub / 解绑GitHub / GitHub绑定列表',
     author: '511742399'
   },
@@ -184,8 +185,9 @@ module.exports = {
         reply(data, 'GitHub 绑定列表仅主人可见。');
         return;
       }
-      // 兜底：消息以 github/gh/绑定 开头但未识别 → 给帮助，避免“无回应”（不分权限，人人可见）
-      if (/^(github|gh|绑定)/.test(r.text.toLowerCase()) && content.length <= 24) { bindHelp(data); return; }
+      // 兜底：消息是 github/gh 相关词但未被上面识别 → 给帮助（避免"绑定主人"等其他插件指令被抢答）
+      var lc = r.text.toLowerCase();
+      if (content.length <= 24 && (/^(github|gh|github绑定|绑定github|绑定gh|gh绑定)/.test(lc) || /github|gh/.test(lc))) { bindHelp(data); return; }
     }
 
     var lid1 = ctx.eventBus.on('message.group', function(data) {

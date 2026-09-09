@@ -603,6 +603,7 @@ module.exports = {
         if (hit) break;
       }
       if (!hit) return false;
+      try { ctx.logger.info('[娱乐群管] 命中规则「' + String(hit.rule.name).slice(0, 30) + '」 trigger="' + String(content).slice(0, 40) + '"'); } catch(e){}
       var scope = newScope(data, hit.params);
       try { runLines(hit.rule, scope); } catch (e) { try { ctx.logger.error('[娱乐群管] 规则执行异常: ' + e.message); } catch(x){} }
       flushOutputs(scope);
@@ -621,7 +622,8 @@ module.exports = {
           if (scope.data.groupId && scope.bot && scope.bot.sendGroupMessage) scope.bot.sendGroupMessage(scope.data.groupId, text, msgId);
           else if (scope.data.channelId && scope.bot && scope.bot.sendMessage) scope.bot.sendMessage(scope.data.channelId, text, msgId);
           else if (scope.data.author && scope.data.author.id && scope.bot.sendPrivateMessage) scope.bot.sendPrivateMessage(scope.data.author.id, text, msgId);
-        } catch (e) {}
+          else try { ctx.logger.warn('[娱乐群管] 发送被跳过：无可用通道 group=' + (scope.data.groupId || '') + ' bot=' + !!(scope.bot)); } catch(e2){}
+        } catch (e) { try { ctx.logger.error('[娱乐群管] 文本发送异常: ' + e.message); } catch(x){} }
       }
       for (var i = 0; i < out.length; i++) {
         var o = out[i];
@@ -631,7 +633,8 @@ module.exports = {
           try {
             if (scope.data.groupId && scope.bot && scope.bot.sendMarkdownGroup) scope.bot.sendMarkdownGroup(scope.data.groupId, o.md, msgId);
             else if (scope.data.author && scope.data.author.id && scope.bot && scope.bot.sendMarkdownPrivate) scope.bot.sendMarkdownPrivate(scope.data.author.id, o.md, msgId);
-          } catch (e) {}
+            else try { ctx.logger.warn('[娱乐群管] 富媒体发送被跳过：无通道'); } catch(e2){}
+          } catch (e) { try { ctx.logger.error('[娱乐群管] 富媒体发送异常: ' + e.message); } catch(x){} }
           continue;
         }
         var s = String(o);
