@@ -38,11 +38,13 @@ let fromTag = '';
 let note = '';
 let baseUrl = '';
 let doGh = false;
+const extraFiles = [];
 for (let i = 1; i < args.length; i++) {
   if (args[i] === '--from') fromTag = args[++i] || '';
   else if (args[i] === '--note') note = args[++i] || '';
   else if (args[i] === '--base-url') baseUrl = args[++i] || '';
   else if (args[i] === '--gh') doGh = true;
+  else if (args[i] === '--extra-file') extraFiles.push(args[++i] || '');
 }
 if (!/^\d+\.\d+\.\d+$/.test(ver)) {
   console.error('用法: node scripts/release.js <X.Y.Z> [--from vPrev] [--note 说明] [--base-url URL] [--gh]');
@@ -70,12 +72,24 @@ if (!fromTag) {
 }
 console.log('基线 tag：' + fromTag + ' → ' + tag);
 
-const changed = sh('git diff --name-only ' + fromTag + '..HEAD').split('\n').filter(Boolean);
+// core.quotepath=false：git 默认会把中文/非 ASCII 文件名转义成八进制，导致
+// addFile 在磁盘上找不到同名文件而静默漏包（4.2.79 事故根因：娱乐群管.js/.txt 缺失）。
+// 另提供 --extra-file <rel>（可重复）：显式把某文件强制打进补丁，不依赖 git diff 判定。
+const changed = sh('git -c core.quotepath=false diff --name-only ' + fromTag + '..HEAD').split('\n').filter(Boolean);
+for (const f of extraFiles) {
+  if (!changed.includes(f)) changed.push(f);
+}
 const changedFiltered = changed.filter((f) => {
   if (/\.zip$/.test(f) || /\.png$|\.jpg$|\.jpeg$|\.gif$/.test(f)) return false; // 大资源不打进补丁
   return true;
 });
-console.log('变更文件 ' + changedFiltered.length + ' 个');
+console.log('变更文件 ' + changedFiltered.length + ' 个' + (extraFiles.length ? '（含 --extra-file 显式补入 ' + extraFiles.length + ' 个）' : ''));
+for (const f of changedFiltered) console.log('  + ' + f);
+const missing = changedFiltered.filter((f) => !fs.existsSync(path.join(ROOT, f)));
+if (missing.length) {
+  console.error('以下变更文件在磁盘上不存在，中止打包（避免静默漏包）：\n' + missing.join('\n'));
+  process.exit(1);
+}
 
 // 2) bump package.json
 const pkgPath = path.join(ROOT, 'package.json');

@@ -137,11 +137,11 @@ module.exports = {
         }
       } catch (e) {}
 
-      // plain text reply
-      if (data.channelId) {
-        ctx.bot.sendMessage(data.channelId, resolved, data.id);
-      } else if (data.groupId) {
+      // plain text reply（群优先，频道/私聊兜底：群事件不携带 channelId）
+      if (data.groupId && ctx.bot.sendGroupMessage) {
         ctx.bot.sendGroupMessage(data.groupId, resolved, data.id);
+      } else if (data.channelId) {
+        ctx.bot.sendMessage(data.channelId, resolved, data.id);
       } else if (data.author && data.author.id) {
         ctx.bot.sendPrivateMessage(data.author.id, resolved, data.id);
       }
