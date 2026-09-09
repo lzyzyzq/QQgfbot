@@ -1791,26 +1791,59 @@ async function showBotDetail(id){
 }
 
 // 渲染机器人插件分配列表；globalMode=true 时该机器人运行全部已启用插件
+// 详情弹窗内的批量勾选态 map：pluginId → '1'已分配/'0'未分配/'g'无记录
+let botPlgSel2={};
 async function renderBotPlugins(id){
   const el=docById('botPluginAssign');
+  if(!el)return;
+  botPlgSel2={};
+  const isSuper=currentUser?.role==='super_master';
   try{
     const d=await api('/api/bots/'+id+'/plugins');
     const rows=(d.plugins||[]).map(p=>{
       const checked=p.assigned===true;
       const stateTxt=p.assigned===undefined?'(跟随全局)':(p.assigned?'已分配':'未分配');
-      return '<tr><td>'+esc(p.name)+'</td><td>'+(p.type||'-')+'</td><td>'+esc(p.owner||'-')+'</td><td>'+(p.approved?'<span style="color:var(--success)">已审核</span>':'<span style="color:var(--warn)">待审核</span>')+'</td><td>'+(p.enabled?'<span style="color:var(--success)">已启用</span>':'<span style="color:var(--text2)">已禁用</span>')+'</td>'+
-        '<td><label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" '+(checked?'checked':'')+' onchange="toggleBotPlugin(\''+id+'\',\''+esc(p.id)+'\',this.checked)"> '+stateTxt+'</label></td>'+
+      const canAssign=isSuper&&p.id&&p.type&&p.type!=='file'&&p.enabled;
+      const selCell=canAssign
+        ?'<input type="checkbox" class="bpl-check" data-id="'+esc(String(p.id))+'" data-a="'+(p.assigned===true?'1':(p.assigned===false?'0':'g'))+'" title="勾选后可在下方批量设为 已分配/未分配" onchange="botPlgUpd2(this)">'
+        :'';
+      return '<tr><td style="text-align:center">'+selCell+'</td><td>'+esc(p.name)+'</td><td>'+(p.type||'-')+'</td><td>'+esc(p.owner||'-')+'</td><td>'+(p.approved?'<span style="color:var(--success)">已审核</span>':'<span style="color:var(--warn)">待审核</span>')+'</td><td>'+(p.enabled?'<span style="color:var(--success)">已启用</span>':'<span style="color:var(--text2)">已禁用</span>')+'</td>'+
+        '<td><label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" '+(checked?'checked':'')+' '+(canAssign?'':'disabled')+' onchange="toggleBotPlugin(\''+id+'\',\''+esc(p.id)+'\',this.checked)"> '+stateTxt+'</label></td>'+
         '<td><button class="btn btn-outline btn-xs" onclick="showPluginGroups(\''+id+'\',\''+esc(p.id)+'\',\''+esc(p.name).replace(/'/g,"\\'")+'\')">按群开关</button></td></tr>';
     }).join('');
     const hint=d.globalMode
-      ? '<p style="color:var(--text2);font-size:12px;margin:0 0 6px">当前机器人未做插件分配，运行<strong>全部已启用</strong>插件。勾选任一插件后进入"按分配运行"模式：仅已勾选插件会响应此机器人。</p>'
-      : '<p style="color:var(--text2);font-size:12px;margin:0 0 6px">当前机器人处于<strong>按分配运行</strong>模式，仅已勾选插件会响应此机器人。可点击下方"恢复全局模式"取消全部分配。</p>';
+      ? '<p style="color:var(--text2);font-size:12px;margin:0 0 6px">当前机器人未做插件分配，运行<strong>全部已启用</strong>插件。批量勾选后点「✅ 已分配」即可进入按分配运行：只有勾选的插件响应此机器人。</p>'
+      : '<p style="color:var(--text2);font-size:12px;margin:0 0 6px">当前机器人处于<strong>按分配运行</strong>模式，仅「已分配」插件响应此机器人，「未分配」= 该机器人不运行。可点击下方「恢复全局模式」取消全部分配。</p>';
+    const selable=(d.plugins||[]).some(p=>isSuper&&p.id&&p.type&&p.type!=='file'&&p.enabled);
     el.innerHTML=hint+
-      '<table class="table"><tr><th>插件</th><th>类型</th><th>归属</th><th>审核</th><th>全局启用</th><th>分配到此机器人</th><th>按群开关</th></tr>'+
-      (rows||'<tr><td colspan="7" style="color:var(--text2);text-align:center">无可分配的插件</td></tr>')+
+      (selable?'<div style="margin:4px 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="bplCheckAll" onchange="botPlgSelAll2(this)"> 全选</label>'+
+        '<button class="btn btn-success btn-xs" onclick="botPlgBulkAssignFor(\''+id+'\',1)">✅ 批量「已分配」</button>'+
+        '<button class="btn btn-warn btn-xs" onclick="botPlgBulkAssignFor(\''+id+'\',0)">⏸ 批量「未分配」</button>'+
+        '<button class="btn btn-outline btn-xs" onclick="botPlgClearSel2()">取消选择</button>'+
+        '<span style="font-size:12px;color:var(--text2)" id="bplSelCount">已选 0 个</span></div>':'')+
+      '<table class="table"><tr><th style="width:32px;text-align:center"><input type="checkbox" id="bplHeadAll" title="全选可分配插件" onchange="botPlgSelAll2(this)"></th><th>插件</th><th>类型</th><th>归属</th><th>审核</th><th>全局启用</th><th>分配到此机器人</th><th>按群开关</th></tr>'+
+      (rows||'<tr><td colspan="8" style="color:var(--text2);text-align:center">无可分配的插件</td></tr>')+
       '</table>'+
       (d.globalMode?'':'<button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="resetBotPlugins(\''+id+'\')">恢复全局模式</button>');
   }catch(e){el.innerHTML='<span style="color:var(--danger)">加载插件列表失败: '+esc(e.message)+'</span>'}
+}
+function botPlgCount2(){let n=0;for(const k in botPlgSel2)if(botPlgSel2.hasOwnProperty(k))n++;return n}
+function botPlgRefreshCount2(){const c=docById('bplSelCount');if(c)c.textContent='已选 '+botPlgCount2()+' 个';const hs=docById('bplHeadAll'),ha=docById('bplCheckAll');const all=document.querySelectorAll('#botPluginAssign .bpl-check').length;const on=botPlgCount2();if(hs)hs.checked=all>0&&on===all;if(ha)ha.checked=all>0&&on===all}
+function botPlgUpd2(el){const id=el.getAttribute('data-id');if(el.checked)botPlgSel2[id]=el.getAttribute('data-a')||'g';else delete botPlgSel2[id];botPlgRefreshCount2()}
+function botPlgSelAll2(el){const on=el&&el.checked;document.querySelectorAll('#botPluginAssign .bpl-check').forEach(cb=>{cb.checked=on;const id=cb.getAttribute('data-id');if(on)botPlgSel2[id]=cb.getAttribute('data-a')||'g';else delete botPlgSel2[id]});botPlgRefreshCount2()}
+function botPlgClearSel2(){botPlgSel2={};document.querySelectorAll('#botPluginAssign .bpl-check').forEach(cb=>cb.checked=false);const hs=docById('bplHeadAll'),ha=docById('bplCheckAll');if(hs)hs.checked=false;if(ha)ha.checked=false;botPlgRefreshCount2()}
+async function botPlgBulkAssignFor(id,target){
+  const todo=[];
+  for(const k in botPlgSel2){if(!botPlgSel2.hasOwnProperty(k))continue;const cur=botPlgSel2[k]==='1'?1:0;if(cur!==(target?1:0))todo.push(k)}
+  if(!todo.length){alert('所选插件已全部处于目标状态，无需操作');return}
+  const label=target?'已分配(该机器人运行)':'未分配(该机器人停用)';
+  const name=docById('botDetailTitle')?docById('botDetailTitle').textContent.replace('机器人详情 - ','').trim():'';
+  if(!confirm('将所选 '+todo.length+' 个插件在当前机器人「'+esc(name||id)+'」批量设为「'+(target?'已分配':'未分配')+'」。\n\n注意：只要该机器人出现任意一条分配记录，就会进入「按分配运行」——此时只有“已分配”的插件会响应；要回到全部插件运行请点「恢复全局模式」。\n继续？'))return;
+  let okN=0,err='';
+  for(const pid of todo){try{const r=await api('/api/bots/'+encodeURIComponent(id)+'/plugins/toggle',{method:'POST',body:{plugin_id:pid,assigned:target?true:false}});if(r&&r.ok)okN++;else err=(err||'')+((r&&r.error)||'HTTP失败')+'; '}catch(e){err=(err||'')+e.message+'; '}}
+  botPlgClearSel2();
+  renderBotPlugins(id);
+  alert(err?('完成 '+okN+'/'+todo.length+'，部分失败：'+err.slice(0,300)):('✅ 已批量'+label+' '+okN+' 个插件'));
 }
 
 // 机器人详情页：群详情/管理弹窗（群号/群名/头像/公告/人数/运行日志/活跃度）
@@ -1944,7 +1977,7 @@ async function savePluginGroups(){
 }
 
 // 插件管理页顶部的「该机器人插件开关」面板：从机器人管理→插件管理进入时显示（按机器人锁定）
-// 按机器人上下文批量启停的勾选状态：{ pluginId: '1'|'0'（渲染时的全局启用态） }
+// 批量勾选态 map：pluginId → 该插件渲染时的分配状态 '1'已分配 / '0'未分配 / 'g'无记录(跟随全局)
 let botPlgSel={};
 async function renderBotPluginPanel(){
   const panel=docById('botPluginAssignPanel');
@@ -1959,26 +1992,28 @@ async function renderBotPluginPanel(){
     const rows=(d.plugins||[]).map(p=>{
       const checked=p.assigned===true;
       const stateTxt=p.assigned===undefined?'(跟随全局)':(p.assigned?'已分配':'未分配');
-      const canToggle=isSuper&&p.id&&p.type&&p.type!=='file';
-      const selCell=canToggle
-        ?'<input type="checkbox" class="bp-check" data-id="'+esc(String(p.id))+'" data-e="'+(p.enabled?'1':'0')+'" title="勾选后可在下方批量启用/禁用" onchange="botPlgUpd(this)">'
+      const canAssign=isSuper&&p.id&&p.type&&p.type!=='file'&&p.enabled;
+      const selCell=canAssign
+        ?'<input type="checkbox" class="bp-check" data-id="'+esc(String(p.id))+'" data-a="'+(p.assigned===true?'1':(p.assigned===false?'0':'g'))+'" title="勾选后可在下方批量设为 已分配/未分配" onchange="botPlgUpd(this)">'
         :'';
       return '<tr><td style="text-align:center">'+selCell+'</td><td>'+esc(p.name)+'</td><td>'+(p.type==='py'?'PY':(p.type==='file'?'文件':esc(p.type||'-')))+'</td><td>'+(p.enabled?'<span style="color:var(--success)">已启用</span>':'<span style="color:var(--text2)">已禁用</span>')+'</td>'+
-        '<td><label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" '+(checked?'checked':'')+' '+(p.enabled&&p.type!=='file'?'':'disabled')+' onchange="toggleBotPlugin(\''+id+'\',\''+esc(p.id)+'\',this.checked)"> '+stateTxt+'</label></td>'+
+        '<td><label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" '+(checked?'checked':'')+' '+(canAssign?'':'disabled')+' onchange="toggleBotPlugin(\''+id+'\',\''+esc(p.id)+'\',this.checked)"> '+stateTxt+'</label></td>'+
         '<td><button class="btn btn-outline btn-xs" onclick="showPluginGroups(\''+id+'\',\''+esc(p.id)+'\',\''+esc(p.name).replace(/'/g,"\\'")+'\')">按群开关</button></td></tr>';
     }).join('');
     const hint=d.globalMode
-      ? '当前机器人未做插件分配，运行<strong>全部已启用</strong>插件。勾选任一插件后进入「按分配运行」模式：仅勾选的插件会响应此机器人。'
-      : '当前机器人处于<strong>按分配运行</strong>模式，仅勾选的插件会响应此机器人。';
-    const hasRows=(d.plugins||[]).length>0;
-    const selable=(d.plugins||[]).some(p=>isSuper&&p.id&&p.type&&p.type!=='file');
+      ? '当前机器人未做插件分配，运行<strong>全部已启用</strong>插件。批量勾选后点「✅ 已分配」即可进入按分配运行：只有勾选的插件响应此机器人。'
+      : '当前机器人处于<strong>按分配运行</strong>模式，仅「已分配」插件响应此机器人，「未分配」= 该机器人不运行（无记录插件同样不响应）。';
+    const modeWarn=d.globalMode
+      ? '<span style="color:var(--warn);font-size:12px">当前是全局模式：直接点「未分配」会立即退出全局模式，之后只有“已分配”插件运行。多数场景请用「✅ 已分配」来指定放行名单。</span>'
+      : '';
+    const selable=(d.plugins||[]).some(p=>isSuper&&p.id&&p.type&&p.type!=='file'&&p.enabled);
     panel.innerHTML='<div style="font-weight:600;margin-bottom:6px">插件开关（'+esc(currentBot.name)+'）— '+hint+'</div>'+
-      (selable?'<div style="margin:4px 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2)">批量（作用于所选插件的<strong>全局启用</strong>状态，<label style="cursor:pointer"><input type="checkbox" id="bpCheckAll" onchange="botPlgSelAll(this)"> 全选</label>）：</span>'+
-        '<button class="btn btn-success btn-xs" onclick="botPlgBulk(1)">✅ 批量启用</button>'+
-        '<button class="btn btn-warn btn-xs" onclick="botPlgBulk(0)">⏸ 批量禁用</button>'+
+      (selable?'<div style="margin:4px 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:12px;color:var(--text2);cursor:pointer"><input type="checkbox" id="bpCheckAll" onchange="botPlgSelAll(this)"> 全选</label>'+
+        '<button class="btn btn-success btn-xs" onclick="botPlgBulkAssign(1)">✅ 批量「已分配」</button>'+
+        '<button class="btn btn-warn btn-xs" onclick="botPlgBulkAssign(0)">⏸ 批量「未分配」</button>'+
         '<button class="btn btn-outline btn-xs" onclick="botPlgClearSel()">取消选择</button>'+
-        '<span style="font-size:12px;color:var(--text2)" id="bpSelCount">已选 0 个</span></div>':'')+
-      '<table class="table"><tr><th style="width:32px;text-align:center"><input type="checkbox" id="bpHeadAll" title="全选" onchange="botPlgSelAll(this)"></th><th>插件</th><th>类型</th><th>全局启用</th><th>此机器人分配</th><th>按群开关</th></tr>'+
+        '<span style="font-size:12px;color:var(--text2)" id="bpSelCount">已选 0 个</span></div>'+modeWarn:'')+
+      '<table class="table"><tr><th style="width:32px;text-align:center"><input type="checkbox" id="bpHeadAll" title="全选可分配插件" onchange="botPlgSelAll(this)"></th><th>插件</th><th>类型</th><th>全局启用</th><th>此机器人分配</th><th>按群开关</th></tr>'+
       (rows||'<tr><td colspan="6" style="color:var(--text2);text-align:center">无可分配的插件</td></tr>')+
       '</table>'+
       (d.globalMode?'':'<button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="resetBotPlugins(\''+id+'\')">恢复全局模式</button>');
@@ -1986,21 +2021,23 @@ async function renderBotPluginPanel(){
 }
 function botPlgCount(){let n=0;for(const k in botPlgSel)if(botPlgSel.hasOwnProperty(k))n++;return n}
 function botPlgRefreshCount(){const c=docById('bpSelCount');if(c)c.textContent='已选 '+botPlgCount()+' 个';const hs=docById('bpHeadAll'),ha=docById('bpCheckAll');const all=document.querySelectorAll('.bp-check').length;const on=botPlgCount();if(hs)hs.checked=all>0&&on===all;if(ha)ha.checked=all>0&&on===all}
-function botPlgUpd(el){const id=el.getAttribute('data-id');if(el.checked)botPlgSel[id]=el.getAttribute('data-e')||'1';else delete botPlgSel[id];botPlgRefreshCount()}
-function botPlgSelAll(el){const on=el&&el.checked;document.querySelectorAll('.bp-check').forEach(cb=>{cb.checked=on;const id=cb.getAttribute('data-id');if(on)botPlgSel[id]=cb.getAttribute('data-e')||'1';else delete botPlgSel[id]});botPlgRefreshCount()}
+function botPlgUpd(el){const id=el.getAttribute('data-id');if(el.checked)botPlgSel[id]=el.getAttribute('data-a')||'g';else delete botPlgSel[id];botPlgRefreshCount()}
+function botPlgSelAll(el){const on=el&&el.checked;document.querySelectorAll('.bp-check').forEach(cb=>{cb.checked=on;const id=cb.getAttribute('data-id');if(on)botPlgSel[id]=cb.getAttribute('data-a')||'g';else delete botPlgSel[id]});botPlgRefreshCount()}
 function botPlgClearSel(){botPlgSel={};document.querySelectorAll('.bp-check').forEach(cb=>cb.checked=false);const hs=docById('bpHeadAll'),ha=docById('bpCheckAll');if(hs)hs.checked=false;if(ha)ha.checked=false;botPlgRefreshCount()}
-async function botPlgBulk(target){
+async function botPlgBulkAssign(target){
+  const id=(currentBot&&currentBot.id)||'';
+  if(!id){alert('请先进入某机器人的插件管理');return}
   const todo=[];
-  for(const id in botPlgSel){if(!botPlgSel.hasOwnProperty(id))continue;if((botPlgSel[id]==='1'?1:0)!==target)todo.push(id)}
+  for(const k in botPlgSel){if(!botPlgSel.hasOwnProperty(k))continue;const cur=botPlgSel[k]==='1'?1:0;if(cur!==(target?1:0))todo.push(k)}
   if(!todo.length){alert('所选插件已全部处于目标状态，无需操作');return}
-  const label=target?'启用':'禁用';
-  if(!confirm('确定对当前机器人下选中的 '+todo.length+' 个插件批量'+label+'（全局启用状态，影响所有机器人）吗？'))return;
+  const label=target?'已分配(该机器人运行)':'未分配(该机器人停用)';
+  if(!confirm('将所选 '+todo.length+' 个插件在当前机器人「'+esc((currentBot&&currentBot.name)||'')+'」批量设为「'+(target?'已分配':'未分配')+'」。\n\n注意：只要该机器人出现任意一条分配记录，就会进入「按分配运行」——此时只有“已分配”的插件会响应；要回到全部插件运行请点「恢复全局模式」。\n继续？'))return;
   let okN=0,err='';
-  for(const pid of todo){try{const r=await api('/api/plugins/'+encodeURIComponent(pid)+'/toggle',{method:'POST'});if(r&&r.ok)okN++;else err=(err||'')+((r&&r.error)||'HTTP失败')+'; '}catch(e){err=(err||'')+e.message+'; '}}
+  for(const pid of todo){try{const r=await api('/api/bots/'+encodeURIComponent(id)+'/plugins/toggle',{method:'POST',body:{plugin_id:pid,assigned:target?true:false}});if(r&&r.ok)okN++;else err=(err||'')+((r&&r.error)||'HTTP失败')+'; '}catch(e){err=(err||'')+e.message+'; '}}
   botPlgClearSel();
   renderBotPluginPanel();
-  loadPlugins();
-  alert(err?('完成 '+okN+'/'+todo.length+'，部分失败：'+err.slice(0,300)):('✅ 已'+label+' '+okN+' 个插件'));
+  renderBotPlugins(id);
+  alert(err?('完成 '+okN+'/'+todo.length+'，部分失败：'+err.slice(0,300)):('✅ 已批量'+label+' '+okN+' 个插件'));
 }
 
 async function doSaveBot(){const id=docById('editBotId').value;const body={name:docById('botName').value,appId:docById('botAppId').value,clientSecret:docById('botSecret').value,sandbox:docById('botSandbox').value==='true',intents:parseInt(docById('botIntents').value)||0};let saved=null;if(id){await api('/api/bots/'+id,{method:'PUT',body})}else{saved=await api('/api/bots',{method:'POST',body})}closeModal('modalAddBot');loadBots();loadBotCount();if(saved&&saved.id)showBotGuide(saved)}
