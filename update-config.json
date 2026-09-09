@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.86",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.86.zip",
+  "version": "4.2.87",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.87.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.86.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.87.zip"
     }
   ],
-  "changeLog": "词库编辑器区分执行行+词库迁至plugins/词库/、插件与机器人页支持批量启停"
+  "changeLog": "修复测试.py抢词库指令(娱乐群管/菜单可触发)；词库编辑器新增一键新建随机模板"
 }
