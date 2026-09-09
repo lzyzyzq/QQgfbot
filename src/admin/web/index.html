@@ -244,7 +244,31 @@ input[type="file"]{color:var(--text2)}
 
 <div class="page active" id="page-dashboard">
   <h2>仪表盘</h2>
+  <div class="card">
+    <div id="dashOverview" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:22px">
+      <span class="tag" id="ovState">加载中…</span>
+      <span id="ovBots" style="color:var(--text2)"></span>
+      <span id="ovOs" style="color:var(--text2)"></span>
+      <span id="ovMeta" style="color:var(--text2)"></span>
+      <span style="margin-left:auto;color:var(--text2);font-size:12px">每 10 秒自动刷新</span>
+    </div>
+  </div>
   <div class="stats-grid" id="statsGrid"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px">
+    <div class="card">
+      <h3>系统资源</h3>
+      <div id="dashResource"></div>
+    </div>
+    <div class="card">
+      <h3>近 24 小时事件趋势</h3>
+      <div id="dashTrendHead" style="margin-bottom:4px"></div>
+      <div id="dashTrend"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>最近事件（实时）</h3>
+    <div id="dashRecent"></div>
+  </div>
   <div class="card">
     <h3>快速操作</h3>
     <div class="action-bar">
@@ -1491,6 +1515,7 @@ async function enterBotManage(id,appId,name,page){
 let _botsCache=[];
 let _botsCacheTime=0;
 let _autoRefreshTimer=null;
+let _dashTimer=null;
 async function getBotsCached(){
   if(_botsCache.length&&Date.now()-_botsCacheTime<30000)return _botsCache;
   try{const b=await api('/api/bots');_botsCache=b||[];_botsCacheTime=Date.now();}catch(e){}
@@ -1539,6 +1564,16 @@ function switchPage(name){
       if(activePageName()!==name)return;
       if(name==='users')loadUserGroups();else loadOpenidList();
     },30000);
+  }
+  // 仪表盘：每 10 秒自动刷新（仅在仪表盘页存活）
+  if(_dashTimer){clearInterval(_dashTimer);_dashTimer=null;}
+  if(name==='dashboard'){
+    _dashTimer=setInterval(()=>{
+      const el=document.activeElement;
+      if(el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))return;
+      if(activePageName()!=='dashboard')return;
+      loadDashboard();
+    },10000);
   }
   if(window.innerWidth<769)toggleSidebar();
 }
@@ -1620,9 +1655,92 @@ function termKey(e){
   }
 }
 
-async function loadDashboard(){try{const stats=await api('/api/system/stats');const fw=stats.framework||{};const features=(stats.features||[]).join('、');docById('statsGrid').innerHTML=`<div class="stat-card"><div class="label">运行时间</div><div class="value blue">${fmtTime(stats.uptime)}</div></div><div class="stat-card"><div class="label">内存使用</div><div class="value green">${stats.memory.heapUsed} MB</div></div><div class="stat-card"><div class="label">插件数量</div><div class="value yellow">${stats.pluginCount||0}</div></div><div class="stat-card"><div class="label">进程 PID</div><div class="value">${stats.pid}</div></div><div class="stat-card"><div class="label">Node.js</div><div class="value blue">${stats.nodeVersion}</div></div><div class="stat-card"><div class="label">融合框架</div><div class="value green">${fw.name||'NapCatQQ'} ${fw.version||''}</div></div>`;docById('featureList').textContent=features||'暂无功能模块';docById('dashBotList').querySelector('tbody').innerHTML='';await loadDashBots()}catch{}}
+async function loadDashboard(){try{const stats=await api('/api/system/stats');
+  const fw=stats.framework||{};
+  const setTxt=(id,t)=>{const e=docById(id);if(e)e.textContent=t};
+  const online=(stats.bots&&stats.bots.online)||0;
+  const ovState=docById('ovState');
+  if(ovState){ovState.className='tag '+(online>0?'tag-running':'tag-stopped');ovState.textContent=(online>0)?'运行中':'待机';}
+  const hv=(stats.host||{});
+  setTxt('ovBots',online+' / '+(stats.bots?stats.bots.total:0)+' 个机器人服务中');
+  setTxt('ovOs',(hv.hostname||'')+' · '+(hv.platform||'')+' '+(hv.arch||'')+' · 系统已运行 '+fmtTime(stats.osUptime||0));
+  setTxt('ovMeta','进程 PID '+stats.pid+' · Node '+(stats.nodeVersion||'')+' · 融合 '+(fw.name||'NapCatQQ')+(fw.version?(' '+fw.version):''));
+  const ev=stats.events24||[];
+  let totIn=0,totOut=0;for(let i=0;i<ev.length;i++){totIn+=ev[i].in;totOut+=ev[i].out;}
+  docById('statsGrid').innerHTML=
+    dashMiniCard('24h 入站消息',totIn,'blue')+
+    dashMiniCard('24h 出站回复',totOut,'green')+
+    dashMiniCard('机器人在线',online+' / '+(stats.bots?stats.bots.total:0),'green')+
+    dashMiniCard('插件数量',stats.pluginCount||0,'yellow')+
+    dashMiniCard('系统版本',stats.version||'-','blue')+
+    dashMiniCard('进程已运行',fmtTime(stats.uptime||0),'green');
+  const mem=stats.memory||{};
+  let diskTxt='不可用',diskPct=0;
+  if(stats.disk&&stats.disk.root){diskTxt=(stats.disk.root.usedMb||0)+' / '+(stats.disk.root.totalMb||0)+' MB ('+(stats.disk.root.percent||0)+'%)';diskPct=stats.disk.root.percent;}
+  const cpu=stats.cpu||{};
+  const cpuPct=(cpu.percent==null||isNaN(cpu.percent))?0:cpu.percent;
+  const cpuTxt=(cpu.percent==null)?'采样中…（下次刷新显示）':(cpu.percent+'% · 负载 '+(cpu.load1||0).toFixed(2)+' / '+(cpu.load5||0).toFixed(2)+' / '+(cpu.load15||0).toFixed(2));
+  const rssPct=Math.min(100,Math.round(((mem.rss||0)/(mem.osTotal||1))*100));
+  const resEl=docById('dashResource');
+  if(resEl)resEl.innerHTML=
+    dashGauge('CPU',cpuTxt,cpuPct,'#4f8cff')+
+    dashGauge('内存',(mem.osUsed||0)+' / '+(mem.osTotal||0)+' MB ('+(mem.osPercent||0)+'%)',mem.osPercent,'#22c55e')+
+    dashGauge('磁盘',diskTxt,diskPct,'#f59e0b')+
+    dashGauge('进程',(mem.rss||0)+' MB · 堆 '+(mem.heapUsed||0)+'/'+(mem.heapTotal||0)+' MB',rssPct,'#a855f7');
+  const headEl=docById('dashTrendHead');
+  if(headEl)headEl.innerHTML='<span style="color:var(--accent);font-size:12px">▮ 入站（收到消息） '+totIn+'</span> &nbsp;&nbsp;<span style="color:var(--success);font-size:12px">▮ 出站（机器人回复） '+totOut+'</span>';
+  let chart='';
+  let max=1;for(let i=0;i<ev.length;i++){if(ev[i].in>max)max=ev[i].in;if(ev[i].out>max)max=ev[i].out;}
+  if(ev.length){
+    if(totIn+totOut>0){
+      chart='<div style="display:flex;align-items:flex-end;gap:2px;height:150px;padding-top:4px">';
+      for(let i=0;i<ev.length;i++){
+        const b=ev[i];
+        const hIn=Math.max(1,Math.round((b.in/max)*118)),hOut=Math.max(1,Math.round((b.out/max)*118));
+        chart+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">'+
+          (hOut?('<div style="width:72%;background:var(--success);height:'+hOut+'px;border-radius:1px 1px 0 0" title="'+b.h+'时 出站 '+b.out+'"></div>'):'')+
+          (hIn?('<div style="width:72%;background:var(--accent);height:'+hIn+'px;border-radius:1px 1px 0 0" title="'+b.h+'时 入站 '+b.in+'"></div>'):'')+
+          '<div style="font-size:10px;color:var(--text2);height:14px;line-height:14px;'+(i%4?'visibility:hidden':'')+'">'+b.h+'</div></div>';
+      }
+      chart+='</div>';
+    }else{
+      chart='<div style="color:var(--text2);font-size:13px;padding:26px 0;text-align:center">近 24 小时暂无入站 / 出站记录（有消息后自动上图）</div>';
+    }
+  }else{chart='<div style="color:var(--text2);font-size:13px;padding:26px 0;text-align:center">暂无统计数据</div>';}
+  const trendEl=docById('dashTrend');
+  if(trendEl)trendEl.innerHTML=chart;
+  const rcnt=stats.recent||[];
+  let feed='';
+  for(let i=0;i<rcnt.length;i++){
+    const l=rcnt[i];
+    const botTxt=l.bot_name||l.bot_id||'';
+    feed+='<div style="display:flex;gap:8px;align-items:baseline;font-size:12px;padding:3px 0;border-bottom:1px dashed rgba(127,127,127,.12)">'+
+      '<span style="color:var(--text2);width:72px;flex:none;font-variant-numeric:tabular-nums">'+dashEventTime(l.created_at)+'</span>'+
+      '<span style="flex:none;color:'+dashLevelColor(l.level)+';font-weight:600">'+((l.level||'info').toUpperCase())+'</span>'+
+      (botTxt?('<span style="flex:none;color:var(--text2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(String(l.bot_id||''))+'">['+esc(String(botTxt))+']</span>'):'')+
+      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(String((l.message||'')+(l.detail?(' '+l.detail):'')))+'">'+esc(String(l.message||''))+(l.detail?('<span style="color:var(--text2)"> '+esc(String(l.detail))+'</span>'):'')+'</span></div>';
+  }
+  const recentEl=docById('dashRecent');
+  if(recentEl)recentEl.innerHTML=feed||'<div style="color:var(--text2);font-size:13px;text-align:center;padding:16px 0">暂无事件</div>';
+  const features=(stats.features||[]).join('、');
+  docById('featureList').textContent=features||'暂无功能模块';
+  docById('dashBotList').querySelector('tbody').innerHTML='';
+  await loadDashBots();
+}catch(e){}}
 
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h+'h '+m+'m'}
+function dashMiniCard(label,val,cls){return '<div class="stat-card"><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(String(val))+'</div></div>'}
+function dashGauge(label,val,pct,color){
+  const p=Math.max(0,Math.min(100,Number(pct)||0));
+  return '<div style="display:flex;align-items:center;gap:10px;margin:7px 0"><span style="width:64px;flex:none;color:var(--text2);font-size:13px">'+esc(label)+'</span>'+
+    '<div style="flex:1;height:12px;background:rgba(127,127,127,.15);border-radius:6px;overflow:hidden"><div style="width:'+p+'%;height:100%;background:'+(color||'var(--accent)')+';border-radius:6px"></div></div>'+
+    '<span style="width:200px;flex:none;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;color:var(--text)">'+esc(String(val==null?'-':val))+'</span></div>';
+}
+function dashEventTime(s){
+  if(!s)return '';
+  try{return new Date(String(s).replace(' ','T')+'Z').toLocaleTimeString('zh-CN',{hour12:false})}catch(e){return String(s).slice(11,19)}
+}
+function dashLevelColor(lv){return lv==='error'?'#ef4444':(lv==='warn'?'#f59e0b':'#9ca3af')}
 
 async function loadDashBots(){try{const bots=await getBotsCached();docById('dashBotList').querySelector('tbody').innerHTML=bots.slice(0,5).map(b=>`<tr style="cursor:pointer" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')"><td><strong>${esc(b.name)}</strong></td><td>${esc(b.appId)}</td><td><span class="tag tag-${b.status}">${b.status}</span></td><td onclick="event.stopPropagation()">${b.status==='running'?`<button class="btn btn-warn btn-xs" onclick="stopBot('${b.id}')">停止</button>`:`<button class="btn btn-success btn-xs" onclick="startBot('${b.id}')">启动</button>`}<button class="btn btn-outline btn-xs" onclick="showInviteBot('${b.id}','${b.name}')">邀请</button><button class="btn btn-outline btn-xs" onclick="showGroupMgr('${b.id}','${b.name}','${b.appId}')">群管</button></td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--text2);text-align:center">暂无机器人</td></tr>'}catch{}}
 

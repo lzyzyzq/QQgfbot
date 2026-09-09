@@ -654,9 +654,75 @@ export function createSystemRoutes(
     }
   });
 
-  router.get('/stats', (_req: Request, res: Response) => {
-    const mem = process.memoryUsage();
+  // CPU 采样（两次请求间隔 delta，前端每 10s 轮询）：首次返回 null 由前端显示"采样中"
+  let cpuLast: { at: number; idle: number; total: number } | null = null;
+  function cpuPercent(): number | null {
+    try {
+      const cpus = os.cpus();
+      let idle = 0;
+      let total = 0;
+      for (const c of cpus) {
+        const t = c.times as Record<string, number>;
+        total += t.user + t.nice + t.sys + t.idle + t.irq;
+        idle += t.idle;
+      }
+      const now = Date.now();
+      if (cpuLast) {
+        const dTotal = total - cpuLast.total;
+        const dIdle = idle - cpuLast.idle;
+        cpuLast = { at: now, idle, total };
+        if (dTotal > 0) {
+          const p = Math.round((1 - dIdle / dTotal) * 100);
+          return Math.max(0, Math.min(100, p));
+        }
+        return 0;
+      }
+      cpuLast = { at: now, idle, total };
+      return null;
+    } catch { return null; }
+  }
 
+  function diskOf(p: string): { totalMb: number; usedMb: number; percent: number } | null {
+    try {
+      const s = fs.statfsSync(p);
+      const total = Number(s.blocks) * Number(s.bsize);
+      const avail = Number(s.bavail) * Number(s.bsize);
+      const used = total - avail;
+      return {
+        totalMb: Math.round(total / 1048576),
+        usedMb: Math.round(used / 1048576),
+        percent: total > 0 ? Math.round((used / total) * 100) : 0,
+      };
+    } catch { return null; }
+  }
+
+  // 近 24 小时事件趋势：入站=收到消息(category message)，出站=机器人回复(category send)
+  function eventTrend24(): { h: string; in: number; out: number }[] {
+    const out: { h: string; in: number; out: number }[] = [];
+    for (let i = 23; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 3600000 + 8 * 3600000);
+      out.push({ h: String(d.getUTCHours()).padStart(2, '0'), in: 0, out: 0 });
+    }
+    try {
+      const since = new Date(Date.now() - 24 * 3600000).toISOString().replace('T', ' ').slice(0, 19);
+      const rows = getDb().prepare(
+        "SELECT category, created_at FROM system_logs WHERE created_at >= ? AND category IN ('message','send')"
+      ).all(since) as any[];
+      for (const r of rows) {
+        const m = / (\d{2}):/.exec(String(r.created_at || ''));
+        if (!m) continue;
+        const bjH = String((Number(m[1]) + 8) % 24).padStart(2, '0');
+        const b = out.find((o) => o.h === bjH);
+        if (b) {
+          if (r.category === 'message') b.in++;
+          else b.out++;
+        }
+      }
+    } catch {}
+    return out;
+  }
+
+  router.get('/stats', (_req: Request, res: Response) => {
     // 统计插件数量：与插件列表页一致，按 plugins 目录实际可展示插件去重计数
     // （避免历史 DB 遗留重复记录（uuid code + file- 双实例）导致统计虚高、本地/服务器数量对不上）
     let pluginCount = 0;
@@ -694,13 +760,65 @@ export function createSystemRoutes(
       napcatVersion = pkg.version || '';
     } catch (e) {}
 
+    // 机器人运行状态：registry 里 running 为在线（含多机器人时各自状态）
+    let botEntries: any[] = [];
+    try { botEntries = botRegistry ? botRegistry.list() : []; } catch {}
+    const botsOnline = botEntries.filter((b) => b && b.status === 'running').length;
+    let botNameMap = new Map<string, string>();
+    try {
+      for (const b of botEntries) {
+        if (b.name) {
+          if (b.id) botNameMap.set(String(b.id), String(b.name));
+          if (b.appId) botNameMap.set(String(b.appId), String(b.name));
+        }
+      }
+    } catch {}
+
+    // 最近事件（实时 feed）：最近 12 条运行记录，附机器人名称
+    let recent: any[] = [];
+    try {
+      recent = querySystemLogs(12).map((l: any) => ({
+        id: l.id,
+        level: l.level || 'info',
+        category: l.category || '',
+        message: String(l.message || '').slice(0, 80),
+        detail: String(l.detail || '').slice(0, 120),
+        bot_id: l.bot_id || '',
+        bot_name: l.bot_id ? (botNameMap.get(String(l.bot_id)) || '') : '',
+        group_id: l.group_id || '',
+        user_id: l.user_id || '',
+        created_at: l.created_at || '',
+      }));
+    } catch {}
+
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const disk = diskOf(process.cwd());
+
     res.json({
-      uptime: process.uptime(),
-      memory: {
-        rss: Math.round(mem.rss / 1024 / 1024),
-        heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
-        heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+      version: cfgSafe('update.version') || '',
+      uptime: process.uptime(),          // 进程运行时长（秒）
+      osUptime: os.uptime(),             // 系统运行时长（秒）
+      host: { platform: os.platform(), arch: os.arch(), hostname: os.hostname(), release: os.release() },
+      cpu: {
+        percent: cpuPercent(),
+        load1: os.loadavg()[0],
+        load5: os.loadavg()[1],
+        load15: os.loadavg()[2],
       },
+      memory: {
+        rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        osTotal: Math.round(totalMem / 1024 / 1024),
+        osUsed: Math.round(usedMem / 1024 / 1024),
+        osPercent: Math.round((usedMem / totalMem) * 100),
+      },
+      disk: disk ? { root: disk } : null,
+      bots: { total: botEntries.length, online: botsOnline },
+      events24: eventTrend24(),
+      recent,
       nodeVersion: process.version,
       pid: process.pid,
       pluginCount,
