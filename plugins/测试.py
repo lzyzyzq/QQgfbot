@@ -913,7 +913,9 @@ def on_message(data):
     if content.startswith('抖音') or content.startswith('解析抖音'):
         douyin_cmd(data, content)
         return
-    if content in ('测试', '测试菜单', '菜单', '主菜单', '帮助'):
+    # 娱乐前缀由 lzyqzb 词库（娱乐群管等）自行匹配；这里只接管确切的娱乐/实用入口，
+    # 避免把「娱乐群管」等词库触发词误判成未知娱乐指令
+    if content in ('测试', '测试菜单', '主菜单', '帮助'):
         maybe_menu(data)
         return
     if content == '娱乐':
@@ -942,7 +944,7 @@ def on_message(data):
     if content.startswith('广播') or content.startswith('全体广播'):
         broadcast_cmd(data, content)
         return
-    if content.startswith('娱乐') or content in ('掷骰子', '今日运势', '讲个笑话', '讲笑话') or content.startswith('石头剪刀布') or content.startswith('猜数字'):
+    if content in ('掷骰子', '今日运势', '讲个笑话', '讲笑话') or content.startswith('石头剪刀布') or content.startswith('猜数字'):
         fun_cmd(data, content)
         return
     if content.startswith('天气') or content.startswith('二维码') or content.startswith('计算') or content in ('时间', '北京时间', '报时') or content.startswith('随机数'):

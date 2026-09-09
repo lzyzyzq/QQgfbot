@@ -362,7 +362,8 @@
       <button class="btn btn-sm" onclick="dcAdd('b')">＋ 空行</button>
     </div>
     <div id="dcAddLzBar" class="dc-bar" style="gap:6px;display:none;flex-wrap:wrap">
-      <button class="btn btn-sm primary" onclick="dcAdd('规则')">＋ 规则</button>
+      <button class="btn btn-sm primary" onclick="dcAdd('规则')">＋ 新建规则</button>
+      <button class="btn btn-sm" onclick="dcAdd('随机')">＋ 新建随机(文本/数字)</button>
       <button class="btn btn-sm" onclick="dcAdd('触发')">＋ 触发</button>
       <button class="btn btn-sm" onclick="dcAdd('判断')">＋ 判断(如果:)</button>
       <button class="btn btn-sm" onclick="dcAdd('回复')">＋ 回复文本</button>
@@ -2258,7 +2259,9 @@ function dcAdd(t){
     else dcState.lines.push({ t: 'b' });
   } else {
     var row = dcLzSample(t);
-    if (row) dcState.lines.push(row);
+    if (Array.isArray(row)){
+      for (var ai = 0; ai < row.length; ai++) dcState.lines.push(row[ai]);
+    } else if (row) dcState.lines.push(row);
   }
   dcRender();
   dcRenderRaw();
@@ -2269,6 +2272,13 @@ function dcAdd(t){
 function dcLzSample(kind){
   switch (kind){
     case '规则': return { t: 'r', kind: '规则', text: '规则 新规则' };
+    case '随机': return [
+      { t: 'r', kind: '规则', text: '规则 随机输出' },
+      { t: 'r', kind: '触发', text: '触发 随机输出' },
+      { t: 'r', kind: '变量', text: '结果:$随机文本 选项A|选项B|选项C$' },
+      { t: 'r', kind: '变量', text: '数字:$随机数 1 100$' },
+      { t: 'r', kind: '文本行', text: '🎲 本次随机结果：%结果%，幸运数字 %数字%' },
+      { t: 'r', kind: '规则尾', text: '结束规则' }];
     case '触发': return { t: 'r', kind: '触发', text: '触发 示例触发词' };
     case '判断': return { t: 'r', kind: '判断', text: '如果:1 == 0' };
     case '回复': return { t: 'r', kind: '文本行', text: '' };

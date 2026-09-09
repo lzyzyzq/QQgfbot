@@ -43,6 +43,12 @@ function fire(content, authorId) {
   const act = r.kb[0].rows.map((row) => row.map((b) => b.action.data)).flat();
   check('菜单按钮含抓猪/我的信息', act.indexOf('抓猪') >= 0 && act.indexOf('我的信息') >= 0, act);
 
+  r = await fire('娱乐群管');
+  check('娱乐群管->与菜单同出按钮键盘(词库含该触发词不被吞)', r.kb.length === 1 && r.kb[0].rows.length >= 3, r);
+
+  r = await fire('随机输出');
+  check('随机输出(示例规则)->随机结果文本', r.sent.length >= 1 && r.sent[0].c.indexOf('本次随机结果') >= 0, r.sent);
+
   r = await fire('管理菜单');
   check('管理菜单按钮(主人判定读为空仍出按钮)', r.kb.length === 1, r);
 
