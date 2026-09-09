@@ -35,6 +35,21 @@ export function isSelfEcho(key: string, content: string, windowMs = 30000): bool
   return false;
 }
 
+// 发送侧重复抑制：同 key（机器人+群/会话）+内容 在 windowMs 内是否已发送过。
+// 与 isSelfEcho 不同：isSelfEcho 只回看最后 windowMs（遇到更旧的记录即 break），
+// 这里在全 TTL 窗口内按内容扫描，用于发送前拦截 QQ 会拒绝的重复文本。
+export function wasRecentlySent(key: string, content: string, windowMs = 60000): boolean {
+  const c = String(content || '').trim().slice(0, 300);
+  if (!c) return false;
+  const now = Date.now();
+  for (let i = recentEchoes.length - 1; i >= 0; i--) {
+    const r = recentEchoes[i];
+    if (now - r.ts > TTL) continue;
+    if (now - r.ts <= windowMs && r.key === key && r.content === c) return true;
+  }
+  return false;
+}
+
 export function clearSelfEcho(): void {
   recentEchoes.length = 0;
 }

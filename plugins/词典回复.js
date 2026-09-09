@@ -76,6 +76,14 @@ module.exports = {
       // strip @mention prefix like <@USERID>
       var cleanContent = content.replace(/<@[A-F0-9]+>/g, '').trim();
 
+      // 跳过"系统生成"的消息，避免词典对自身产物回显形成循环：
+      // 1) 按钮卡片/富文本（mqqapi 链接、**加粗**、[](url)）是菜单按钮点击产生的卡片文本，不是自然对话；
+      // 2) 机器人自我介绍原句（"我是…娱乐机器人，主人QQ…"）会被"空空"子串再次命中 → 无限自我应答 + QQ 重复去重 400。
+      if (/\]\((mqqapi|http)/.test(cleanContent) || /\*\*|\[[^\]]*\]\(/.test(cleanContent) ||
+          /^我是.{0,20}(娱乐机器人|机器人).{0,10}主人QQ?\d{5,}/.test(cleanContent)) {
+        return;
+      }
+
       var matched = null;
       // exact match first
       if (dict[cleanContent] !== undefined) {

@@ -7,8 +7,9 @@ import { renderInfoCard, renderGroupDashboard, renderMenuCard, type InfoCardData
 import { collectGroupStats } from './group-stats';
 import { applyPhpTemplate } from './php-footer';
 import { isNapcatEnabled, callNapcatAction, groupOpenidToGroupNumber, memberOpenidToQQ, openidToQQ } from './napcat';
-import { noteSelfSend } from './self-echo';
+import { noteSelfSend, wasRecentlySent } from './self-echo';
 import { isUnreachableGroupError, markGroupUnreachable } from './group-reach';
+import path from 'path';
 import https from 'https';
 import { AsyncLocalStorage } from 'async_hooks';
 
@@ -41,6 +42,23 @@ export const MSG_TYPE = {
 const QQ_API_BASE = 'api.sgroup.qq.com';
 
 let msgSeqCounter = 0;
+// 每个机器人独立记账的 msg_seq 持久化：QQ 按 appId 记忆最近使用过的序号，
+// 进程重启后若从 0 重新递增会复用旧序号 → 40054005 消息被去重。落盘保证重启后继续递增。
+const msgSeqFile = path.join(process.cwd(), 'data', 'msgseq.json');
+const botMsgSeq: Record<string, number> = {};
+function loadMsgSeq(): void {
+  try {
+    const fsx = require('fs');
+    if (fsx.existsSync(msgSeqFile)) {
+      const parsed = JSON.parse(fsx.readFileSync(msgSeqFile, 'utf8') || '{}');
+      for (const k of Object.keys(parsed)) {
+        const v = Number(parsed[k]);
+        if (Number.isFinite(v) && v > 0) botMsgSeq[k] = v;
+      }
+    }
+  } catch (e) {}
+}
+loadMsgSeq();
 
 // 生成唯一消息ID：时间戳+随机数+计数器，避免重复消息被QQ平台拒绝
 function generateMsgId(): string {
@@ -52,10 +70,16 @@ function generateMsgId(): string {
 
 // 生成递增消息序号：同一 msg_id 下多次回复（如图片消息+markdown）必须使用不同 msg_seq，
 // 否则 QQ 会判定重复消息（40054005 消息被去重）。msg_seq 须在 uint32 范围（0~4294967295），
-// 不能用毫秒时间戳（13 位会超范围导致 40011000 请求数据异常）
-function nextMsgSeq(): number {
-  msgSeqCounter++;
-  return msgSeqCounter % 0xFFFFFFFF;
+// 不能用毫秒时间戳（13 位会超范围导致 40011000 请求数据异常）。
+// 按机器人 appId 分开递增并即时落盘：多机器人互不干扰、重启不复用旧序号（QQ 按 appId 记忆）。
+function nextMsgSeq(botId?: string): number {
+  const key = botId || 'default';
+  botMsgSeq[key] = ((botMsgSeq[key] || 0) + 1) % 0xFFFFFFFF;
+  if (botMsgSeq[key] === 0) botMsgSeq[key] = 1;
+  try {
+    require('fs').writeFileSync(msgSeqFile, JSON.stringify(botMsgSeq), 'utf8');
+  } catch (e) {}
+  return botMsgSeq[key];
 }
 
 // 生成 RFC3339 格式时间（如 2026-08-05T11:23:05+08:00），供禁言到期时间 mute_expire_at 使用
@@ -381,14 +405,23 @@ export class BotCore {
         return r.data ?? r;
       }
     }
+    // 发送侧重复抑制：同机器人同群在短窗口内已发过完全相同的文本则跳过（QQ 内容去重会直接 40054005，
+    // 且按钮/卡片被词典重复触发同一句时不该反复刷屏）。按机器人 ID+群 区分，两个机器人各自独立。
+    const dedupKey = `group:${this.getBotId()}:${groupOpenid}`;
+    if (wasRecentlySent(dedupKey, content)) {
+      logger.info(`[send] [机器人:${this.getBotId()} 群:${groupOpenid}] 已抑制重复文本（${String(content).substring(0, 30)}）`);
+      this.recordBotSend(groupOpenid, '群文本', content, false, '已抑制：短窗口内重复内容');
+      return { ok: true, suppressed: true };
+    }
     try {
       content = applyPhpTemplate(content);
       const body: any = { content, msg_type: 0 };
       if (msgId) body.msg_id = msgId;
+      body.msg_seq = nextMsgSeq(this.getBotId());
       const result = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body));
       logger.info(`GROUP SEND OK: ${JSON.stringify(result).substring(0, 300)}`);
       this.recordBotSend(groupOpenid, '群文本', content, true);
-      noteSelfSend(`group:${this.getBotId()}:${groupOpenid}`, content);
+      noteSelfSend(dedupKey, content);
       return result;
     } catch (err: any) {
       logger.error(`Send group msg failed: ${err.message}`);
@@ -450,7 +483,7 @@ export class BotCore {
       const body: any = { msg_type: MSG_TYPE.MARKDOWN, markdown: { content: markdown } };
       if (templateId) body.markdown.custom_template_id = templateId;
       if (params) body.markdown.params = params;
-      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(); }
+      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(this.getBotId()); }
       const result = await this.apiCall('POST', `/v2/users/${openid}/messages`, JSON.stringify(body));
       logger.info(`Markdown C2C OK`);
       this.recordBotSend(openid, '私聊Markdown', markdown, true);
@@ -473,7 +506,7 @@ export class BotCore {
       const body: any = { msg_type: MSG_TYPE.MARKDOWN, markdown: { content: markdown } };
       if (templateId) body.markdown.custom_template_id = templateId;
       if (params) body.markdown.params = params;
-      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(); }
+      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(this.getBotId()); }
       const result = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body));
       logger.info(`Markdown GROUP OK`);
       this.recordBotSend(groupOpenid, '群Markdown', markdown, true);
@@ -557,7 +590,7 @@ export class BotCore {
   async sendGroupImageMessage(groupOpenid: string, fileInfo: string, msgId?: string): Promise<any> {
     try {
       const body: any = { msg_type: MSG_TYPE.RICH_MEDIA, media: { file_info: fileInfo } };
-      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(); }
+      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(this.getBotId()); }
       const result = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body));
       logger.info(`Group image message OK`);
       this.recordBotSend(groupOpenid, '群图片', fileInfo.substring(0, 20), true);
@@ -642,7 +675,7 @@ export class BotCore {
   async sendGroupVoiceMessage(groupOpenid: string, fileInfo: string, msgId?: string): Promise<any> {
     try {
       const body: any = { msg_type: MSG_TYPE.RICH_MEDIA, media: { file_info: fileInfo } };
-      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(); }
+      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(this.getBotId()); }
       const result = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body));
       logger.info(`Group voice message OK`);
       this.recordBotSend(groupOpenid, '群语音', fileInfo.substring(0, 20), true);
