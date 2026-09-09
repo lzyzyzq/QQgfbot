@@ -7,7 +7,7 @@ import { renderInfoCard, renderGroupDashboard, renderMenuCard, type InfoCardData
 import { collectGroupStats } from './group-stats';
 import { applyPhpTemplate } from './php-footer';
 import { isNapcatEnabled, callNapcatAction, groupOpenidToGroupNumber, memberOpenidToQQ, openidToQQ } from './napcat';
-import { noteSelfSend, wasRecentlySent } from './self-echo';
+import { noteSelfSend } from './self-echo';
 import { isUnreachableGroupError, markGroupUnreachable } from './group-reach';
 import path from 'path';
 import https from 'https';
@@ -405,14 +405,8 @@ export class BotCore {
         return r.data ?? r;
       }
     }
-    // 发送侧重复抑制：同机器人同群在短窗口内已发过完全相同的文本则跳过（QQ 内容去重会直接 40054005，
-    // 且按钮/卡片被词典重复触发同一句时不该反复刷屏）。按机器人 ID+群 区分，两个机器人各自独立。
-    const dedupKey = `group:${this.getBotId()}:${groupOpenid}`;
-    if (wasRecentlySent(dedupKey, content)) {
-      logger.info(`[send] [机器人:${this.getBotId()} 群:${groupOpenid}] 已抑制重复文本（${String(content).substring(0, 30)}）`);
-      this.recordBotSend(groupOpenid, '群文本', content, false, '已抑制：短窗口内重复内容');
-      return { ok: true, suppressed: true };
-    }
+    // msg_seq：按机器人 appId 独立递增（QQ 按 appId 记忆序号，重复会 40054005），
+    // 纯文本回复也要带唯一序号，方便运行记录按机器人 ID 定位是哪台发的
     try {
       content = applyPhpTemplate(content);
       const body: any = { content, msg_type: 0 };
@@ -421,10 +415,10 @@ export class BotCore {
       const result = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body));
       logger.info(`GROUP SEND OK: ${JSON.stringify(result).substring(0, 300)}`);
       this.recordBotSend(groupOpenid, '群文本', content, true);
-      noteSelfSend(dedupKey, content);
+      noteSelfSend(`group:${this.getBotId()}:${groupOpenid}`, content);
       return result;
     } catch (err: any) {
-      logger.error(`Send group msg failed: ${err.message}`);
+      logger.error(`[机器人:${this.getBotId()} 群:${groupOpenid}] Send group msg failed: ${err.message}`);
       this.recordBotSend(groupOpenid, '群文本', content, false, String(err.message || ''));
       return null;
     }

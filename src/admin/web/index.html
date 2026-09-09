@@ -3477,8 +3477,9 @@ function renderRunLogUser(l){
 function renderRunLogBot(l){
   if(!l.bot_id&&!l.bot_name)return '<span style="color:var(--text2)">-</span>';
   const nm=esc(l.bot_name||'未命名');
-  if(l.bot_name)return nm;
-  return '<span style="color:var(--focus)">'+nm+'</span><br><span style="color:var(--text2);font-size:10px;word-break:break-all">'+esc(l.bot_id)+'</span>';
+  const idTxt=l.bot_id?('<span style="color:var(--text2);font-size:10px;word-break:break-all"> ['+esc(l.bot_id)+']</span>'):'';
+  if(l.bot_name)return nm+idTxt;
+  return '<span style="color:var(--focus)">'+nm+'</span>'+idTxt;
 }
 function toggleRunLogCheckAll(cb){document.querySelectorAll('.runlog-check').forEach(x=>x.checked=cb.checked);updateRunLogDelBtn()}
 function updateRunLogDelBtn(){const n=document.querySelectorAll('.runlog-check:checked').length;const btn=docById('runLogDelBtn');if(btn)btn.textContent=n?('删除所选('+n+')'):'删除所选';const cb=docById('runLogCopyBtn');if(cb)cb.style.display=n?'':'none'}
@@ -3489,7 +3490,7 @@ function copySelectedRunLogs(){
   const parts=sel.map(id=>{
     const l=byId[id];if(!l)return'';
     const ts=new Date(l.created_at+'Z').toLocaleString();
-    const who=[l.bot_name?('机器人:'+l.bot_name):'',(!l.bot_name&&l.bot_id)?('机器人:'+l.bot_id):'',l.user_id?('用户:'+l.user_id):'',l.group_id?('群:'+l.group_id):''].filter(Boolean).join(' ');
+    const who=[(l.bot_name||l.bot_id)?('机器人:'+(l.bot_name||l.bot_id)+(l.bot_name&&l.bot_id?(' ['+l.bot_id+']'):'')):'',l.user_id?('用户:'+l.user_id):'',l.group_id?('群:'+l.group_id):''].filter(Boolean).join(' ');
     return '['+ts+'] ['+(l.level||'info').toUpperCase()+'] ['+(l.category||'')+'] '+(who?('['+who+'] '):'')+(l.message||'')+(l.detail?('\n  详情: '+l.detail):'');
   }).filter(Boolean);
   const txt=parts.join('\n\n');
