@@ -344,22 +344,40 @@
   </div>
 
   <div class="card" id="dictCard" style="display:none">
-    <h2>📖 cid 词库管理 <span style="color:#999;font-size:12px">（词典回复 dict.txt · 通过 DIC管理 / 词典回复 插件进入）</span></h2>
-    <div class="hint" style="margin-bottom:8px">管理引擎词库文件：<b>dict.txt</b> 为词典回复的「关键词|回复」两列词库；<b>娱乐群管.txt</b> 为 lzyqzb TXT 规则词库（规则/触发/回复文本/$写$/$读$/$按钮$…，由「娱乐群管」插件解释执行）。两种格式的注释/规则行原样保留，可无伤往返编辑；「💾 保存」写盘并热重载对应插件。</div>
+    <h2>📖 cid 词库管理 <span style="color:#999;font-size:12px">（词库文件位于 <b>plugins/词库/</b>，兼容 plugins/ 根目录旧文件 · 通过 DIC管理 / 词典回复 插件进入）</span></h2>
+    <div class="hint" style="margin-bottom:8px">管理引擎词库文件：<b>词库/dict.txt</b> 为词典回复的「关键词|回复」两列词库；<b>词库/娱乐群管.txt</b> 为 lzyqzb TXT 规则词库（规则/触发/判断/回复文本/$写$/$读$/$访问$…，由「娱乐群管」插件解释执行）。lzyqzb 规则词库会按行类型（词库头/规则/触发/判断/命令/创建文件/读文件/调用API/文本行等）区分显示，执行行不再被误标成“注释”；「💾 保存」写盘并热重载对应插件。</div>
     <div class="dc-bar" style="gap:6px">
-      <label style="font-size:12px;color:#64748b">文件</label>
-      <select id="dcFileSel" style="max-width:230px" onchange="dcSwitchFile()">
-        <option value="dict.txt">dict.txt · 词典回复（key|value）</option>
-        <option value="娱乐群管.txt">娱乐群管.txt · lzyqzb 规则引擎</option>
+      <label style="font-size:12px;color:#64748b">词库文件</label>
+      <select id="dcFileSel" style="max-width:250px" onchange="dcSwitchFile()">
+        <option value="词库/dict.txt">词库/dict.txt · 词典回复（key|value）</option>
+        <option value="词库/娱乐群管.txt">词库/娱乐群管.txt · lzyqzb 规则引擎</option>
       </select>
+      <button class="btn btn-sm primary" onclick="dcLoad()">↻ 加载</button>
+      <span id="dcFmtTag" style="font-size:12px"></span>
+      <span class="dc-stat" id="dcStat"></span>
+    </div>
+    <div id="dcAddDictBar" class="dc-bar" style="gap:6px">
       <button class="btn btn-sm primary" onclick="dcAdd('e')">＋ 新增词条</button>
       <button class="btn btn-sm" onclick="dcAdd('c')">＋ 注释行</button>
       <button class="btn btn-sm" onclick="dcAdd('b')">＋ 空行</button>
-      <input type="text" id="dcSearch" placeholder="搜索关键词 / 回复内容…（空则显示全部）" style="flex:1;min-width:150px" oninput="dcRender()">
-      <span class="dc-stat" id="dcStat"></span>
+    </div>
+    <div id="dcAddLzBar" class="dc-bar" style="gap:6px;display:none;flex-wrap:wrap">
+      <button class="btn btn-sm primary" onclick="dcAdd('规则')">＋ 规则</button>
+      <button class="btn btn-sm" onclick="dcAdd('触发')">＋ 触发</button>
+      <button class="btn btn-sm" onclick="dcAdd('判断')">＋ 判断(如果:)</button>
+      <button class="btn btn-sm" onclick="dcAdd('回复')">＋ 回复文本</button>
+      <button class="btn btn-sm" onclick="dcAdd('创建文件')">＋ $写$(建文件夹/写用户)</button>
+      <button class="btn btn-sm" onclick="dcAdd('读文件')">＋ $读$(读用户信息)</button>
+      <button class="btn btn-sm" onclick="dcAdd('调用API')">＋ $访问$(调API)</button>
+      <button class="btn btn-sm" onclick="dcAdd('命令')">＋ $命令$</button>
+      <button class="btn btn-sm" onclick="dcAdd('c')">＋ 注释行</button>
+      <button class="btn btn-sm" onclick="dcAdd('b')">＋ 空行</button>
+    </div>
+    <div style="margin:4px 0;display:flex;gap:6px">
+      <input type="text" id="dcSearch" placeholder="搜索关键词 / 规则名 / 回复内容…（空则显示全部）" style="flex:1;min-width:150px" oninput="dcRender()">
     </div>
     <div id="dcRows"><div class="dc-empty">加载中…</div></div>
-    <div style="margin:6px 0"><button class="btn btn-sm primary" onclick="dcAdd('e')">＋ 在末尾再加一个词条</button></div>
+    <div style="margin:6px 0"><button class="btn btn-sm primary" id="dcTailAdd" onclick="dcAddTail()">＋ 在末尾再加一个词条</button></div>
     <div class="toolbar" style="margin-top:4px;flex-wrap:wrap">
       <button class="btn primary" onclick="dcSave()">💾 保存词库（写盘 + 热重载）</button>
       <button class="btn" onclick="dcLoad()">↻ 重新加载</button>
@@ -2044,8 +2062,11 @@ function openDictManage(){
   var dc = $('dictCard'); if (dc) dc.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ===== cid 词库管理（词典回复 dict.txt：key|value 行，支持中文） =====
-var dcState = { fileName: 'dict.txt', lines: [], loaded: false };
+// ===== cid 词库管理（dict.txt key|value + 娱乐群管.txt lzyqzb 规则词库） =====
+var dcState = { fileName: '词库/dict.txt', format: 'dict', lines: [], loaded: false };
+var DC_LZ = { '注释': ['#334155', '#cbd5e1'], '词库头': ['#7c3aed', '#e9d5ff'], '规则': ['#155e75', '#a5f3fc'], '规则尾': ['#155e75', '#a5f3fc'], '触发': ['#b45309', '#fde68a'], '判断': ['#7f1d1d', '#fecaca'], '停止': ['#450a0a', '#fca5a5'], '命令': ['#3f3f46', '#d4d4d8'], '创建文件': ['#14532d', '#bbf7d0'], '读文件': ['#1e3a8a', '#bfdbfe'], '调用API': ['#0f766e', '#99f6e4'], '回复文本': ['#064e3b', '#a7f3d0'], '变量': ['#581c87', '#e9d5ff'], '文本行': ['#334155', '#cbd5e1'] };
+function dcKindColor(kind){ var c = DC_LZ[kind] || ['#334155', '#cbd5e1']; return { bg: c[0], fg: c[1] }; }
+function dcFormatName(){ return dcState.format === 'lzyqzb' ? 'lzyqzb 规则词库' : 'dict 词典词库'; }
 
 function rsDictTab(which){
   dcState.mode = which || 'dict';
@@ -2074,13 +2095,46 @@ function dcStatHint(){
   var st = $('dcStat');
   if (st) st.textContent = '加载中…';
 }
+function dcFmtUI(){
+  var lz = dcState.format === 'lzyqzb';
+  var db = $('dcAddDictBar'), lb = $('dcAddLzBar');
+  if (db) db.style.display = lz ? 'none' : '';
+  if (lb) lb.style.display = lz ? '' : 'none';
+  var tag = $('dcFmtTag');
+  if (tag){
+    var col = lz ? '#a78bfa' : '#5eead4';
+    tag.innerHTML = '<span style="font-size:11px;color:' + col + ';border:1px solid ' + col + '33;padding:1px 8px;border-radius:10px">' + dcFormatName() + '</span>';
+  }
+  var ta = $('dcTailAdd');
+  if (ta) ta.textContent = lz ? '＋ 在末尾添加一条回复文本' : '＋ 在末尾再加一个词条';
+}
+// 用 /api/plugins/_dict/files 拉服务器上的词库文件清单（优先 plugins/词库/）
+function dcLoadFiles(){
+  api('/api/plugins/_dict/files').then(function(r){
+    var sel = $('dcFileSel');
+    if (!sel || !r.ok || !r.data || !r.data.ok) return;
+    var cur = dcState.fileName;
+    var keep = [];
+    for (var i = 0; i < sel.options.length; i++) keep.push(sel.options[i].value);
+    (r.data.files || []).forEach(function(f){
+      if (keep.indexOf(f.path) >= 0) return;
+      var op = document.createElement('option');
+      op.value = f.path;
+      op.textContent = f.path + (f.inDir ? '' : '（旧位置）');
+      sel.appendChild(op);
+    });
+    sel.value = cur;
+  }).catch(function(){});
+}
 
 function dcLoad(){
   api('/api/plugins/_dict/entries?file=' + encodeURIComponent(dcState.fileName)).then(function(r){
     if (r.ok && r.data && r.data.ok){
       dcState.fileName = r.data.fileName || dcState.fileName || 'dict.txt';
-      dcState.lines = (r.data.entries || []).map(function(x){ return { t: x.t, key: x.key, value: x.value, text: x.text }; });
+      dcState.format = r.data.format || 'dict';
+      dcState.lines = (r.data.entries || []).map(function(x){ return { t: x.t, kind: x.kind || '', key: x.key, value: x.value, text: x.text }; });
       dcState.loaded = true;
+      dcLoadFiles();
       var sel = $('dcFileSel');
       if (sel){
         var found = false;
@@ -2092,6 +2146,7 @@ function dcLoad(){
         }
         sel.value = dcState.fileName;
       }
+      dcFmtUI();
       dcRender();
       dcRenderRaw();
       return;
@@ -2107,18 +2162,27 @@ function dcRenderRaw(){
   for (var i = 0; i < dcState.lines.length; i++){
     var it = dcState.lines[i];
     if (it.t === 'e') parts.push(String(it.key || '') + '|' + String(it.value || ''));
-    else if (it.t === 'c') parts.push(String(it.text || ''));
+    else if (it.t === 'c' || it.t === 'r') parts.push(String(it.text || ''));
     else parts.push('');
   }
   raw.value = parts.join('\n');
+}
+
+// 行标签：dict 词条/注释/空行；lzyqzb 按 kind 着色，区分可执行行与注释
+function dcKindTagHtml(it){
+  var col = dcKindColor(it.kind);
+  if (it.t === 'r') return '<span class="dc-tag" style="background:' + col.bg + ';color:' + col.fg + ';font-weight:600">' + esc(it.kind || '行') + '</span>';
+  if (it.t === 'c') return '<span class="dc-tag c">注释</span>';
+  if (it.t === 'b') return '<span class="dc-tag b">空行</span>';
+  return '<span class="dc-tag e">词条</span>';
 }
 
 function dcRender(){
   var box = $('dcRows');
   if (!box) return;
   if (!dcState.lines.length){
-    box.innerHTML = '<div class="dc-empty">词库当前为空：点「＋ 新增词条」添加第一条，或先通过群内「写入dic」导入后点「↻ 重新加载」。</div>';
-    $('dcStat').textContent = '0 行 · 0 个词条';
+    box.innerHTML = '<div class="dc-empty">词库当前为空：dict 词库点「＋ 新增词条」；lzyqzb 规则词库点「＋ 规则 / ＋ 触发」开始搭建。</div>';
+    $('dcStat').textContent = '0 行';
     return;
   }
   var q = String(($('dcSearch') && $('dcSearch').value) || '').toLowerCase();
@@ -2141,30 +2205,81 @@ function dcRender(){
         + '<button class="btn btn-sm danger" onclick="dcRemoveAt(' + i + ')">🗑 删除</button></div>'
         + '<textarea class="rs-in dc-val" data-f="value" rows="2" placeholder="回复内容：纯文本 / 占位符 / JSON 卡片">' + escAttr(String(it.value || '')) + '</textarea>'
         + '</div>');
-    } else if (it.t === 'c'){
-      rows.push('<div class="dc-row' + (filtered ? ' filtered' : '') + '" data-i="' + i + '"><div class="dc-lh"><span class="dc-tag c">注释</span>'
-        + '<input class="rs-in dc-cmt" data-f="text" value="' + escAttr(String(it.text || '')) + '">'
+    } else if (it.t === 'b'){
+      rows.push('<div class="dc-row' + (filtered ? ' filtered' : '') + '" data-i="' + i + '"><div class="dc-lh">' + dcKindTagHtml(it)
+        + '<span style="flex:1;font-size:12px;color:#94a3b8">（占位空行）</span>'
         + '<button class="btn btn-sm" onclick="dcRemoveAt(' + i + ')">🗑 删除</button></div></div>');
     } else {
-      rows.push('<div class="dc-row' + (filtered ? ' filtered' : '') + '" data-i="' + i + '"><div class="dc-lh"><span class="dc-tag b">空行</span>'
-        + '<span style="flex:1;font-size:12px;color:#94a3b8">（占位空行）</span>'
+      var ph = '';
+      if (it.kind === '文本行') ph = '这里写要发送的回复内容（支持 %昵称% %QQ% %群号% 等变量）';
+      else if (it.kind === '触发') ph = '触发词：精确匹配整条消息；支持 (.*) 通配捕获进 %括号1%…';
+      else if (it.kind === '规则') ph = '规则 名称（一行一个规则名）';
+      else if (it.kind === '规则尾') ph = '结束规则';
+      else if (it.kind === '判断') ph = '如果:左值 运算符 右值（=、!=、>、<、包含 等）；或 否则 / 如果尾';
+      else if (it.kind === '创建文件') ph = '$写 用户/%QQ%.txt a 0$（在 plugins/词库/ 下自动建文件夹/写用户信息）';
+      else if (it.kind === '读文件') ph = '$读 用户/%QQ%.txt a 0$（读取 plugins/词库/ 下用户信息，缺省返回默认值）';
+      else if (it.kind === '调用API') ph = '$访问 URL$（HTTP/HTTPS GET）';
+      else if (it.kind === '命令') ph = '$发 内容$ 或其它 $动作 参数$';
+      else if (it.kind === '注释') ph = String(it.text || '').indexOf('#') === 0 ? '以 # 开头的注释 / 标题行（整行原样保留）' : '// 注释说明';
+      if (!ph) ph = dcState.format === 'dict' ? '注释 / 标题说明行（以 # 开头整行保留）' : (it.t === 'c' ? '注释说明' : 'lzyqzb 行（保持原格式编辑）');
+      rows.push('<div class="dc-row' + (filtered ? ' filtered' : '') + '" data-i="' + i + '" title="' + escAttr('[' + (it.kind || '') + '] ' + String(it.text || '')) + '">'
+        + '<div class="dc-lh">' + dcKindTagHtml(it)
+        + '<input class="rs-in dc-cmt" data-f="text" placeholder="' + escAttr(ph) + '" value="' + escAttr(String(it.text || '')) + '">'
         + '<button class="btn btn-sm" onclick="dcRemoveAt(' + i + ')">🗑 删除</button></div></div>');
     }
   }
   box.innerHTML = rows.join('');
   var st = $('dcStat');
-  if (st) st.textContent = '共 ' + dcState.lines.length + ' 行 · ' + dcEntryCount(dcState.lines) + ' 个词条' + (q ? '（已按「' + $('dcSearch').value + '」过滤）' : '');
+  if (st){
+    var txt = '共 ' + dcState.lines.length + ' 行';
+    if (dcState.format === 'dict') txt += ' · ' + dcEntryCount(dcState.lines) + ' 个词条';
+    else txt += ' · ' + dcEntryCount(dcState.lines) + ' 个词条对';
+    if (q) txt += '（已按「' + ($('dcSearch') && $('dcSearch').value) + '」过滤）';
+    st.textContent = txt;
+  }
 }
 
+// 在末尾添加：dict → 词条；lzyqzb → 回复文本行
+function dcAddTail(){
+  if (!dcState.loaded){ dcLoad(); return; }
+  if (dcState.format === 'lzyqzb') dcAdd('回复');
+  else dcAdd('e');
+}
+
+// dict：e=词条 c=注释行 b=空行；lzyqzb：kind 字符串(规则/触发/判断/回复/创建文件/读文件/调用API/命令)
 function dcAdd(t){
   if (!dcState.loaded){ dcLoad(); return; }
-  if (t === 'e') dcState.lines.push({ t: 'e', key: '', value: '' });
-  else if (t === 'c') dcState.lines.push({ t: 'c', text: '# ' });
-  else dcState.lines.push({ t: 'b' });
+  if (dcState.format === 'lzyqzb' && (t === 'e' || t === 'c')){
+    if (t === 'e'){ toast('当前是 lzyqzb 规则词库，请用上方「＋规则 / ＋触发」等按钮添加'); return; }
+    dcState.lines.push({ t: 'c', kind: '注释', text: '// ' });
+  } else if (t === 'e' || t === 'c' || t === 'b'){
+    if (t === 'e') dcState.lines.push({ t: 'e', key: '', value: '' });
+    else if (t === 'c') dcState.lines.push({ t: 'c', kind: '注释', text: '# ' });
+    else dcState.lines.push({ t: 'b' });
+  } else {
+    var row = dcLzSample(t);
+    if (row) dcState.lines.push(row);
+  }
   dcRender();
   dcRenderRaw();
   var rows = $('dcRows');
   if (rows) rows.scrollIntoView({ block: 'end', behavior: 'smooth' });
+}
+// lzyqzb 新增行的安全示例模板（可编辑；多为无害占位，避免空触发/空判断误伤线上）
+function dcLzSample(kind){
+  switch (kind){
+    case '规则': return { t: 'r', kind: '规则', text: '规则 新规则' };
+    case '触发': return { t: 'r', kind: '触发', text: '触发 示例触发词' };
+    case '判断': return { t: 'r', kind: '判断', text: '如果:1 == 0' };
+    case '回复': return { t: 'r', kind: '文本行', text: '' };
+    case '创建文件': return { t: 'r', kind: '创建文件', text: '$写 用户/%QQ%.txt a 0$' };
+    case '读文件': return { t: 'r', kind: '读文件', text: '$读 用户/%QQ%.txt a 0$' };
+    case '调用API': return { t: 'r', kind: '调用API', text: '$访问 https://example.com/api$' };
+    case '命令': return { t: 'r', kind: '命令', text: '$发 示例回复，请编辑后再保存$' };
+    case 'c': return { t: 'c', kind: '注释', text: '// ' };
+    case 'b': return { t: 'b' };
+  }
+  return null;
 }
 
 function dcRemoveAt(i){

@@ -294,7 +294,13 @@ input[type="file"]{color:var(--text2)}
     <button class="btn btn-primary" onclick="showAddBot()">添加机器人</button>
     <button class="btn btn-outline" onclick="loadBots()">刷新</button>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>名称</th><th>AppID</th><th>所有者</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody id="botList"></tbody></table></div>
+  <div class="batch-bar" id="botBatchBar" style="display:none">
+    <span class="batch-count" id="botBatchCount">已选 0 个机器人</span>
+    <button class="btn btn-success btn-sm" onclick="botBulk('start')">▶ 批量启动</button>
+    <button class="btn btn-warn btn-sm" onclick="botBulk('stop')">⏸ 批量停止</button>
+    <button class="btn btn-outline btn-sm" onclick="botClearSel()">取消选择</button>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th style="width:32px"><input type="checkbox" id="botCheckAll" title="全选" onchange="botSelAll(this)"></th><th>名称</th><th>AppID</th><th>所有者</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody id="botList"></tbody></table></div>
 </div>
 
 <div class="page" id="page-membersync">
@@ -539,7 +545,13 @@ input[type="file"]{color:var(--text2)}
     <button class="btn btn-outline" onclick="loadPlugins()">刷新</button>
   </div>
   <div id="botPluginAssignPanel" style="display:none;margin-bottom:16px;padding:12px;background:rgba(125,211,252,.06);border:1px solid rgba(125,211,252,.22);border-radius:var(--radius)"></div>
-  <div class="table-wrap"><table><thead><tr><th>插件名</th><th>类型</th><th>版本</th><th>作者</th><th>描述</th><th>状态</th><th>操作</th></tr></thead><tbody id="pluginList"></tbody></table></div>
+  <div class="batch-bar" id="plgBatchBar" style="display:none">
+    <span class="batch-count" id="plgBatchCount">已选 0 个插件</span>
+    <button class="btn btn-success btn-sm" onclick="plgBulk(1)">✅ 批量启用</button>
+    <button class="btn btn-warn btn-sm" onclick="plgBulk(0)">⏸ 批量禁用</button>
+    <button class="btn btn-outline btn-sm" onclick="plgClearSel()">取消选择</button>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th style="width:32px"><input type="checkbox" id="plgCheckAll" title="全选" onchange="plgSelAll(this)"></th><th>插件名</th><th>类型</th><th>版本</th><th>作者</th><th>描述</th><th>状态</th><th>操作</th></tr></thead><tbody id="pluginList"></tbody></table></div>
 </div>
 
 <div class="page" id="page-files">
@@ -1744,7 +1756,7 @@ function dashLevelColor(lv){return lv==='error'?'#ef4444':(lv==='warn'?'#f59e0b'
 
 async function loadDashBots(){try{const bots=await getBotsCached();docById('dashBotList').querySelector('tbody').innerHTML=bots.slice(0,5).map(b=>`<tr style="cursor:pointer" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')"><td><strong>${esc(b.name)}</strong></td><td>${esc(b.appId)}</td><td><span class="tag tag-${b.status}">${b.status}</span></td><td onclick="event.stopPropagation()">${b.status==='running'?`<button class="btn btn-warn btn-xs" onclick="stopBot('${b.id}')">停止</button>`:`<button class="btn btn-success btn-xs" onclick="startBot('${b.id}')">启动</button>`}<button class="btn btn-outline btn-xs" onclick="showInviteBot('${b.id}','${b.name}')">邀请</button><button class="btn btn-outline btn-xs" onclick="showGroupMgr('${b.id}','${b.name}','${b.appId}')">群管</button></td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--text2);text-align:center">暂无机器人</td></tr>'}catch{}}
 
-async function loadBots(){try{const bots=await api('/api/bots');_botsCache=bots||[];_botsCacheTime=Date.now();botCount=bots.length;docById('botBadge').textContent=botCount;const p=currentUserPermissions||{};const canAdd=currentUser?.role==='super_master'||p.canAddBot;const addBtn=docById('botActionBar')?.querySelector('button');if(addBtn)addBtn.style.display=canAdd?'':'none';docById('botList').innerHTML=bots.map(b=>`<tr style="cursor:pointer" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')"><td><strong>${esc(b.name)}</strong></td><td>${esc(b.appId)}</td><td>${esc(b.owner)}</td><td><span class="tag tag-${b.status}">${b.status}</span></td><td>${new Date(b.createdAt).toLocaleString()}</td><td onclick="event.stopPropagation()"><button class="btn btn-primary btn-xs" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')">进入管理</button> ${b.status==='running'?`<button class="btn btn-warn btn-xs" onclick="stopBot('${b.id}')">停止</button><button class="btn btn-outline btn-xs" onclick="restartBot('${b.id}')">重启</button>`:`<button class="btn btn-success btn-xs" onclick="startBot('${b.id}')">启动</button>`}<button class="btn btn-outline btn-xs" onclick="showInviteBot('${b.id}','${b.name}')">邀请</button><button class="btn btn-outline btn-xs" onclick="showGroupMgr('${b.id}','${b.name}','${b.appId}')">群管</button><button class="btn btn-outline btn-xs" onclick="showBotDetail('${b.id}')">详情</button>${(currentUser?.role==='super_master'||p.canEditBot)?`<button class="btn btn-outline btn-xs" onclick="editBot('${b.id}')">编辑</button>`:''}${(currentUser?.role==='super_master'||p.canDeleteBot)?`<button class="btn btn-danger btn-xs" onclick="delBot('${b.id}')">删除</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--text2);text-align:center">暂无机器人</td></tr>'}catch{}}
+async function loadBots(){botResetSel();try{const bots=await api('/api/bots');_botsCache=bots||[];_botsCacheTime=Date.now();botCount=bots.length;docById('botBadge').textContent=botCount;const p=currentUserPermissions||{};const canAdd=currentUser?.role==='super_master'||p.canAddBot;const addBtn=docById('botActionBar')?.querySelector('button');if(addBtn)addBtn.style.display=canAdd?'':'none';docById('botList').innerHTML=bots.map(b=>`<tr style="cursor:pointer" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')"><td style="width:32px;text-align:center;cursor:default" onclick="event.stopPropagation()"><input type="checkbox" class="bot-check" value="${b.id}" onclick="event.stopPropagation();botUpd(this)"></td><td><strong>${esc(b.name)}</strong></td><td>${esc(b.appId)}</td><td>${esc(b.owner)}</td><td><span class="tag tag-${b.status}">${b.status}</span></td><td>${new Date(b.createdAt).toLocaleString()}</td><td onclick="event.stopPropagation()"><button class="btn btn-primary btn-xs" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')">进入管理</button> ${b.status==='running'?`<button class="btn btn-warn btn-xs" onclick="stopBot('${b.id}')">停止</button><button class="btn btn-outline btn-xs" onclick="restartBot('${b.id}')">重启</button>`:`<button class="btn btn-success btn-xs" onclick="startBot('${b.id}')">启动</button>`}<button class="btn btn-outline btn-xs" onclick="showInviteBot('${b.id}','${b.name}')">邀请</button><button class="btn btn-outline btn-xs" onclick="showGroupMgr('${b.id}','${b.name}','${b.appId}')">群管</button><button class="btn btn-outline btn-xs" onclick="showBotDetail('${b.id}')">详情</button>${(currentUser?.role==='super_master'||p.canEditBot)?`<button class="btn btn-outline btn-xs" onclick="editBot('${b.id}')">编辑</button>`:''}${(currentUser?.role==='super_master'||p.canDeleteBot)?`<button class="btn btn-danger btn-xs" onclick="delBot('${b.id}')">删除</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" style="color:var(--text2);text-align:center">暂无机器人</td></tr>'}catch{}}
 
 function showAddBot(){docById('modalBotTitle').textContent='添加机器人';docById('botName').value='';docById('botAppId').value='';docById('botSecret').value='';docById('botSandbox').value='false';docById('botIntents').value='0';docById('editBotId').value='';docById('modalAddBot').classList.add('active');loadAddBotNapcatStatus()}
 
@@ -1932,6 +1944,8 @@ async function savePluginGroups(){
 }
 
 // 插件管理页顶部的「该机器人插件开关」面板：从机器人管理→插件管理进入时显示（按机器人锁定）
+// 按机器人上下文批量启停的勾选状态：{ pluginId: '1'|'0'（渲染时的全局启用态） }
+let botPlgSel={};
 async function renderBotPluginPanel(){
   const panel=docById('botPluginAssignPanel');
   if(!panel)return;
@@ -1940,22 +1954,53 @@ async function renderBotPluginPanel(){
   const id=currentBot.id;
   try{
     const d=await api('/api/bots/'+id+'/plugins');
+    botPlgSel={};
+    const isSuper=currentUser?.role==='super_master';
     const rows=(d.plugins||[]).map(p=>{
       const checked=p.assigned===true;
       const stateTxt=p.assigned===undefined?'(跟随全局)':(p.assigned?'已分配':'未分配');
-      return '<tr><td>'+esc(p.name)+'</td><td>'+(p.type==='py'?'PY':(p.type==='file'?'文件':esc(p.type||'-')))+'</td><td>'+(p.enabled?'<span style="color:var(--success)">已启用</span>':'<span style="color:var(--text2)">已禁用</span>')+'</td>'+
+      const canToggle=isSuper&&p.id&&p.type&&p.type!=='file';
+      const selCell=canToggle
+        ?'<input type="checkbox" class="bp-check" data-id="'+esc(String(p.id))+'" data-e="'+(p.enabled?'1':'0')+'" title="勾选后可在下方批量启用/禁用" onchange="botPlgUpd(this)">'
+        :'';
+      return '<tr><td style="text-align:center">'+selCell+'</td><td>'+esc(p.name)+'</td><td>'+(p.type==='py'?'PY':(p.type==='file'?'文件':esc(p.type||'-')))+'</td><td>'+(p.enabled?'<span style="color:var(--success)">已启用</span>':'<span style="color:var(--text2)">已禁用</span>')+'</td>'+
         '<td><label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" '+(checked?'checked':'')+' '+(p.enabled&&p.type!=='file'?'':'disabled')+' onchange="toggleBotPlugin(\''+id+'\',\''+esc(p.id)+'\',this.checked)"> '+stateTxt+'</label></td>'+
         '<td><button class="btn btn-outline btn-xs" onclick="showPluginGroups(\''+id+'\',\''+esc(p.id)+'\',\''+esc(p.name).replace(/'/g,"\\'")+'\')">按群开关</button></td></tr>';
     }).join('');
     const hint=d.globalMode
       ? '当前机器人未做插件分配，运行<strong>全部已启用</strong>插件。勾选任一插件后进入「按分配运行」模式：仅勾选的插件会响应此机器人。'
       : '当前机器人处于<strong>按分配运行</strong>模式，仅勾选的插件会响应此机器人。';
+    const hasRows=(d.plugins||[]).length>0;
+    const selable=(d.plugins||[]).some(p=>isSuper&&p.id&&p.type&&p.type!=='file');
     panel.innerHTML='<div style="font-weight:600;margin-bottom:6px">插件开关（'+esc(currentBot.name)+'）— '+hint+'</div>'+
-      '<table class="table"><tr><th>插件</th><th>类型</th><th>全局启用</th><th>此机器人分配</th><th>按群开关</th></tr>'+
-      (rows||'<tr><td colspan="5" style="color:var(--text2);text-align:center">无可分配的插件</td></tr>')+
+      (selable?'<div style="margin:4px 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:var(--text2)">批量（作用于所选插件的<strong>全局启用</strong>状态，<label style="cursor:pointer"><input type="checkbox" id="bpCheckAll" onchange="botPlgSelAll(this)"> 全选</label>）：</span>'+
+        '<button class="btn btn-success btn-xs" onclick="botPlgBulk(1)">✅ 批量启用</button>'+
+        '<button class="btn btn-warn btn-xs" onclick="botPlgBulk(0)">⏸ 批量禁用</button>'+
+        '<button class="btn btn-outline btn-xs" onclick="botPlgClearSel()">取消选择</button>'+
+        '<span style="font-size:12px;color:var(--text2)" id="bpSelCount">已选 0 个</span></div>':'')+
+      '<table class="table"><tr><th style="width:32px;text-align:center"><input type="checkbox" id="bpHeadAll" title="全选" onchange="botPlgSelAll(this)"></th><th>插件</th><th>类型</th><th>全局启用</th><th>此机器人分配</th><th>按群开关</th></tr>'+
+      (rows||'<tr><td colspan="6" style="color:var(--text2);text-align:center">无可分配的插件</td></tr>')+
       '</table>'+
       (d.globalMode?'':'<button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="resetBotPlugins(\''+id+'\')">恢复全局模式</button>');
   }catch(e){panel.innerHTML='<span style="color:var(--danger)">加载插件分配失败: '+esc(e.message)+'</span>'}
+}
+function botPlgCount(){let n=0;for(const k in botPlgSel)if(botPlgSel.hasOwnProperty(k))n++;return n}
+function botPlgRefreshCount(){const c=docById('bpSelCount');if(c)c.textContent='已选 '+botPlgCount()+' 个';const hs=docById('bpHeadAll'),ha=docById('bpCheckAll');const all=document.querySelectorAll('.bp-check').length;const on=botPlgCount();if(hs)hs.checked=all>0&&on===all;if(ha)ha.checked=all>0&&on===all}
+function botPlgUpd(el){const id=el.getAttribute('data-id');if(el.checked)botPlgSel[id]=el.getAttribute('data-e')||'1';else delete botPlgSel[id];botPlgRefreshCount()}
+function botPlgSelAll(el){const on=el&&el.checked;document.querySelectorAll('.bp-check').forEach(cb=>{cb.checked=on;const id=cb.getAttribute('data-id');if(on)botPlgSel[id]=cb.getAttribute('data-e')||'1';else delete botPlgSel[id]});botPlgRefreshCount()}
+function botPlgClearSel(){botPlgSel={};document.querySelectorAll('.bp-check').forEach(cb=>cb.checked=false);const hs=docById('bpHeadAll'),ha=docById('bpCheckAll');if(hs)hs.checked=false;if(ha)ha.checked=false;botPlgRefreshCount()}
+async function botPlgBulk(target){
+  const todo=[];
+  for(const id in botPlgSel){if(!botPlgSel.hasOwnProperty(id))continue;if((botPlgSel[id]==='1'?1:0)!==target)todo.push(id)}
+  if(!todo.length){alert('所选插件已全部处于目标状态，无需操作');return}
+  const label=target?'启用':'禁用';
+  if(!confirm('确定对当前机器人下选中的 '+todo.length+' 个插件批量'+label+'（全局启用状态，影响所有机器人）吗？'))return;
+  let okN=0,err='';
+  for(const pid of todo){try{const r=await api('/api/plugins/'+encodeURIComponent(pid)+'/toggle',{method:'POST'});if(r&&r.ok)okN++;else err=(err||'')+((r&&r.error)||'HTTP失败')+'; '}catch(e){err=(err||'')+e.message+'; '}}
+  botPlgClearSel();
+  renderBotPluginPanel();
+  loadPlugins();
+  alert(err?('完成 '+okN+'/'+todo.length+'，部分失败：'+err.slice(0,300)):('✅ 已'+label+' '+okN+' 个插件'));
 }
 
 async function doSaveBot(){const id=docById('editBotId').value;const body={name:docById('botName').value,appId:docById('botAppId').value,clientSecret:docById('botSecret').value,sandbox:docById('botSandbox').value==='true',intents:parseInt(docById('botIntents').value)||0};let saved=null;if(id){await api('/api/bots/'+id,{method:'PUT',body})}else{saved=await api('/api/bots',{method:'POST',body})}closeModal('modalAddBot');loadBots();loadBotCount();if(saved&&saved.id)showBotGuide(saved)}
@@ -2807,8 +2852,28 @@ try{
   res.style.display='block';res.style.background='#052e16';res.style.color='var(--success)';res.textContent=data.message||'操作成功';
 }catch(e){res.style.display='block';res.style.background='#450a0a';res.style.color='var(--danger)';res.textContent='操作失败: '+e.message}}
 
- async function loadPlugins(){renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canUpload=isSuper||(currentUserPermissions?.canUploadPlugin===true);const canCreate=isSuper||(currentUserPermissions?.canEditPluginCode===true);docById('btnUploadPlugin').style.display=canUpload?'':'none';docById('btnAddPlugin').style.display=canCreate?'':'none';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let action='';let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';const enState=p.enabled?'<span class="tag tag-approved">✅ 已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">⏸ 已禁用</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));if(isSuper&&s==='pending'){action='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';}return'<tr><td><strong>'+esc(p.name)+'</strong> '+badge+'</td><td>'+typeTag+'</td><td>'+(p.version||'-')+'</td><td>'+(p.author||'-')+'</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.description||'-')+'</td><td>'+enState+'</td><td>'+action+(p.has_webui?'<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>':'')+'<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>'+(isSuper&&(p.name==='DIC管理'||p.name==='词典回复')?'<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(p.name==='DIC管理'?'DIC':'词典')+'词库</a>':'')+(isSuper&&(p.type==='code'||p.type==='py')?'<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>':'')+(p.canEdit?'<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>':'')+(isSuper?'<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>':'')+(canTest&&p.type!=='file'&&p.type!=='py'?'<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>':'')+(isSuper?'<button class="btn btn-danger btn-xs" onclick="deletePlugin(\''+p.name+'\')">删除</button>':'')+'</td></tr>';}).join('')||'<tr><td colspan="7" style="color:var(--text2);text-align:center">暂无插件</td></tr>';}catch(e){docById('pluginList').innerHTML='<tr><td colspan="7" style="color:var(--danger);text-align:center">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</td></tr>'}}
+ async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canUpload=isSuper||(currentUserPermissions?.canUploadPlugin===true);const canCreate=isSuper||(currentUserPermissions?.canEditPluginCode===true);docById('btnUploadPlugin').style.display=canUpload?'':'none';docById('btnAddPlugin').style.display=canCreate?'':'none';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let action='';let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';const enState=p.enabled?'<span class="tag tag-approved">✅ 已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">⏸ 已禁用</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));if(isSuper&&s==='pending'){action='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';}return'<tr><td style="width:32px;text-align:center">'+(isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'')+'</td><td><strong>'+esc(p.name)+'</strong> '+badge+'</td><td>'+typeTag+'</td><td>'+(p.version||'-')+'</td><td>'+(p.author||'-')+'</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.description||'-')+'</td><td>'+enState+'</td><td>'+action+(p.has_webui?'<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>':'')+'<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>'+(isSuper&&(p.name==='DIC管理'||p.name==='词典回复')?'<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(p.name==='DIC管理'?'DIC':'词典')+'词库</a>':'')+(isSuper&&(p.type==='code'||p.type==='py')?'<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>':'')+(p.canEdit?'<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>':'')+(isSuper?'<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>':'')+(canTest&&p.type!=='file'&&p.type!=='py'?'<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>':'')+(isSuper?'<button class="btn btn-danger btn-xs" onclick="deletePlugin(\''+p.name+'\')">删除</button>':'')+'</td></tr>';}).join('')||'<tr><td colspan="8" style="color:var(--text2);text-align:center">暂无插件</td></tr>';}catch(e){docById('pluginList').innerHTML='<tr><td colspan="8" style="color:var(--danger);text-align:center">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</td></tr>'}}
  async function togglePlugin(id,name,current){const to=current?0:1;if(!confirm('确定'+(to?'启用':'禁用')+'插件「'+name+'」吗？'+(to?'':'禁用后该插件功能将立即停止')))return;try{const r=await api('/api/plugins/'+id+'/toggle',{method:'POST'});if(r&&r.ok){loadPlugins()}else{alert((r&&r.error)||'操作失败')}}catch(e){alert(e.message)}}
+
+// ---- 插件管理 多选/全选/批量启用禁用 ----
+let plgChecked=new Set();
+function plgCanSelect(){return (currentUser&&currentUser.role==='super_master')||(currentUserPermissions&&currentUserPermissions.canEditPluginCode===true)}
+function plgUpdBox(visible){const bar=docById('plgBatchBar');if(bar)bar.style.display=visible?'':'none'}
+function updatePlgBar(){const cnt=plgChecked.size;const c=docById('plgBatchCount');if(c)c.textContent='已选 '+cnt+' 个插件';const all=docById('plgCheckAll');if(all)all.checked=cnt>0&&document.querySelectorAll('.plg-check').length===cnt;plgUpdBox(cnt>0&&plgCanSelect())}
+function plgUpd(el){const id=el.getAttribute('data-id');if(el.checked)plgChecked.add(id);else plgChecked.delete(id);updatePlgBar()}
+function plgSelAll(el){const on=el&&el.checked;const cbs=document.querySelectorAll('.plg-check');cbs.forEach(cb=>{cb.checked=on;if(on)plgChecked.add(cb.getAttribute('data-id'));else plgChecked.delete(cb.getAttribute('data-id'))});updatePlgBar()}
+function plgClearSel(){plgChecked.clear();document.querySelectorAll('.plg-check').forEach(cb=>cb.checked=false);const a=docById('plgCheckAll');if(a)a.checked=false;updatePlgBar()}
+async function plgBulk(enabled){const ids=[...plgChecked];if(!ids.length)return;if(!confirm('确定'+(enabled?'批量启用':'批量禁用')+'所选 '+ids.length+' 个插件吗？'))return;let okN=0,err='';for(const id of ids){try{const r=await api('/api/plugins/'+id+'/toggle',{method:'POST'});if(r&&r.ok)okN++;else err=(err||'')+((r&&r.error)||'HTTP失败')+'; '}catch(e){err=(err||'')+e.message+'; '}}plgClearSel();loadPlugins();alert(err?('完成 '+okN+'/'+ids.length+'，部分失败：'+err.slice(0,300)):('✅ 已'+ (enabled?'启用':'禁用')+' '+okN+' 个插件'))}
+function plgResetSel(){plgChecked.clear();const a=docById('plgCheckAll');if(a)a.checked=false;updatePlgBar()}
+
+// ---- 机器人列表 多选/全选/批量启停 ----
+let botChecked=new Set();
+function updateBotBar(){const cnt=botChecked.size;const c=docById('botBatchCount');if(c)c.textContent='已选 '+cnt+' 个机器人';const all=docById('botCheckAll');if(all)all.checked=cnt>0&&document.querySelectorAll('.bot-check').length===cnt;const bar=docById('botBatchBar');if(bar)bar.style.display=cnt>0?'':'none'}
+function botUpd(el){const id=el.getAttribute('value')||el.value;if(el.checked)botChecked.add(id);else botChecked.delete(id);updateBotBar()}
+function botSelAll(el){const on=el&&el.checked;document.querySelectorAll('.bot-check').forEach(cb=>{cb.checked=on;const id=cb.getAttribute('value')||cb.value;if(on)botChecked.add(id);else botChecked.delete(id)});updateBotBar()}
+function botClearSel(){botChecked.clear();document.querySelectorAll('.bot-check').forEach(cb=>cb.checked=false);const a=docById('botCheckAll');if(a)a.checked=false;updateBotBar()}
+async function botBulk(action){const ids=[...botChecked];if(!ids.length)return;const label=action==='start'?'启动':'停止';if(!confirm('确定'+(action==='start'?'批量启动':'批量停止')+'所选 '+ids.length+' 个机器人吗？'))return;let okN=0,err='';for(const id of ids){try{const r=await api('/api/bots/'+id+'/'+(action==='start'?'start':'stop'),{method:'POST'});if(r&&r.ok)okN++;else err=(err||'')+((r&&(r.error||r.msg))||'HTTP失败')+'; '}catch(e){err=(err||'')+e.message+'; '}}botClearSel();loadBots();alert(err?('完成 '+okN+'/'+ids.length+'，部分失败：'+err.slice(0,300)):('✅ 已'+label+' '+okN+' 个机器人'))}
+function botResetSel(){botChecked.clear();const a=docById('botCheckAll');if(a)a.checked=false;updateBotBar()}
  function showUploadPlugin(){docById('modalUploadPlugin').classList.add('active')}
 
 let addPluginDirsCache=[];

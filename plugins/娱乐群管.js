@@ -13,10 +13,46 @@ module.exports = {
     var crypto = require('crypto');
 
     var FILE_NAME = ctx.config.dictFile || '娱乐群管.txt';
+    var CWD = process.cwd();
+    // 词库统一目录化：txt 词库与它运行时创建的文件/用户信息全部落在 plugins/词库/ 下
+    // 文件：优先 plugins/词库/<name>.txt，兼容旧 plugins/<name>.txt
     var FILE_PATH = null;
-    (function(){ try { FILE_PATH = path.join(process.cwd(), 'plugins', FILE_NAME); } catch(e){} })();
-    if (!FILE_PATH) FILE_PATH = path.join(process.cwd(), 'plugins', FILE_NAME);
-    var DATA_DIR = process.env.LZYQZB_DATA_DIR || path.join(process.cwd(), 'data', 'lzyqzb');
+    var _fileCands = [
+      path.join(CWD, 'plugins', '词库', FILE_NAME),
+      path.join(CWD, 'plugins', FILE_NAME),
+    ];
+    for (var _f = 0; _f < _fileCands.length; _f++) {
+      try { if (fs.existsSync(_fileCands[_f]) && fs.statSync(_fileCands[_f]).isFile()) { FILE_PATH = _fileCands[_f]; break; } } catch (e) {}
+    }
+    if (!FILE_PATH) FILE_PATH = _fileCands[_fileCands.length - 1];
+    // 数据目录：默认 plugins/词库；旧 data/lzyqzb 存在时一次性迁移过去（保持绑定/积分等用户数据不丢）
+    var DATA_DIR = process.env.LZYQZB_DATA_DIR || '';
+    if (!DATA_DIR) {
+      var preferData = path.join(CWD, 'plugins', '词库');
+      var legacyData = path.join(CWD, 'data', 'lzyqzb');
+      DATA_DIR = preferData;
+      function copyTree(s, d) {
+        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+        var ents = fs.readdirSync(s);
+        for (var i = 0; i < ents.length; i++) {
+          var sp = path.join(s, ents[i]);
+          var dp = path.join(d, ents[i]);
+          try {
+            var st = fs.statSync(sp);
+            if (st.isDirectory()) copyTree(sp, dp);
+            else fs.copyFileSync(sp, dp);
+          } catch (e) {}
+        }
+      }
+      try {
+        if (fs.existsSync(legacyData) && !fs.existsSync(preferData)) {
+          copyTree(legacyData, preferData);
+          ctx.logger.info('娱乐群管数据已迁移 data/lzyqzb → plugins/词库');
+        }
+      } catch (e) {
+        ctx.logger.error('娱乐群管数据迁移失败: ' + e.message);
+      }
+    }
 
     // ---------- 词库文本解析 ----------
     // rules: [{ name, triggers:[], lines:[], pos }]，行内容为原始文本

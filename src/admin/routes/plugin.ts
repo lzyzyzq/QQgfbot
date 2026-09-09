@@ -1568,35 +1568,84 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
   //   GET/PUT /api/plugins/_dict/entries：读取/整体保存行集合（词条/注释/空行），保存后自动 reload 词典回复
   // ------------------------------------------------------------
 
-  // 词库文件名白名单：仅允许 plugins 目录内单层 txt/cid 数据文件，杜绝路径穿越
+  // 词库目录（规范化）：词库 txt 与它运行时创建的数据/用户文件统一放 plugins/词库/
+  const CID_DIR = '词库';
+  // 词库文件白名单：仅允许 plugins 根目录或 plugins/词库/ 内单层 txt/cid 数据文件，杜绝路径穿越
   function dictFilePath(fileName?: string): string {
-    const base = path.basename(String(fileName || 'dict.txt').trim() || 'dict.txt');
+    const raw = String(fileName || 'dict.txt').trim().replace(/\\/g, '/');
+    if (!raw || raw.indexOf('\0') >= 0 || raw.split('/').some((p) => p === '..' || p === '.')) {
+      throw new Error('非法的词库文件名');
+    }
+    const parts = raw.split('/');
+    const base = path.basename(raw);
     const ext = path.extname(base).toLowerCase();
     if (ext !== '.txt' && ext !== '.cid') throw new Error('词库文件仅支持 .txt / .cid');
-    const full = path.resolve(pluginsDir, base);
-    if (full.indexOf(path.resolve(pluginsDir) + path.sep) !== 0 && full !== path.resolve(pluginsDir)) {
-      throw new Error('词库文件必须位于插件目录内');
+    if (parts.length === 1) {
+      // 兼容旧路径：plugins/<name>.txt
+      const full = path.resolve(pluginsDir, base);
+      if (full.indexOf(path.resolve(pluginsDir) + path.sep) !== 0) throw new Error('词库文件必须位于插件目录内');
+      return full;
     }
-    return full;
+    if (parts.length === 2 && parts[0] === CID_DIR) {
+      // 新路径：plugins/词库/<name>.txt
+      const full = path.resolve(pluginsDir, CID_DIR, base);
+      const root = path.resolve(pluginsDir, CID_DIR);
+      if (full.indexOf(root + path.sep) !== 0) throw new Error('词库文件必须位于插件词库目录内');
+      return full;
+    }
+    throw new Error('词库文件仅支持 plugins 根目录或 plugins/词库/ 子目录');
   }
 
-  // 解析词库行：空行/注释(# 开头) 原样保留；词条按首个 | 切分为 key/value
-  function parseDictLines(text: string): Array<{ t: 'e' | 'c' | 'b'; key?: string; value?: string; text?: string }> {
+  // lzyqzb TXT 规则行归类（仅用于编辑器显示；round-trip 时按原样 text 落盘）
+  function classifyLzyzqzbLine(line: string): string {
+    if (/^\/\//.test(line)) return '注释';
+    if (/^(词库|版本|主人QQ)\b/.test(line)) return '词库头';
+    if (/^规则\s+/.test(line)) return '规则';
+    if (/^结束规则$/.test(line)) return '规则尾';
+    if (/^触发\s+/.test(line)) return '触发';
+    if (/^如果[:：]/.test(line) || /^否则$/.test(line) || /^如果尾$/.test(line)) return '判断';
+    if (/^否则如果[:：]/.test(line)) return '判断';
+    if (/^停止$/.test(line)) return '停止';
+    if (/^\$写\s/.test(line)) return '创建文件'; // 含 $写 path a 内容$：建文件夹/写用户信息
+    if (/^\$读\s/.test(line)) return '读文件';
+    if (/^\$访问\s/.test(line)) return '调用API';
+    if (/^\$[\s\S]+\$$/.test(line)) return '命令';
+    if (/^回复文本[:：]/.test(line)) return '回复文本';
+    if (/^[A-Za-z0-9_\u4e00-\u9fa5]{1,24}[:：]/.test(line)) return '变量';
+    return '文本行';
+  }
+
+  // 判定词库格式：出现 规则/触发/结束规则/词库 头 → lzyzqzb 规则词库，否则按 dict key|value 两列
+  function detectFormat(lines: string[]): 'dict' | 'lzyzqzb' {
+    for (const raw of lines) {
+      const t = raw.trim();
+      if (/^规则\s+/.test(t) || /^触发(\s|$)/.test(t) || /^结束规则$/.test(t) || /^词库\s+/.test(t)) return 'lzyzqzb';
+    }
+    return 'dict';
+  }
+
+  // 解析词库行：dict → 空行/注释(#开头)/词条(首个|)；lzyzqzb → 空行/带 kind 的规则行（含执行命令行，不再误标注释）
+  function parseDictLines(text: string): Array<{ t: 'e' | 'c' | 'r' | 'b'; kind?: string; key?: string; value?: string; text?: string }> {
     const lines = String(text || '').split(/\r?\n/);
-    const out: Array<{ t: 'e' | 'c' | 'b'; key?: string; value?: string; text?: string }> = [];
+    const fmt = detectFormat(lines);
+    const out: Array<{ t: 'e' | 'c' | 'r' | 'b'; kind?: string; key?: string; value?: string; text?: string }> = [];
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) { out.push({ t: 'b' }); continue; }
-      if (trimmed.startsWith('#')) { out.push({ t: 'c', text: line }); continue; }
-      const sep = line.indexOf('|');
-      if (sep < 0) { out.push({ t: 'c', text: line }); continue; }
-      out.push({ t: 'e', key: line.slice(0, sep).trim(), value: line.slice(sep + 1).trim() });
+      if (fmt === 'dict') {
+        if (trimmed.startsWith('#')) { out.push({ t: 'c', text: line }); continue; }
+        const sep = line.indexOf('|');
+        if (sep < 0) { out.push({ t: 'c', text: line }); continue; }
+        out.push({ t: 'e', key: line.slice(0, sep).trim(), value: line.slice(sep + 1).trim() });
+      } else {
+        out.push({ t: 'r', kind: classifyLzyzqzbLine(trimmed), text: line });
+      }
     }
     return out;
   }
 
-  // 序列化行集合回词库文本
-  function serializeDictLines(lines: Array<{ t: string; key?: string; value?: string; text?: string }>): string {
+  // 序列化行集合回词库文本（r/c 原样保留，绝不补前缀/改写；e 为 key|value）
+  function serializeDictLines(lines: Array<{ t: string; kind?: string; key?: string; value?: string; text?: string }>): string {
     const parts: string[] = [];
     for (const it of lines || []) {
       if (it.t === 'e') {
@@ -1605,8 +1654,9 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         if (!key) continue; // 无关键词的词条行丢弃，避免生成无效行
         if (key.indexOf('|') >= 0) continue;
         parts.push(key + '|' + value);
-      } else if (it.t === 'c') {
-        parts.push(String(it.text == null ? '' : it.text));
+      } else if (it.t === 'r' || it.t === 'c') {
+        const text = String(it.text == null ? '' : it.text);
+        parts.push(text);
       } else {
         parts.push('');
       }
@@ -1615,13 +1665,15 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
   }
 
   // 词库行级校验：给可读的条目数/问题数
-  function dictLineStats(lines: Array<{ t: string; key?: string; value?: string; text?: string }>): { entries: number; problems: number } {
+  function dictLineStats(lines: Array<{ t: string; kind?: string; key?: string; value?: string; text?: string }>): { entries: number; problems: number } {
     let entries = 0;
     let problems = 0;
     for (const it of lines) {
       if (it.t === 'e') {
         entries++;
         if (!String(it.key || '').trim() || String(it.key || '').indexOf('|') >= 0) problems++;
+      } else if (it.t === 'r' && it.kind === '文本行' && !String(it.text || '').trim()) {
+        problems++;
       }
     }
     return { entries, problems };
@@ -1630,10 +1682,56 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
   router.get('/_dict/entries', (req: Request, res: Response) => {
     try {
       const file = dictFilePath(String(req.query.file || ''));
-      const raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : '';
+      // 迁移兼容：请求 词库/x.txt 但仅旧 plugins/x.txt 存在时，先回读旧文件供编辑，保存时自动落入词库目录
+      let raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : '';
+      const baseName = path.basename(file);
+      const inCidDir = path.dirname(file) === path.resolve(pluginsDir, CID_DIR);
+      if (!raw && inCidDir) {
+        const legacy = path.resolve(pluginsDir, baseName);
+        if (fs.existsSync(legacy) && fs.statSync(legacy).isFile()) raw = fs.readFileSync(legacy, 'utf-8');
+      }
       const lines = parseDictLines(raw);
       const stats = dictLineStats(lines);
-      res.json({ ok: true, fileName: path.basename(file), entries: lines, count: stats.entries, problems: stats.problems });
+      res.json({
+        ok: true,
+        fileName: (inCidDir ? CID_DIR + '/' : '') + baseName,
+        legacy: inCidDir && !fs.existsSync(file) && raw !== '',
+        format: detectFormat(String(raw || '').split(/\r?\n/)),
+        entries: lines,
+        count: stats.entries,
+        problems: stats.problems,
+      });
+    } catch (e: any) {
+      res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  // 词库文件清单：plugins/词库/*.txt/.cid（新）+ 兼容 plugins 根目录旧词库
+  router.get('/_dict/files', requireSuperMaster, (_req: Request, res: Response) => {
+    try {
+      const collect = (dir: string): string[] => {
+        if (!fs.existsSync(dir)) return [];
+        const names: string[] = [];
+        for (const name of fs.readdirSync(dir)) {
+          if (name.startsWith('.')) continue;
+          const ext = path.extname(name).toLowerCase();
+          if (ext !== '.txt' && ext !== '.cid') continue;
+          try { if (!fs.statSync(path.join(dir, name)).isFile()) continue; } catch { continue; }
+          names.push(name);
+        }
+        return names.sort((a, b) => a.localeCompare(b, 'zh-CN'));
+      };
+      const cidDir = path.join(pluginsDir, CID_DIR);
+      res.json({
+        ok: true,
+        dir: CID_DIR,
+        files: [
+          ...collect(cidDir).map((n) => ({ name: n, path: CID_DIR + '/' + n, inDir: true })),
+          ...collect(pluginsDir)
+            .filter((n) => !fs.existsSync(path.join(cidDir, n)))
+            .map((n) => ({ name: n, path: n, inDir: false })),
+        ],
+      });
     } catch (e: any) {
       res.status(400).json({ error: String((e && e.message) || e) });
     }

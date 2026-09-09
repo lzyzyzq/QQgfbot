@@ -12,9 +12,21 @@ module.exports = {
     var path = require('path');
 
     function loadDict() {
-      var dictPath = path.join(__dirname, 'plugins', 'dict.txt');
-      var configPath = ctx.config.dictDir;
-      if (configPath) dictPath = configPath;
+      var dictPath = ctx.config.dictDir || null;
+      var candidates = [];
+      if (dictPath) candidates.push(dictPath);
+      // 词库统一目录化：优先 plugins/词库/dict.txt，兼容旧 plugins/dict.txt
+      try {
+        var cwd = process.cwd();
+        candidates.push(path.join(cwd, 'plugins', '词库', 'dict.txt'));
+        candidates.push(path.join(cwd, 'plugins', 'dict.txt'));
+      } catch (e) {}
+      dictPath = null;
+      for (var c = 0; c < candidates.length; c++) {
+        try {
+          if (fs.existsSync(candidates[c]) && fs.statSync(candidates[c]).isFile()) { dictPath = candidates[c]; break; }
+        } catch (e) {}
+      }
       try {
         var text = fs.readFileSync(dictPath, 'utf8');
         var lines = text.split('\n');
@@ -30,7 +42,7 @@ module.exports = {
         ctx.logger.info('词典加载成功: ' + Object.keys(dict).length + ' 条, 路径: ' + dictPath);
         return dict;
       } catch (e) {
-        ctx.logger.error('词典加载失败: ' + e.message);
+        ctx.logger.error('词典加载失败: ' + e.message + '（可把词库放到 plugins/词库/dict.txt）');
         return {};
       }
     }
