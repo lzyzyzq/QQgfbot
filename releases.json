@@ -8,15 +8,49 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "4.2.82",
-    "changeLog": "娱乐群管：修复 QQ 群 @机器人(<@!ID>) 前缀不命中致词库零回复；词库去注释精简并补绑定主人别名/空参帮助"
+    "version": "4.2.83",
+    "changeLog": "娱乐群管命中/发送失败诊断日志；GitHub绑定兜底收窄不再抢答「绑定主人」等其他指令"
   },
   "releases": [
+    {
+      "version": "4.2.83",
+      "tag": "v4.2.83",
+      "date": "2026-09-09",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.83/qqbot-card-editor-patch-4.2.83.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.83/qqbot-card-editor-patch-4.2.83.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.83/qqbot-card-editor-patch-4.2.83.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.83.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.83/qqbot-card-editor-4.2.83.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.83/qqbot-card-editor-4.2.83.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.83/qqbot-card-editor-4.2.83.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.83.zip"
+      }
+    },
     {
       "version": "4.2.82",
       "tag": "v4.2.82",
       "date": "2026-09-09",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.82/qqbot-card-editor-patch-4.2.82.zip",
         "mirrors": [
