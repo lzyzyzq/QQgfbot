@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.84",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.84.zip",
+  "version": "4.2.85",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.85.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.84.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.85.zip"
     }
   ],
-  "changeLog": "msg_seq 按机器人持久化递增并补全纯文本序号；发送侧重复抑制；词典跳过按钮卡片与自我介绍回显（修 40054005 去重导致不回复）"
+  "changeLog": "仪表盘融入运行总览/24小时事件趋势/系统资源/实时事件feed；发送侧撤销内容去重(各机器人消息唯一)，运行记录按机器人标注名称+[appId]；msg_seq 按机器人持久化递增"
 }
