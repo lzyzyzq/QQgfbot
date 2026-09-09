@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.82",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.82.zip",
+  "version": "4.2.83",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.83.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.82.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.83.zip"
     }
   ],
-  "changeLog": "娱乐群管：修复 QQ 群 @机器人(<@!ID>) 前缀不命中致词库零回复；词库去注释精简并补绑定主人别名/空参帮助"
+  "changeLog": "娱乐群管命中/发送失败诊断日志；GitHub绑定兜底收窄不再抢答「绑定主人」等其他指令"
 }
