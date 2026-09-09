@@ -111,6 +111,7 @@ module.exports = {
         '完整消息': data.content || '',
         '昵称': nick,
         'QQ': authorId,
+        'QQ号': (data.author && (data.author.qqId || data.author.qq)) || '',
         '用户ID': authorId,
         '群号': groupId,
         '频道ID': data.channelId || '',
@@ -150,8 +151,14 @@ module.exports = {
     }
 
     function expand(t, scope) {
-      // %变量%
+      // %变量%（含特殊 %随机数A-B% 内联随机变量）
       var replaced = String(t).replace(/%([^%]+)%/g, function(_, name) {
+        var rm = name.match(/^随机数(\d+)-(\d+)$/);
+        if (rm) {
+          var lo = parseInt(rm[1], 10), hi = parseInt(rm[2], 10);
+          if (hi < lo) { var tp = lo; lo = hi; hi = tp; }
+          return String(lo + Math.floor(Math.random() * (hi - lo + 1)));
+        }
         if (scope.vars && scope.vars[name] !== undefined) return String(scope.vars[name]);
         if (scope.builtin && scope.builtin[name] !== undefined) return String(scope.builtin[name]);
         return '';
@@ -195,6 +202,21 @@ module.exports = {
         '随机文本': 'randText', '随机数': 'randInt', '计算': 'calc',
         '读': 'read', '写': 'write', '访问': 'http', '调用': 'call',
         '停止': 'stop', '空动作': 'nop', '终止匹配': 'term',
+        '延时': 'delay', '延迟': 'delay',
+        // 文本函数（v1.3 1.2 节）
+        '查找': 'find', '寻找': 'find', '寻找文本': 'find', '查找文本': 'find', 'find': 'find',
+        '替换': 'replace', '文本替换': 'replace', 'replace': 'replace',
+        '长度': 'length', '文本长度': 'length', 'length': 'length',
+        '取中间': 'substr', '截取': 'substr', '截取中间': 'substr', 'substring': 'substr',
+        '取左': 'left', '左截取': 'left', 'left': 'left',
+        '取右': 'right', '右截取': 'right', 'right': 'right',
+        '包含': 'contains', '是否包含': 'contains', 'contains': 'contains',
+        '开头': 'starts', '是否开头': 'starts', 'starts_with': 'starts',
+        '结尾': 'ends', '是否结尾': 'ends', 'ends_with': 'ends',
+        '分割取': 'splitGet', '取第': 'splitGet', 'split_get': 'splitGet',
+        '大写': 'upper', '转大写': 'upper', 'upper': 'upper', 'uppercase': 'upper',
+        '小写': 'lower', '转小写': 'lower', 'lower': 'lower', 'lowercase': 'lower',
+        '去空格': 'trim', '清除空格': 'trim', 'trim': 'trim',
         '查询机器人': 'me', '机器人信息': 'me', 'me': 'me', '我的信息': 'me', 'get_me': 'me', '网关信息': 'me', 'get_ws_url': 'me',
         '禁言': 'mute', '禁言成员': 'mute', 'mute_member': 'mute',
         '取消禁言': 'unmute', '解除禁言': 'unmute', '取消禁言成员': 'unmute', '解禁': 'unmute', 'cancel_mute_member': 'unmute',
@@ -213,7 +235,17 @@ module.exports = {
         scope.outputs.push(q);
         return { value: '' };
       }
-      if (fn === 'img') { scope.outputs.push('[图片] ' + interp(arg, scope)); return { value: '' }; }
+      if (fn === 'img') {
+        var imgArg = interp(arg, scope);
+        var botI = scope.bot || {};
+        // 群/C2C 优先走富媒体发送；不可用时给提示文本（不伪造成功）
+        try {
+          if (scope.data.groupId && botI.sendImageGroup) { botI.sendImageGroup(scope.data.groupId, imgArg, scope.data.id).catch(function(){}); return { value: '' }; }
+          if (scope.data.author && scope.data.author.id && botI.sendImagePrivate) { botI.sendImagePrivate(scope.data.author.id, imgArg, scope.data.id).catch(function(){}); return { value: '' }; }
+        } catch (e) {}
+        scope.outputs.push('[图片] ' + imgArg + '（当前机器人未配置图片发送）');
+        return { value: '' };
+      }
       if (fn === 'btn') { sendButtons(scope, interp(arg, scope)); return { value: '' }; }
       if (fn === 'recall') {
         var rid = interp(arg, scope) || scope.data.id || '';
@@ -238,8 +270,16 @@ module.exports = {
       if (fn === 'calc') { return { value: safeCalc(interp(arg, scope)) }; }
       if (fn === 'read') { return { value: readStore(arg, scope) }; }
       if (fn === 'write') { writeStore(arg, scope); return { value: '' }; }
-      if (fn === 'http') { httpGet(arg, scope); return { value: '' }; }
-      if (fn === 'call') { callRule(arg, scope); return { value: '' }; }
+      if (fn === 'http') {
+        var url = interp(arg, scope).trim();
+        return { value: httpGetSync(url) };
+      }
+      if (fn === 'call') { doCall(arg, scope, 0); return { value: '' }; }
+      if (fn === 'delay') { doCall(arg, scope, -1); return { value: '' }; }
+      // 文本函数（返回纯值，无副作用）
+      if (['find', 'replace', 'length', 'substr', 'left', 'right', 'contains', 'starts', 'ends', 'splitGet', 'upper', 'lower', 'trim'].indexOf(fn) >= 0) {
+        return { value: textFunc(fn, arg, scope) };
+      }
       if (fn === 'stop') { scope.stop = true; return { value: '' }; }
       if (fn === 'term') { scope.term = true; scope.stop = true; return { value: '' }; }
       if (fn === 'nop') { return { value: '' }; }
@@ -250,7 +290,8 @@ module.exports = {
         return { value: me };
       }
       if (fn === 'mute' || fn === 'unmute' || fn === 'kick' || fn === 'muteall' || fn === 'unmuteall') {
-        doGroupAction(fn, arg, scope);
+        var rmsg = doGroupAction(fn, arg, scope);
+        if (rmsg) { scope.outputs.push(rmsg); }
         return { value: '' };
       }
       // 未识别命令：不编造回复，仅记录
@@ -286,19 +327,17 @@ module.exports = {
         fs.writeFileSync(full, content, 'utf8');
       } catch (e) { try { ctx.logger.error('[娱乐群管] 写失败: ' + e.message); } catch(x){} }
     }
-    function httpGet(arg, scope) {
-      var url = interp(arg, scope).trim();
-      if (!/^https?:\/\//i.test(url)) return;
-      var ctrl = new AbortController();
-      var timer = setTimeout(function(){ try { ctrl.abort(); } catch(e){} }, 8000);
-      fetch(url, { signal: ctrl.signal }).then(function(r){ return r.text(); }).then(function(t){
-        clearTimeout(timer);
-        scope.outputs.push(String(t || '').slice(0, 500));
-      }).catch(function(e){
-        clearTimeout(timer);
-        try { ctx.logger.warn('[娱乐群管] 访问失败: ' + e.message); } catch(x){}
-      });
+    function httpGetSync(url) {
+      if (!/^https?:\/\//i.test(url)) return '';
+      var cp = null;
+      try { cp = require('child_process'); } catch (e) {}
+      if (!cp || typeof cp.execFileSync !== 'function') return '';
+      try {
+        var buf = cp.execFileSync('curl', ['-s', '--max-time', '8', url], { encoding: 'utf8', maxBuffer: 1024 * 1024 });
+        return String(buf || '').slice(0, 1000);
+      } catch (e) { return ''; }
     }
+
     function expandVars(t, scope) {
       return String(t).replace(/%([^%]+)%/g, function(_, name) {
         if (scope.vars && scope.vars[name] !== undefined) return String(scope.vars[name]);
@@ -307,14 +346,79 @@ module.exports = {
       });
     }
 
-    function callRule(arg, scope) {
-      var toks = arg.split(/\s+/).filter(Boolean).map(function(x){ return expandVars(x, scope); });
+    // 参数分割：含 | 时按 | 分隔（v1.3：参数/规则名含空格用 |），否则按空格
+    function splitArgs(s) {
+      if (s.indexOf('|') >= 0) return s.split('|').map(function(t){ return t.trim(); }).filter(function(x){ return x !== ''; });
+      return s.split(/\s+/).filter(function(x){ return x !== ''; });
+    }
+
+    function findRuleByNameOrTrigger(name) {
+      for (var i = 0; i < RULES.length; i++) {
+        if (RULES[i].name === name) return RULES[i];
+      }
+      for (var j = 0; j < RULES.length; j++) {
+        for (var t = 0; t < RULES[j].triggers.length; t++) {
+          if (RULES[j].triggers[t] === name) return RULES[j];
+        }
+      }
+      return null;
+    }
+
+    // $调用/$延时：支持 $调用 规则 参数…$、$调用 毫秒 回调$、$调用 规则|参数1|参数2$、$延时 毫秒 回调$
+    function doCall(arg, scope, delayMode) {
+      var toks = splitArgs(expandVars(arg, scope));
       var name = toks.shift() || '';
-      var rule = null;
-      for (var i = 0; i < RULES.length; i++) if (RULES[i].name === name) { rule = RULES[i]; break; }
+      var ms = 0;
+      if (/^\d+$/.test(name)) { ms = parseInt(name, 10); name = toks.shift() || ''; }
+      if (!name) { try { ctx.logger.warn('[娱乐群管] 调用缺少目标规则'); } catch(e){} return; }
+      var rule = findRuleByNameOrTrigger(name);
       if (!rule) { try { ctx.logger.warn('[娱乐群管] 未找到子规则: ' + name); } catch(e){} return; }
-      var sub = newScope(scope.data, toks);
-      runLines(rule, sub);
+      if (delayMode < 0 && ms === 0) ms = 1; // 显式 $延时$ 未给毫秒时视为立即排队
+      var run = function() {
+        try {
+          var sub = newScope(scope.data, toks);
+          runLines(rule, sub);
+          flushOutputs(sub);
+        } catch (e) { try { ctx.logger.error('[娱乐群管] 延时回调异常: ' + e.message); } catch(x){} }
+      };
+      if (ms > 0) {
+        var tid = setTimeout(run, ms);
+        try {
+          if (tid.unref) tid.unref();
+          if (ctx.__entertainment_lzyqzb_timers) ctx.__entertainment_lzyqzb_timers.push(tid);
+        } catch (e) {}
+      } else {
+        run();
+      }
+    }
+
+    function textFunc(fn, arg, scope) {
+      var A = splitArgs(interp(arg, scope));
+      var s = A[0] || '', b = A[1] || '', c = A[2] || '', idx;
+      switch (fn) {
+        case 'find': return String(s.indexOf(b));
+        case 'length': return String(Array.from(s).length);
+        case 'contains': return s.indexOf(b) >= 0 ? '1' : '0';
+        case 'starts': return s.slice(0, b.length) === b ? '1' : '0';
+        case 'ends': return s.slice(-b.length) === b ? '1' : '0';
+        case 'upper': return s.toUpperCase();
+        case 'lower': return s.toLowerCase();
+        case 'trim': return s.trim();
+        case 'replace': return s.split(b).join(c);
+        case 'substr':
+          idx = Math.max(0, parseInt(b, 10) || 0);
+          return (A[2] !== undefined && A[2] !== '' ? Array.from(s).slice(idx, idx + Math.max(0, parseInt(A[2], 10) || 0)) : Array.from(s).slice(idx)).join('');
+        case 'left':
+          idx = Math.max(0, parseInt(b, 10) || 0);
+          return Array.from(s).slice(0, idx).join('');
+        case 'right':
+          idx = Math.max(0, parseInt(b, 10) || 0);
+          return Array.from(s).slice(-idx).join('');
+        case 'splitGet':
+          idx = isNaN(parseInt(c, 10)) ? 0 : parseInt(c, 10);
+          return s.split(b)[idx] !== undefined ? s.split(b)[idx] : '';
+      }
+      return '';
     }
 
     // 键盘按钮
@@ -356,6 +460,7 @@ module.exports = {
     }
 
     // 群管动作映射（QQ 官方群机器人开放能力；频道/其它由调用方权限决定）
+    // 返回：动作无法执行时的提示文本（'' 表示已受理/静默成功）
     function doGroupAction(fn, arg, scope) {
       var raw = interp(arg, scope);
       var kv = {};
@@ -369,27 +474,32 @@ module.exports = {
       var duration = parseInt(kv.mute_seconds || kv.duration || '60', 10);
       if (isNaN(duration)) duration = 60;
       var bot = scope.bot;
-      if (!group || !bot) return;
-      if (fn === 'mute' && target && bot.muteMember) {
-        bot.muteMember(group, target, duration).catch(function(e){ try { ctx.logger.warn('[娱乐群管] 禁言失败: ' + e.message); } catch(x){} });
-      } else if (fn === 'unmute' && target && bot.unmuteMember) {
-        bot.unmuteMember(group, target).catch(function(e){});
-      } else if (fn === 'kick' && target && bot.kickMember) {
-        bot.kickMember(group, target).catch(function(e){});
+      if (!group || !bot) return '';
+      var errNo = '';
+      if (fn === 'mute' || fn === 'unmute' || fn === 'kick') {
+        if (!target) return '⚠️ ' + (fn === 'kick' ? '踢出' : '禁言') + ' 未执行：未能识别目标成员（请 @ 对方后再试）';
+        if (fn === 'mute' && bot.muteMember) { bot.muteMember(group, target, duration).catch(function(e){}); return ''; }
+        if (fn === 'unmute' && bot.unmuteMember) { bot.unmuteMember(group, target).catch(function(e){}); return ''; }
+        if (fn === 'kick' && bot.kickMember) { bot.kickMember(group, target).catch(function(e){}); return ''; }
+        errNo = '当前机器人未开放' + (fn === 'kick' ? '踢出成员' : fn === 'unmute' ? '取消禁言' : '禁言成员') + '接口';
       } else if (fn === 'muteall' && bot.muteAll) {
         bot.muteAll(group, true, duration).catch(function(e){});
+        return '';
       } else if (fn === 'unmuteall' && bot.muteAll) {
         bot.muteAll(group, false).catch(function(e){});
-      } else {
-        try { ctx.logger.warn('[娱乐群管] 当前机器人未开放该群管接口: ' + fn + (target ? '' : '（目标未解析）')); } catch(e){}
+        return '';
+      } else if (fn === 'muteall' || fn === 'unmuteall') {
+        errNo = '当前机器人未开放全体禁言接口';
       }
+      try { ctx.logger.warn('[娱乐群管] 群管动作未执行: ' + fn + (errNo ? ' ' + errNo : '')); } catch(e){}
+      return errNo ? '⚠️ ' + errNo + '，已记录日志。' : '';
     }
     function parseMember(s) {
       s = String(s || '').trim();
-      var m = s.match(/^<@([0-9A-Fa-f]{16,})>$/);
+      var m = s.match(/^<@!?([0-9A-Za-z_\-]{16,64})>$/);
       if (m) return m[1];
-      if (/^[0-9A-Fa-f]{20,}$/.test(s)) return s;
-      return ''; // 数字QQ/昵称在 openid 体系下无法定位
+      if (/^[0-9A-Za-z_\-]{16,64}$/.test(s)) return s;
+      return ''; // 数字QQ/昵称在 openid 体系下无法直接定位
     }
 
     // ---------- 规则执行 ----------
@@ -500,25 +610,44 @@ module.exports = {
 
     function flushOutputs(scope) {
       var out = scope.outputs || [];
-      for (var i = 0; i < out.length; i++) {
-        var o = out[i];
-        if (o == null || o === '') continue;
-        var msgId = scope.data.id;
+      var buf = [];
+      var msgId = scope.data.id;
+      function sendBuf() {
+        if (!buf.length) return;
+        var text = String(buf.join('\n')).replace(/\\n/g, '\n');
+        buf = [];
         try {
-          if (typeof o === 'object' && o.md) {
-            if (scope.data.groupId && scope.bot && scope.bot.sendMarkdownGroup) scope.bot.sendMarkdownGroup(scope.data.groupId, o.md, msgId);
-            else if (scope.data.author && scope.data.author.id && scope.bot && scope.bot.sendMarkdownPrivate) scope.bot.sendMarkdownPrivate(scope.data.author.id, o.md, msgId);
-            continue;
-          }
-          var text = String(o).replace(/\\n/g, '\n');
-          if (scope.data.groupId) scope.bot.sendGroupMessage(scope.data.groupId, text, msgId);
-          else if (scope.data.channelId && scope.bot.sendMessage) scope.bot.sendMessage(scope.data.channelId, text, msgId);
+          if (scope.data.groupId && scope.bot && scope.bot.sendGroupMessage) scope.bot.sendGroupMessage(scope.data.groupId, text, msgId);
+          else if (scope.data.channelId && scope.bot && scope.bot.sendMessage) scope.bot.sendMessage(scope.data.channelId, text, msgId);
           else if (scope.data.author && scope.data.author.id && scope.bot.sendPrivateMessage) scope.bot.sendPrivateMessage(scope.data.author.id, text, msgId);
         } catch (e) {}
       }
+      for (var i = 0; i < out.length; i++) {
+        var o = out[i];
+        if (o == null) continue;
+        if (typeof o === 'object' && o.md) {
+          sendBuf();
+          try {
+            if (scope.data.groupId && scope.bot && scope.bot.sendMarkdownGroup) scope.bot.sendMarkdownGroup(scope.data.groupId, o.md, msgId);
+            else if (scope.data.author && scope.data.author.id && scope.bot && scope.bot.sendMarkdownPrivate) scope.bot.sendMarkdownPrivate(scope.data.author.id, o.md, msgId);
+          } catch (e) {}
+          continue;
+        }
+        var s = String(o);
+        if (s === '') continue;
+        buf.push(s);
+      }
+      sendBuf();
     }
 
     // 重新加载词库（管理页保存后触发 engine.reload 重跑 onEnable；另做 mtime 热侦测兜底）
+    // 延时回调定时器统一登记，reload/停用时清理，避免重复计时与句柄泄漏
+    if (ctx.__entertainment_lzyqzb_timers) {
+      ctx.__entertainment_lzyqzb_timers.forEach(function(t){ try { clearTimeout(t); } catch(e){} });
+      ctx.__entertainment_lzyqzb_timers = [];
+    } else {
+      ctx.__entertainment_lzyqzb_timers = [];
+    }
     var lastMtime = 0;
     try { var st = fs.statSync(FILE_PATH); lastMtime = st.mtimeMs; } catch (e) {}
     var mtimeTimer = setInterval(function(){
@@ -552,6 +681,10 @@ module.exports = {
   },
 
   onDisable: function(ctx) {
+    if (ctx.__entertainment_lzyqzb_timers) {
+      ctx.__entertainment_lzyqzb_timers.forEach(function(t){ try { clearTimeout(t); } catch(e){} });
+      ctx.__entertainment_lzyqzb_timers = [];
+    }
     ctx.logger.info('娱乐群管插件已禁用');
   }
 };
