@@ -8,15 +8,49 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "4.2.79",
-    "changeLog": "修复线上 DIC 词库污染（真正携带文件版）：plugins/dict.txt 覆盖为干净版（# 引导注释 + 空空|我是空空爱追剧娱乐机器人，主人QQ511742399！），清除被官方 key|value 解析误拆的 8 个 lzyzqzb 语法行与 280 余注释行；同包固化娱乐群管 lzyzqzb 词库与解释引擎插件（file-娱乐群管 自动注册启用）及词库管理页文件切换。线上升级完成后请重启服务一次并重进词库管理页确认"
+    "version": "4.2.80",
+    "changeLog": "修复：群消息误走频道接口(11263)；补发娱乐群管引擎与词库(4.2.79 漏包)；词典回复群内回复修复"
   },
   "releases": [
+    {
+      "version": "4.2.80",
+      "tag": "v4.2.80",
+      "date": "2026-09-09",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.80/qqbot-card-editor-patch-4.2.80.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.80/qqbot-card-editor-patch-4.2.80.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.80/qqbot-card-editor-patch-4.2.80.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.80.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.80/qqbot-card-editor-4.2.80.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.80/qqbot-card-editor-4.2.80.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.80/qqbot-card-editor-4.2.80.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.80.zip"
+      }
+    },
     {
       "version": "4.2.79",
       "tag": "v4.2.79",
       "date": "2026-09-08",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.79/qqbot-card-editor-patch-4.2.79.zip",
         "mirrors": [
@@ -750,5 +784,5 @@
     "category": "General",
     "categoryId": "DIC_kwDOULngW84DEvUl"
   },
-  "generatedAt": "2026-09-08T00:00:00.000Z"
+  "generatedAt": "2026-09-09T00:00:00.000Z"
 }
