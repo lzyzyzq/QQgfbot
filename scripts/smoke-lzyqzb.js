@@ -52,6 +52,9 @@ function fire(content, authorId) {
   r = await fire('设置主人 999999');
   check('设置主人错误码→❌ 且不写盘', r.sent.length === 1 && r.sent[0].c.indexOf('认证码错误') >= 0, r.sent);
 
+  r = await fire('绑定主人');
+  check('裸绑定主人→给帮助不静默', r.sent.length === 1 && r.sent[0].c.indexOf('设置主人 认证码') >= 0, r.sent);
+
   r = await fire('抓猪');
   const c = r.sent.map((x) => x.c).join('\n');
   check('抓猪两条回复且统计累计', /🐷 .*只|🐷/.test(c) && /累计抓猪 1 次/.test(c), r.sent);
@@ -95,6 +98,8 @@ function fire(content, authorId) {
   // 认证成功路径：绑定主人（词库认证码 = 511742399）
   r = await fire('设置主人 511742399');
   check('设置主人 绑定成功写盘', r.sent.length === 1 && r.sent[0].c.indexOf('✅') >= 0, r.sent);
+  r = await fire('绑定主人 511742399');
+  check('绑定主人 别名同样可绑', r.sent.length === 1 && r.sent[0].c.indexOf('✅') >= 0, r.sent);
   r = await fire('禁言 <@DDEEFF00112233445566778899AABB>', 'AABBCCDDEEFF001122334455667788');
   check('绑定后 禁言动作(mock)执行', r.sent.some((x) => x.act === 'mute'), r.sent);
 

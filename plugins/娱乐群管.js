@@ -588,8 +588,9 @@ module.exports = {
     // 找到首个命中规则执行（同触发去重已在解析期完成），返回是否命中
     function tryReply(data) {
       var content = String(data.content || '').trim();
-      // 仅剥离前导 @机器人 提及（<@OPENID>），句中 @目标 openid 作为触发参数保留
-      var clean = /^<@[0-9A-Fa-f]{16,}>/.test(content) ? content.replace(/^<@[0-9A-Fa-f]{16,}>/, '').trim() : content;
+      // 剥离前导 @机器人 提及（兼容 <@ID> 与 <@!ID>，QQ 群提到可能带 !），
+      // 句中 @目标 openid 作为触发参数保留（禁言/留言等需要）
+      var clean = content.replace(/^\s*<@!?[0-9A-Za-z_-]{16,64}>\s*/, '').trim();
       if (!clean) return false;
       var paramsArr = [];
       var hit = null;
