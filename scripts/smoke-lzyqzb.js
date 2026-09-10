@@ -171,6 +171,13 @@ function fire(content, authorId) {
   const runTxt = fsLib.readFileSync(path.join(__dirname, '..', 'plugins', '词库', '娱乐群管.txt'), 'utf8');
   check('默认词库与运行目录副本一致', rootTxt === runTxt);
 
+  // ---- 4.2.92：重启广播外显链接走 markdown；全局外显关闭时退回纯文字，绝不回显源码 ----
+  const rc = require(path.join(__dirname, '..', 'plugins', '重启控制.js'));
+  const stOn = rc.statusText({ botName: 'Bot', memTotalMb: 2048, memUsedMb: 1024, memPct: 50 }, '', { link: ctx.link });
+  check('重启广播外显 markdown', stOn.indexOf('[测试菜单](mqqapi://aio/') >= 0, stOn);
+  const stOff = rc.statusText({ memTotalMb: 2048, memUsedMb: 1024, memPct: 50 }, '', { link: { mode: () => 'off', linkify: (t) => t } });
+  check('外显关闭→纯文字标签且无源码', stOff.indexOf('mqqapi://') < 0 && stOff.indexOf('📌 菜单：测试菜单') >= 0, stOff);
+
   require('fs').rmSync(process.env.LZYQZB_DATA_DIR,{recursive:true,force:true});console.log('\n== ' + ok + ' passed, ' + fail + ' failed ==');
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(2); });

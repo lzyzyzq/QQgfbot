@@ -122,12 +122,20 @@ module.exports = {
         if (!st) continue;
         var list = (groups && groups.groups) || [];
         var s = st.status ? st.status : null;
-        var text = self.statusText(s, restartTxt);
+        var text = self.statusText(s, restartTxt, ctx);
+        // 外显链接必须走 markdown 发送才会渲染成可点文字；纯文本会把 markdown 源码原样显示
+        var hasLink = /\]\(mqqapi:\/\//.test(text);
+        var plainText = text.replace(/\[([^\]]+)\]\(mqqapi:\/\/[^)]*\)/g, '$1');
         for (var i = 0; i < list.length; i++) {
           var gid = list[i] && (list[i].id || list[i].groupId || list[i].groupOpenid);
           if (!gid) continue;
           try {
-            await ctx.bot.sendGroupMessage(gid, text);
+            if (hasLink && ctx.bot.sendMarkdownGroup) {
+              var r = await ctx.bot.sendMarkdownGroup(gid, text);
+              if (!r) await ctx.bot.sendGroupMessage(gid, plainText);
+            } else {
+              await ctx.bot.sendGroupMessage(gid, hasLink ? plainText : text);
+            }
             sentAny = true;
           } catch (e) {}
           if (st.base64) {
@@ -157,7 +165,8 @@ module.exports = {
     return m + '分' + (s > 0 ? s + '秒' : '');
   },
 
-  statusText: function(s, restartTxt) {
+  statusText: function(s, restartTxt, ctx) {
+    var self = this;
     var lines = [];
     if (restartTxt) {
       lines.push(restartTxt);
@@ -177,8 +186,11 @@ module.exports = {
     if (s && s.uptimeText) lines.push('⏱ 本次运行：' + s.uptimeText);
     if (s && s.port) lines.push('端口：' + s.port);
     lines.push('━━━━━━━━━━━━━━');
-    // 外显文字指令菜单：点击直接触发「测试菜单」（enter=false 不自动发送，reply=false 不引用）
-    lines.push('📌 菜单：[' + MENU_LABEL + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(MENU_CMD) + '&enter=false&reply=false)');
+    // 外显文字指令菜单：点击直接触发「测试菜单」；受全局「文字外显模式」控制（关闭时退回纯文字标签）
+    var menuText = (ctx && ctx.link && typeof ctx.link.linkify === 'function')
+      ? ctx.link.linkify(MENU_LABEL, MENU_CMD)
+      : MENU_LABEL;
+    lines.push('📌 菜单：' + menuText);
     lines.push(restartTxt ? '服务已重启就绪，开始正常工作' : '服务已就绪');
     return lines.join('\n');
   },
