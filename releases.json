@@ -8,15 +8,49 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "4.2.91",
-    "changeLog": "娱乐群管菜单完整化：新增功能大全/指令大全，主菜单与管理菜单补齐入口并支持 url 跳转按钮；引擎新增群消息/单聊消息/发送频道消息/艾特命令，按钮支持 url: 与 at: 语义"
+    "version": "4.2.92",
+    "changeLog": "修复重启控制状态广播的菜单外显：含 mqqapi 链接的状态文本改走 sendMarkdownGroup，群里显示为可点外显文字；markdown 失败或无外显权限时自动退回纯文字标签，杜绝显示 markdown 源码；同时修复 statusText 内存行引用未定义 self 的崩溃。新增 2 项冒烟断言。"
   },
   "releases": [
+    {
+      "version": "4.2.92",
+      "tag": "v4.2.92",
+      "date": "2026-09-10",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.92/qqbot-card-editor-patch-4.2.92.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.92/qqbot-card-editor-patch-4.2.92.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.92/qqbot-card-editor-patch-4.2.92.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.92.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.92/qqbot-card-editor-4.2.92.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.92/qqbot-card-editor-4.2.92.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.92/qqbot-card-editor-4.2.92.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.92.zip"
+      }
+    },
     {
       "version": "4.2.91",
       "tag": "v4.2.91",
       "date": "2026-09-10",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.91/qqbot-card-editor-patch-4.2.91.zip",
         "mirrors": [
