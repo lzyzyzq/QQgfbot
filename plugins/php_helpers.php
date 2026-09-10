@@ -199,7 +199,11 @@ function __php_ctx($k) {
 // 目标上下文缺失时返回 false（回退累积，脚本结束时由服务端补发），避免回复丢失。
 function __php_send_immediate($reply) {
   $base = __php_bridge_url();
-  if ($base === '') return false;
+  if ($base === '') {
+    // 桥接地址缺失：无法即时发送，回退脚本结束统一补发（提示到 stderr 便于服务端日志排查"没回应"）
+    if (!defined('__PHP_BRIDGE_WARNED')) { define('__PHP_BRIDGE_WARNED', 1); fwrite(STDERR, "php plugin: bridge url empty, replies will be flushed at script end\n"); }
+    return false;
+  }
   $t = __php_ctx('TYPE');
   $gid = __php_ctx('GROUP_ID');
   $uid = __php_ctx('USER_ID');
@@ -486,6 +490,7 @@ function 更新配置() {
     'fullUrl' => (string)($bridge['fullUrl'] ?? ''),
     'changeLog' => (string)($bridge['changeLog'] ?? ''),
     'configUrl' => trim((string)($bridge['configUrl'] ?? '')),
+    'botName' => trim((string)($bridge['botName'] ?? '')),
   );
   $cfg = $local;
   $cfg['sourceUrl'] = '';
@@ -497,7 +502,11 @@ function 更新配置() {
     foreach (preg_split('/[\s,]+/', $cfg['configUrl']) as $u) { $u = trim($u); if ($u !== '') $urls[] = $u; }
   }
   foreach (array(
+    // 8091 主源优先（快且稳），其后为 GitHub / 镜像兜底，任一可达即用，全部失败再回退本机面板配置
     'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json',
+    'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/update-config.json',
+    'https://lzyzyzq.github.io/QQgfbot/update-config.json',
+    'https://raw.gitmirror.com/lzyzyzq/QQgfbot/main/update-config.json',
   ) as $u) $urls[] = $u;
 
   foreach (array_unique($urls) as $u) {
@@ -771,8 +780,13 @@ function 外显($label, $cmd) {
 function inline_link($label, $cmd) { return 外显($label, $cmd); }
 
 // Markdown 快捷回复（文字外显链接需 markdown 才可点击）
+// 与 文字/图片 一致：有桥接立即发送并移出累积，避免长任务（更新/下载）超时导致按钮丢失
 function Markdown($content) {
+  $idx = count($GLOBALS['__PHP_REPLIES']);
   $GLOBALS['__PHP_REPLIES'][] = array('type' => 'markdown', 'content' => (string)$content);
+  if (__php_send_immediate(array('type' => 'markdown', 'content' => (string)$content))) {
+    unset($GLOBALS['__PHP_REPLIES'][$idx]);
+  }
   return true;
 }
 function send_markdown($content) { return Markdown($content); }

@@ -140,6 +140,9 @@ if (!终端授权($群, $用户)) {
 
 // ========== 更新配置与版本对比 ==========
 $cfg = 更新配置();
+// 机器人标识：多机器人同群时，提醒中标明是哪个机器人发的（取自桥接 update-config）
+$机器人 = trim((string)($cfg['botName'] ?? ''));
+$前缀 = $机器人 !== '' ? ('[' . $机器人 . '] ') : '';
 $版本 = $cfg['version'] !== '' ? $cfg['version'] : '4.2.59';
 $当前 = 当前版本();
 if ($当前 === '') { $当前 = $版本; 记录当前版本($版本); } // 首次以更新包版本为基线
@@ -156,8 +159,8 @@ function 更新按钮行() {
          外显('更新记录', '更新记录') . '　' . 外显('返回更新', '返回更新') . '　' . 外显('返回菜单', '菜单');
 }
 
-function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at, $caption = '', $remoteOk = true) {
-  if ($caption === '') $caption = $at . "「更新系统」";
+function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at, $caption = '', $remoteOk = true, $前缀 = '') {
+  if ($caption === '') $caption = $at . "\n" . $前缀 . "「更新系统」";
   文字($caption);
   $records = 更新记录('读取');
   $lastUpdate = '';
@@ -178,7 +181,7 @@ function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
     图片($img, '', '更新系统.png');
   } else {
     $状态行 = $hasUpdate ? ("⚠️ 发现新版本 v" . $版本) : ($remoteOk ? ("✅ 已是最新版本 v" . $当前) : "⚠️ 未能确认最新版本（更新源不可达）");
-    文字("当前版本：" . $当前 . "\n更新包版本：" . $版本 . "\n" . $状态行 . "\n\n【更新内容】\n" . $changelog);
+    文字($前缀 . "当前版本：" . $当前 . "\n更新包版本：" . $版本 . "\n" . $状态行 . "\n\n【更新内容】\n" . $changelog);
   }
   Markdown("　" . 更新按钮行());
 }
@@ -187,7 +190,7 @@ function 发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
 
 // 更新菜单
 if ($消息 === '更新' || $消息 === '更新菜单' || $消息 === '返回更新') {
-  发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at, '', $remoteOk);
+  发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at, '', $remoteOk, $前缀);
   exit(0);
 }
 
@@ -198,19 +201,19 @@ if (前缀($消息, '更新补丁') || 前缀($消息, '更新全量')) {
   $kind = $isPatch ? '补丁包' : '全量包';
 
   if (count($urls) === 0) {
-    文字($at . "\n未配置" . $kind . "下载地址。请在管理面板「系统设置 → 更新系统配置」中填写更新包地址。");
+    文字($at . "\n" . $前缀 . "未配置" . $kind . "下载地址。请在管理面板「系统设置 → 更新系统配置」中填写更新包地址。");
     exit(0);
   }
   if (!$hasUpdate && $当前 !== '') {
-    文字($at . "\n当前版本（" . $当前 . "）已不低于更新包版本（" . $版本 . "），无需升级。");
+    文字($at . "\n" . $前缀 . "当前版本（" . $当前 . "）已不低于更新包版本（" . $版本 . "），无需升级。");
     exit(0);
   }
   if ($当前 !== '' && 版本比较($版本, $当前) === 0) {
-    文字($at . "\n当前已是最新版本（" . $版本 . "），无需重复更新。");
+    文字($at . "\n" . $前缀 . "当前已是最新版本（" . $版本 . "），无需重复更新。");
     exit(0);
   }
 
-  文字($at . "\n⏳ 正在下载" . $kind . " v" . $版本 . "（" . count($urls) . " 个候选源，主源失败自动切换）…");
+  文字($at . "\n" . $前缀 . "⏳ 正在下载" . $kind . " v" . $版本 . "（" . count($urls) . " 个候选源，主源失败自动切换）…");
 
   $zip = 更新数据目录() . '/update-' . ($isPatch ? 'patch' : 'full') . '.zip';
   $dlUrl = '';
@@ -218,24 +221,24 @@ if (前缀($消息, '更新补丁') || 前缀($消息, '更新全量')) {
     if (下载文件($u, $zip)) { $dlUrl = $u; break; }
   }
   if ($dlUrl === '') {
-    文字($at . "\n❌ 下载失败（候选源均不可用：\n" . implode("\n", $urls) . "）。");
+    文字($at . "\n" . $前缀 . "❌ 下载失败（候选源均不可用：\n" . implode("\n", $urls) . "）。");
     exit(0);
   }
   $root = 更新根目录();
   if (!function_exists('exec')) {
-    文字($at . "\n❌ 服务器未启用 PHP exec，无法自动解压/重启。\n请手动执行：\ncd " . $root . " && unzip -o " . $zip . " && pm2 restart qqbot");
+    文字($at . "\n" . $前缀 . "❌ 服务器未启用 PHP exec，无法自动解压/重启。\n请手动执行：\ncd " . $root . " && unzip -o " . $zip . " && pm2 restart qqbot");
     exit(0);
   }
   // 校验
   exec('cd ' . escapeshellarg($root) . ' && unzip -t ' . escapeshellarg($zip) . ' 2>&1', $tOut, $tCode);
   if ($tCode !== 0) {
-    文字($at . "\n❌ 压缩包校验失败（服务器未安装 unzip 或文件损坏）。");
+    文字($at . "\n" . $前缀 . "❌ 压缩包校验失败（服务器未安装 unzip 或文件损坏）。");
     exit(0);
   }
   // 解压
   exec('cd ' . escapeshellarg($root) . ' && unzip -o ' . escapeshellarg($zip) . ' 2>&1', $uOut, $uCode);
   if ($uCode !== 0) {
-    文字($at . "\n❌ 解压失败：\n" . implode("\n", array_slice($uOut, 0, 5)));
+    文字($at . "\n" . $前缀 . "❌ 解压失败：\n" . implode("\n", array_slice($uOut, 0, 5)));
     exit(0);
   }
   @unlink($zip);
@@ -243,7 +246,7 @@ if (前缀($消息, '更新补丁') || 前缀($消息, '更新全量')) {
   记录当前版本($版本);
   更新记录('追加', array('type' => $kind, 'version' => $版本, 'time' => 当前时间(), 'content' => $changelog));
 
-  文字($at . "\n✅ 更新完成！已升级到 v" . $版本 . "（" . $kind . "）。\n\n【本轮更新内容】\n" . $changelog . "\n\n3 秒后自动重启机器人…");
+  文字($at . "\n" . $前缀 . "✅ 更新完成！已升级到 v" . $版本 . "（" . $kind . "）。\n\n【本轮更新内容】\n" . $changelog . "\n\n3 秒后自动重启机器人…");
   Markdown("　" . 外显('返回更新', '返回更新') . '　' . 外显('返回菜单', '菜单'));
   延迟重启机器人(3);
   exit(0);
@@ -253,16 +256,16 @@ if (前缀($消息, '更新补丁') || 前缀($消息, '更新全量')) {
 if ($消息 === '检查更新' || 前缀($消息, '检查更新')) {
   if ($hasUpdate) {
     发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
-      $at . "\n⚠️ 发现新版本 v" . $版本 . "（当前 v" . $当前 . "），更新内容见下图，可发送「更新补丁」或「更新全量」升级。",
-      $remoteOk);
+      $at . "\n" . $前缀 . "⚠️ 发现新版本 v" . $版本 . "（当前 v" . $当前 . "），更新内容见下图，可发送「更新补丁」或「更新全量」升级。",
+      $remoteOk, $前缀);
   } elseif (!$remoteOk) {
     发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
-      $at . "\n⚠️ 未能确认最新版本：更新源（update-config.json）不可达。当前部署 v" . $当前 . "。\n请稍后重试，或检查管理面板「系统设置 → 更新系统配置」的网络与地址。",
-      $remoteOk);
+      $at . "\n" . $前缀 . "⚠️ 未能确认最新版本：更新源（update-config.json）不可达。当前部署 v" . $当前 . "。\n请稍后重试，或检查管理面板「系统设置 → 更新系统配置」的网络与地址。",
+      $remoteOk, $前缀);
   } else {
     发送更新菜单($版本, $当前, $cfg, $changelog, $hasUpdate, $at,
-      $at . "\n✅ 已检查更新：当前版本 v" . $当前 . " 已是最新，无需升级。",
-      $remoteOk);
+      $at . "\n" . $前缀 . "✅ 已检查更新：当前版本 v" . $当前 . " 已是最新，无需升级。",
+      $remoteOk, $前缀);
   }
   exit(0);
 }
@@ -270,12 +273,12 @@ if ($消息 === '检查更新' || 前缀($消息, '检查更新')) {
 // 更新记录（读取列表）
 if (前缀($消息, '更新记录') || 前缀($消息, '更新列表')) {
   $list = 更新记录('读取');
-  if (count($list) === 0) { 文字($at . "\n暂无更新记录。"); exit(0); }
+  if (count($list) === 0) { 文字($at . "\n" . $前缀 . "暂无更新记录。"); exit(0); }
   $rows = array();
   foreach ($list as $i => $it) {
     $rows[] = ($i + 1) . ". [" . ($it['time'] ?? '') . "] " . ($it['type'] ?? '') . " v" . ($it['version'] ?? '') . "\n   " . mb_substr(str_replace("\n", ' ', $it['content'] ?? ''), 0, 40);
   }
-  文字($at . "\n📋 更新记录（共 " . count($list) . " 条）：\n" . implode("\n", $rows) . "\n\n发送「删除更新记录 序号」可删除对应记录。");
+  文字($at . "\n" . $前缀 . "📋 更新记录（共 " . count($list) . " 条）：\n" . implode("\n", $rows) . "\n\n发送「删除更新记录 序号」可删除对应记录。");
   Markdown("　" . 外显('删除更新记录', '删除更新记录') . '　' . 外显('返回更新', '返回更新'));
   exit(0);
 }

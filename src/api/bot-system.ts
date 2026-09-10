@@ -999,6 +999,8 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
 // 说明：该接口数据仅为版本号/下载地址/更新文案，无敏感信息，允许跨机访问，
 // 供「更新系统」插件从远程面板（configUrl 指定）拉取统一配置使用。
 router.get('/php-bridge/update-config', (req: Request, res: Response) => {
+  let botName = '';
+  try { botName = resolveBotName(); } catch {}
   res.json({
     ok: true,
     version: getConfig('update.version') || '4.2.65',
@@ -1006,6 +1008,9 @@ router.get('/php-bridge/update-config', (req: Request, res: Response) => {
     fullUrl: getConfig('update.full_url') || '',
     changeLog: getConfig('update.changelog') || '',
     configUrl: getConfig('update.config_url') || '',
+    // 供「更新系统」插件在群内提醒中标注是哪个机器人发的（多机器人同群时区分）
+    botName,
+    botId: String((req.query.bot_id as string) || (() => { try { const b = getBot() as any; return b && typeof b.getBotId === 'function' ? b.getBotId() : currentBotId(); } catch { return currentBotId(); } })()),
   });
 });
 
