@@ -159,6 +159,13 @@ function fire(content, authorId) {
   r = await fire('清屏');
   check('清屏→撤回指令消息', r.deleted.length === 1 && r.deleted[0].m === 'msg_1', r.deleted);
 
+  r = await fire('功能');
+  check('功能大全→外显 markdown', r.sent.some((x) => x.m && x.m.indexOf('mqqapi://aio/') >= 0), r.sent);
+
+  r = await fire('菜单');
+  const kbActions = r.kb[0].rows.map((row) => row.map((b) => b.action)).flat();
+  check('菜单含 url 链接按钮', kbActions.some((a) => a && a.type === 0 && a.data && a.data.url), kbActions);
+
   const fsLib = require('fs');
   const rootTxt = fsLib.readFileSync(path.join(__dirname, '..', 'plugins', '娱乐群管.txt'), 'utf8');
   const runTxt = fsLib.readFileSync(path.join(__dirname, '..', 'plugins', '词库', '娱乐群管.txt'), 'utf8');

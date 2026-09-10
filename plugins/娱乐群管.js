@@ -264,6 +264,10 @@ module.exports = {
         '撤回群消息': 'recall', '撤回频道消息': 'recall', '撤回单聊消息': 'recall', '撤回私信': 'recall', 'recall_message_by_id': 'recall',
         '外显': 'inline', '外显文字': 'inline', '文字外显': 'inline', 'inline': 'inline',
         '解析成员': 'resolve', '成员解析': 'resolve', 'resolve_member': 'resolve',
+        '群消息': 'groupmsg', '发送群消息': 'groupmsg', 'group_message': 'groupmsg',
+        '单聊消息': 'c2cmsg', '私聊消息': 'c2cmsg', 'c2c_message': 'c2cmsg',
+        '发送频道消息': 'channelmsg', '频道消息': 'channelmsg', 'channel_message': 'channelmsg',
+        '艾特': 'at', 'At': 'at', 'at': 'at', '@': 'at',
         '记录': 'log', '互动结果': 'nop', 'on_interaction_result': 'nop'
       };
       var fn = aliases[name] || name;
@@ -331,6 +335,33 @@ module.exports = {
       }
       if (fn === 'resolve') {
         return { value: resolveMemberArg(interp(arg, scope), scope) };
+      }
+      if (fn === 'at') {
+        var atId = resolveMemberArg(interp(arg, scope), scope);
+        return { value: atId ? '<@' + atId + '>' : '' };
+      }
+      if (fn === 'groupmsg' || fn === 'c2cmsg' || fn === 'channelmsg') {
+        var mk = {};
+        interp(arg, scope).split('&').forEach(function(seg){
+          var i = seg.indexOf('=');
+          if (i > 0) mk[seg.slice(0, i).trim()] = seg.slice(i + 1).trim();
+        });
+        var body = mk.content != null ? mk.content : '';
+        try {
+          if (fn === 'groupmsg' && scope.bot && scope.bot.sendGroupMessage) {
+            var gTarget = mk.group_openid || mk.group_id || '';
+            if (gTarget) scope.bot.sendGroupMessage(gTarget, body, scope.data.id).catch(function(e){ logSendFail('群消息', e); });
+          } else if (fn === 'c2cmsg' && scope.bot && scope.bot.sendPrivateMessage) {
+            var cTarget = mk.openid || mk.user_openid || '';
+            if (cTarget) scope.bot.sendPrivateMessage(cTarget, body, scope.data.id).catch(function(e){ logSendFail('单聊消息', e); });
+          } else if (fn === 'channelmsg' && scope.bot && scope.bot.sendMessage) {
+            var chTarget = mk.channel_id || '';
+            if (chTarget) scope.bot.sendMessage(chTarget, body, scope.data.id).catch(function(e){ logSendFail('频道消息', e); });
+          } else {
+            scope.outputs.push('⚠️ 当前机器人未开放对应消息发送接口。');
+          }
+        } catch (e) { logSendFail(fn, e); }
+        return { value: '' };
       }
       if (fn === 'randText') {
         var opts = interp(arg, scope).split(/[|,，]/).map(function(x){ return x.trim(); }).filter(Boolean);
@@ -517,10 +548,19 @@ module.exports = {
           var action = eq >= 0 ? it.slice(eq + 2).trim() : it;
           if (!label) continue;
           seq++;
+          var bid = 'ydlz_' + seq + '_' + crypto.createHash('md5').update(String(action)).digest('hex').slice(0, 8);
+          var bAction;
+          if (/^url:/i.test(action)) {
+            bAction = { type: 0, data: { url: action.slice(4).trim() }, permission: { type: 2 } };
+          } else if (/^at:/i.test(action)) {
+            bAction = { type: 2, data: '<@' + action.slice(3).trim() + '>', enter: true, permission: { type: 2 } };
+          } else {
+            bAction = { type: 2, data: action, enter: true, permission: { type: 2 } };
+          }
           btns.push({
-            id: 'ydlz_' + seq + '_' + crypto.createHash('md5').update(String(action)).digest('hex').slice(0, 8),
+            id: bid,
             render_data: { label: label, visited_label: label, style: 0 },
-            action: { type: 2, data: action, enter: true, permission: { type: 2 } }
+            action: bAction
           });
         }
         if (btns.length) rows.push(btns);
@@ -604,6 +644,9 @@ module.exports = {
     }
     function logActionFail(fn, detail) {
       try { ctx.logger.warn('[娱乐群管] 群管动作失败: ' + fn + (detail ? ' — ' + detail : '')); } catch(e){}
+    }
+    function logSendFail(label, err) {
+      try { ctx.logger.warn('[娱乐群管] ' + label + '发送失败: ' + ((err && err.message) || '')); } catch(e){}
     }
     function warnUnsupported(fn, label) {
       try { ctx.logger.warn('[娱乐群管] 群管动作未执行: ' + fn + ' 当前机器人未开放' + label + '接口'); } catch(e){}
