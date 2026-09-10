@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.89",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.89.zip",
+  "version": "4.2.90",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.90.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.89.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.90.zip"
     }
   ],
-  "changeLog": "修复娱乐群管词库引擎静默不回复：同名 .txt 文件插件占位导致 娱乐群管.js 从未加载（面板显示已启用但无监听器）；现自动升级占位行为 code 插件并启用。同时修复禁用后仍响应、保存词库重载后旧监听器重复叠加的问题"
+  "changeLog": "娱乐群管功能补全：引擎新增批量禁言/撤回/外显/成员解析命令，群管动作失败如实反馈；禁言支持分钟，发积分统一解析目标并即时可见；清屏先撤回再顶屏；菜单按钮+文字外显双入口；默认词库同步到 plugins/词库/"
 }
