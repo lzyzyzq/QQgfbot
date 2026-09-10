@@ -217,11 +217,12 @@ if (前缀($消息, '更新补丁') || 前缀($消息, '更新全量')) {
 
   $zip = 更新数据目录() . '/update-' . ($isPatch ? 'patch' : 'full') . '.zip';
   $dlUrl = '';
+  $dlErr = '';
   foreach ($urls as $u) {
-    if (下载文件($u, $zip)) { $dlUrl = $u; break; }
+    if (下载文件($u, $zip, 30, $dlErr)) { $dlUrl = $u; break; }
   }
   if ($dlUrl === '') {
-    文字($at . "\n" . $前缀 . "❌ 下载失败（候选源均不可用：\n" . implode("\n", $urls) . "）。");
+    文字($at . "\n" . $前缀 . "❌ 下载失败（候选源均不可用" . ($dlErr !== '' ? '：' . $dlErr : '') . "）：\n" . implode("\n", $urls));
     exit(0);
   }
   $root = 更新根目录();

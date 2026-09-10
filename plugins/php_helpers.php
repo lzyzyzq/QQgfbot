@@ -195,6 +195,25 @@ function __php_ctx($k) {
   $v = getenv('PHP_PLUGIN_' . (string)$k);
   return $v !== false ? (string)$v : '';
 }
+// POST JSON（file_get_contents 回退，供服务器未装 php-curl 扩展时使用），成功返回解码数组/字符串，失败 null
+function __php_post_json($url, $data, $timeout = 30) {
+  if ((string)$url === '' || !(bool)ini_get('allow_url_fopen')) return null;
+  $body = is_array($data) ? json_encode($data, JSON_UNESCAPED_UNICODE) : (string)$data;
+  $ctx = stream_context_create(array(
+    'http' => array(
+      'method' => 'POST',
+      'header' => "Content-Type: application/json\r\n",
+      'content' => $body,
+      'timeout' => max(3, (int)$timeout),
+      'ignore_errors' => true,
+    ),
+    'ssl' => array('verify_peer' => false, 'verify_peer_name' => false),
+  ));
+  $res = @file_get_contents((string)$url, false, $ctx);
+  if ($res === false) return null;
+  $j = json_decode($res, true);
+  return $j === null ? $res : $j;
+}
 // 即时发送：调用本机桥接端点 /api/bot/php-bridge/send-reply，成功返回 true。
 // 目标上下文缺失时返回 false（回退累积，脚本结束时由服务端补发），避免回复丢失。
 function __php_send_immediate($reply) {
@@ -221,6 +240,7 @@ function __php_send_immediate($reply) {
     'reply' => $reply,
   );
   $r = curl($base . '/api/bot/php-bridge/send-reply', 'POST', $body, 30);
+  if (!is_array($r)) $r = __php_post_json($base . '/api/bot/php-bridge/send-reply', $body, 30);
   return is_array($r) && !empty($r['ok']);
 }
 }
@@ -546,8 +566,18 @@ function 更新配置() {
 function update_config() { return 更新配置(); }
 
 // 抓取远程文本（返回 '' 表示失败）；curl 超时 10s，跟随重定向，忽略 SSL 证书校验
+// 服务器未装 php-curl 扩展时用 file_get_contents 回退
 function 抓取文本($url) {
-  if ((string)$url === '' || !function_exists('curl_init')) return '';
+  if ((string)$url === '') return '';
+  if (!function_exists('curl_init')) {
+    if (!(bool)ini_get('allow_url_fopen')) return '';
+    $ctx = stream_context_create(array(
+      'http' => array('timeout' => 10, 'follow_location' => 1, 'user_agent' => 'qq-bot-php-plugin-updater'),
+      'ssl' => array('verify_peer' => false, 'verify_peer_name' => false),
+    ));
+    $body = @file_get_contents((string)$url, false, $ctx);
+    return $body === false ? '' : (string)$body;
+  }
   $ch = curl_init((string)$url);
   curl_setopt_array($ch, array(
     CURLOPT_RETURNTRANSFER => true,
@@ -654,7 +684,18 @@ function truncate_terminal($lines, $maxChars = 3800, $keepTail = 30) { return �
 // $errRef 可传入变量名：下载失败时回填原因（curl 错误/HTTP 状态码/文件大小）
 function 下载文件($url, $dst, $timeout = 30, &$errRef = null) {
   $errRef = '';
-  if ((string)$url === '' || !function_exists('curl_init')) { $errRef = '当前环境无 curl 扩展'; return false; }
+  if ((string)$url === '') { $errRef = '下载地址为空'; return false; }
+  if (!function_exists('curl_init')) {
+    // 无 curl 扩展：copy() 流式下载回退（需开启 allow_url_fopen）
+    if (!(bool)ini_get('allow_url_fopen')) { $errRef = '当前环境无 curl 扩展且已禁用 allow_url_fopen'; return false; }
+    $ctx = stream_context_create(array(
+      'http' => array('timeout' => max(5, min(60, (int)$timeout)), 'follow_location' => 1, 'user_agent' => 'qq-bot-php-plugin-updater'),
+      'ssl' => array('verify_peer' => false, 'verify_peer_name' => false),
+    ));
+    $ok = @copy((string)$url, (string)$dst, $ctx);
+    if ($ok === false || @filesize((string)$dst) <= 0) { $errRef = '网络错误或文件为空'; @unlink((string)$dst); return false; }
+    return true;
+  }
   $fp = @fopen((string)$dst, 'wb');
   if (!$fp) { $errRef = '无法写入本地文件目录'; return false; }
   $ch = curl_init((string)$url);
