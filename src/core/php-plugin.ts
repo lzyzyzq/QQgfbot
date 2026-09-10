@@ -47,8 +47,11 @@ function detectPhp(): Promise<boolean> {
   });
 }
 
-// 执行单个 PHP 插件：stdin 传 JSON，stdout 收 JSON
-function runPhpPlugin(file: string, input: any): Promise<{ ok: boolean; out: string }> {
+// 执行单个 PHP 插件：stdin 传 JSON，stdout 收 JSON。
+// 关键：超时（如下载/解压更新包耗时）时不能丢弃已累积的回复——
+// 先 SIGTERM 触发插件的 register_shutdown_function 输出已累积回复，再用捕获到的 stdout 回传；
+// 宽限期内仍未退出才 SIGKILL，且仍用已捕获输出回传，避免"发了指令没有任何回复"。
+function runPhpPlugin(file: string, input: any): Promise<{ ok: boolean; out: string; timedOut?: boolean }> {
   return new Promise((resolve) => {
     let child: ReturnType<typeof spawn>;
     try {
@@ -68,24 +71,39 @@ function runPhpPlugin(file: string, input: any): Promise<{ ok: boolean; out: str
       resolve({ ok: false, out: '' });
       return;
     }
-    const timer = setTimeout(() => {
-      // 超时先 SIGTERM 优雅退出（PHP shutdown function 可输出已累积回复），3 秒后仍不退再 SIGKILL
-      try { child.kill('SIGTERM'); } catch {}
-      setTimeout(() => { try { child.kill('SIGKILL'); } catch {} }, GRACE_KILL_MS);
-      resolve({ ok: false, out: '' });
-    }, RUN_TIMEOUT);
     let out = '';
     let err = '';
+    let settled = false;
+    let didTimeout = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
+    const finish = (ok: boolean, timedOut = false) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+      resolve({ ok, out: out.trim(), timedOut });
+    };
+    timer = setTimeout(() => {
+      didTimeout = true;
+      logger.warn(`PHP 插件超时(${path.basename(file)}) ${RUN_TIMEOUT}ms，SIGTERM 后回传已累积回复`);
+      try { child.kill('SIGTERM'); } catch {}
+      killTimer = setTimeout(() => {
+        try { child.kill('SIGKILL'); } catch {}
+        // 强杀兜底：即使进程被 SIGKILL，也把已捕获的 stdout（含 shutdown 输出）回传，绝不静默丢弃
+        finish(out.trim().length > 0, true);
+      }, GRACE_KILL_MS + 2000);
+    }, RUN_TIMEOUT);
     child.stdout!.on('data', (d: Buffer) => {
       out += d.toString();
       if (out.length > 500000) { try { child.kill('SIGKILL'); } catch {} }
     });
     child.stderr!.on('data', (d: Buffer) => { err += d.toString(); });
-    child.on('error', () => { clearTimeout(timer); resolve({ ok: false, out: '' }); });
-    child.on('close', () => {
-      clearTimeout(timer);
+    child.on('error', () => finish(false, true));
+    child.on('close', (code) => {
       if (err.trim()) logger.warn(`PHP 插件 stderr(${path.basename(file)}): ${err.trim().slice(0, 300)}`);
-      resolve({ ok: true, out: out.trim() });
+      // 有输出即视为可解析（超时回传的累积回复也在这里被采纳）；无输出时按退出码判断
+      finish(out.trim().length > 0 || code === 0, didTimeout);
     });
     try {
       child.stdin!.write(JSON.stringify(input));
@@ -175,7 +193,8 @@ export async function setupPhpPlugins(eventBus: EventBus, botApi: BotAPI, plugin
             if (row && row.enabled === 0) continue;
           }
           const r = await runPhpPlugin(runFiles[i] || phpFiles[i], payload);
-          if (!r.ok || !r.out) continue;
+          if (r.timedOut) logger.warn(`PHP 插件 ${path.basename(phpFiles[i])} 超时；${r.out ? '已回传累积回复' : '无累积回复'}`);
+          if (!r.out) continue;
           let res: any = {};
           try { res = JSON.parse(r.out); } catch { logger.warn(`PHP 插件输出非 JSON(${path.basename(phpFiles[i])})：${r.out.slice(0, 120)}`); continue; }
           const replies: any[] = res.replies || (res.reply ? [res.reply] : []);
