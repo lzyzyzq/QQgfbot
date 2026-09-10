@@ -767,7 +767,19 @@ export function createSystemRoutes(
     // 机器人运行状态：registry 里 running 为在线（含多机器人时各自状态）
     let botEntries: any[] = [];
     try { botEntries = botRegistry ? botRegistry.list() : []; } catch {}
-    const botsOnline = botEntries.filter((b) => b && b.status === 'running').length;
+    let botsTotal = botEntries.length;
+    let botsOnline = botEntries.filter((b) => b && b.status === 'running').length;
+    // registry 未就绪（后台进程/启动早期/多进程部署）时回退按库中出现的 bot_id 计数，避免仪表盘恒显 0/0
+    if (botsTotal === 0) {
+      try {
+        const rows = getDb().prepare(
+          "SELECT DISTINCT bot_id FROM group_members WHERE bot_id IS NOT NULL AND bot_id != ''"
+        ).all() as any[];
+        const ids = new Set(rows.map((r: any) => String(r.bot_id)));
+        botsTotal = ids.size;
+        botsOnline = ids.size;
+      } catch {}
+    }
     let botNameMap = new Map<string, string>();
     try {
       for (const b of botEntries) {
@@ -799,9 +811,12 @@ export function createSystemRoutes(
     const freeMem = os.freemem();
     const usedMem = totalMem - freeMem;
     const disk = diskOf(process.cwd());
+    // 版本兜底：面板配置可能为空/过时，回退读 package.json，避免仪表盘「系统版本」恒显 '-'
+    let pkgVer = '';
+    try { pkgVer = String(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')).version || ''); } catch {}
 
     res.json({
-      version: cfgSafe('update.version') || '',
+      version: cfgSafe('update.version') || pkgVer || '',
       uptime: process.uptime(),          // 进程运行时长（秒）
       osUptime: os.uptime(),             // 系统运行时长（秒）
       host: { platform: os.platform(), arch: os.arch(), hostname: os.hostname(), release: os.release() },
@@ -820,7 +835,7 @@ export function createSystemRoutes(
         osPercent: Math.round((usedMem / totalMem) * 100),
       },
       disk: disk ? { root: disk } : null,
-      bots: { total: botEntries.length, online: botsOnline },
+      bots: { total: botsTotal, online: botsOnline },
       events24: eventTrend24(),
       recent,
       nodeVersion: process.version,
