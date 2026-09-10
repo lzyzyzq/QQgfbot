@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.90",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.90.zip",
+  "version": "4.2.91",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.91.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.90.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.91.zip"
     }
   ],
-  "changeLog": "娱乐群管功能补全：引擎新增批量禁言/撤回/外显/成员解析命令，群管动作失败如实反馈；禁言支持分钟，发积分统一解析目标并即时可见；清屏先撤回再顶屏；菜单按钮+文字外显双入口；默认词库同步到 plugins/词库/"
+  "changeLog": "娱乐群管菜单完整化：新增功能大全/指令大全，主菜单与管理菜单补齐入口并支持 url 跳转按钮；引擎新增群消息/单聊消息/发送频道消息/艾特命令，按钮支持 url: 与 at: 语义"
 }
