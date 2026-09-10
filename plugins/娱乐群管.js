@@ -259,6 +259,11 @@ module.exports = {
         '全体禁言': 'muteall', '禁言全体': 'muteall', 'mute_all': 'muteall',
         '取消全体禁言': 'unmuteall', '解除全禁': 'unmuteall', 'cancel_mute_all': 'unmuteall',
         '踢出成员': 'kick', '删除成员': 'kick', '踢人': 'kick', 'kick_member': 'kick', 'delete_member': 'kick',
+        '批量禁言成员': 'batchmute', '批量禁言': 'batchmute', 'mute_members': 'batchmute',
+        '取消批量禁言成员': 'batchunmute', '取消批量禁言': 'batchunmute', 'unmute_members': 'batchunmute',
+        '撤回群消息': 'recall', '撤回频道消息': 'recall', '撤回单聊消息': 'recall', '撤回私信': 'recall', 'recall_message_by_id': 'recall',
+        '外显': 'inline', '外显文字': 'inline', '文字外显': 'inline', 'inline': 'inline',
+        '解析成员': 'resolve', '成员解析': 'resolve', 'resolve_member': 'resolve',
         '记录': 'log', '互动结果': 'nop', 'on_interaction_result': 'nop'
       };
       var fn = aliases[name] || name;
@@ -284,12 +289,48 @@ module.exports = {
       }
       if (fn === 'btn') { sendButtons(scope, interp(arg, scope)); return { value: '' }; }
       if (fn === 'recall') {
-        var rid = interp(arg, scope) || scope.data.id || '';
-        var grp = scope.data.groupId;
-        if (grp && scope.bot && scope.bot.deleteMessage && rid) {
-          scope.bot.deleteMessage(grp, rid).catch(function(){});
+        var recallArg = interp(arg, scope).trim();
+        var rId = scope.data.id || '';
+        var rGroup = scope.data.groupId || '';
+        if (recallArg.indexOf('=') >= 0) {
+          recallArg.split('&').forEach(function(seg){
+            var i = seg.indexOf('=');
+            if (i > 0) {
+              var k = seg.slice(0, i).trim(), val = seg.slice(i + 1).trim();
+              if (k === 'message_id') rId = val;
+              if (k === 'group_openid' || k === 'group_id') rGroup = val;
+            }
+          });
+        } else if (recallArg) {
+          rId = recallArg;
+        }
+        if (rGroup && scope.bot && scope.bot.deleteMessage && rId) {
+          scope.bot.deleteMessage(rGroup, rId).catch(function(e){ try { ctx.logger.warn('[娱乐群管] 撤回失败: ' + (e && e.message)); } catch(x){} });
         }
         return { value: '' };
+      }
+      if (fn === 'inline') {
+        var spec = interp(arg, scope);
+        var linkMode = 'on';
+        try { if (ctx.link && ctx.link.mode) linkMode = ctx.link.mode(); } catch (e) {}
+        var items = spec.split(/[;,，]/).map(function(x){ return x.trim(); }).filter(Boolean);
+        var labels = items.map(function(it){
+          var eq = it.indexOf('=>');
+          var label = eq >= 0 ? it.slice(0, eq).trim() : it;
+          var cmd = eq >= 0 ? it.slice(eq + 2).trim() : it;
+          if (!label) return '';
+          if (linkMode === 'off') return label;
+          try { if (ctx.link && ctx.link.linkify) return ctx.link.linkify(label, cmd); } catch (e) {}
+          return '[' + label + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(cmd) + '&enter=false&reply=false)';
+        }).filter(Boolean);
+        if (labels.length) {
+          if (linkMode === 'off') scope.outputs.push(labels.join('  '));
+          else scope.outputs.push({ md: labels.join('  ') });
+        }
+        return { value: '' };
+      }
+      if (fn === 'resolve') {
+        return { value: resolveMemberArg(interp(arg, scope), scope) };
       }
       if (fn === 'randText') {
         var opts = interp(arg, scope).split(/[|,，]/).map(function(x){ return x.trim(); }).filter(Boolean);
@@ -325,7 +366,7 @@ module.exports = {
         scope.outputs.push(me);
         return { value: me };
       }
-      if (fn === 'mute' || fn === 'unmute' || fn === 'kick' || fn === 'muteall' || fn === 'unmuteall') {
+      if (fn === 'mute' || fn === 'unmute' || fn === 'kick' || fn === 'muteall' || fn === 'unmuteall' || fn === 'batchmute' || fn === 'batchunmute') {
         var rmsg = doGroupAction(fn, arg, scope);
         if (rmsg) { scope.outputs.push(rmsg); }
         return { value: '' };
@@ -496,7 +537,7 @@ module.exports = {
     }
 
     // 群管动作映射（QQ 官方群机器人开放能力；频道/其它由调用方权限决定）
-    // 返回：动作无法执行时的提示文本（'' 表示已受理/静默成功）
+    // 返回：动作无法执行时的提示文本（'' 表示已调用接口/无需提示）
     function doGroupAction(fn, arg, scope) {
       var raw = interp(arg, scope);
       var kv = {};
@@ -505,37 +546,81 @@ module.exports = {
         if (i > 0) kv[seg.slice(0, i).trim()] = seg.slice(i + 1).trim();
       });
       var group = kv.guild_id || kv.group_openid || kv.group_id || scope.data.groupId || '';
-      var member = kv.user_id || kv.member || kv.openid || '';
-      var target = parseMember(member);
-      var duration = parseInt(kv.mute_seconds || kv.duration || '60', 10);
-      if (isNaN(duration)) duration = 60;
       var bot = scope.bot;
       if (!group || !bot) return '';
-      var errNo = '';
-      if (fn === 'mute' || fn === 'unmute' || fn === 'kick') {
-        if (!target) return '⚠️ ' + (fn === 'kick' ? '踢出' : '禁言') + ' 未执行：未能识别目标成员（请 @ 对方后再试）';
-        if (fn === 'mute' && bot.muteMember) { bot.muteMember(group, target, duration).catch(function(e){}); return ''; }
-        if (fn === 'unmute' && bot.unmuteMember) { bot.unmuteMember(group, target).catch(function(e){}); return ''; }
-        if (fn === 'kick' && bot.kickMember) { bot.kickMember(group, target).catch(function(e){}); return ''; }
-        errNo = '当前机器人未开放' + (fn === 'kick' ? '踢出成员' : fn === 'unmute' ? '取消禁言' : '禁言成员') + '接口';
-      } else if (fn === 'muteall' && bot.muteAll) {
-        bot.muteAll(group, true, duration).catch(function(e){});
-        return '';
-      } else if (fn === 'unmuteall' && bot.muteAll) {
-        bot.muteAll(group, false).catch(function(e){});
-        return '';
-      } else if (fn === 'muteall' || fn === 'unmuteall') {
-        errNo = '当前机器人未开放全体禁言接口';
+      var duration = parseInt(kv.mute_seconds || kv.duration || '60', 10);
+      if (isNaN(duration) || duration <= 0) duration = 60;
+      function runMute(target) {
+        if (!bot.muteMember) return false;
+        bot.muteMember(group, target, duration).then(function(r){
+          if (r && r.code !== undefined && r.code !== 0) logActionFail(fn, 'code=' + r.code + ' ' + (r.message || ''));
+        }).catch(function(e){ logActionFail(fn, (e && e.message) || ''); });
+        return true;
       }
-      try { ctx.logger.warn('[娱乐群管] 群管动作未执行: ' + fn + (errNo ? ' ' + errNo : '')); } catch(e){}
-      return errNo ? '⚠️ ' + errNo + '，已记录日志。' : '';
+      function runUnmute(target) {
+        if (!bot.unmuteMember) return false;
+        bot.unmuteMember(group, target).then(function(r){
+          if (r && r.code !== undefined && r.code !== 0) logActionFail(fn, 'code=' + r.code + ' ' + (r.message || ''));
+        }).catch(function(e){ logActionFail(fn, (e && e.message) || ''); });
+        return true;
+      }
+      if (fn === 'mute' || fn === 'unmute' || fn === 'kick') {
+        var target = resolveMemberArg(kv.user_id || kv.member || kv.openid || '', scope);
+        if (!target) return '⚠️ ' + (fn === 'kick' ? '踢出' : '禁言') + ' 未执行：未能识别目标成员（请 @ 对方后再试）';
+        if (fn === 'mute' && runMute(target)) return '';
+        if (fn === 'unmute' && runUnmute(target)) return '';
+        if (fn === 'kick' && bot.kickMember) {
+          bot.kickMember(group, target).then(function(r){
+            if (r && r.code !== undefined && r.code !== 0) logActionFail(fn, 'code=' + r.code + ' ' + (r.message || ''));
+          }).catch(function(e){ logActionFail(fn, (e && e.message) || ''); });
+          return '';
+        }
+        return warnUnsupported(fn, fn === 'kick' ? '踢出成员' : fn === 'unmute' ? '取消禁言' : '禁言成员');
+      }
+      if (fn === 'batchmute' || fn === 'batchunmute') {
+        var ids = String(kv.user_ids || kv.users || '').split(/[,，\s]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+        if (!ids.length) return '⚠️ 未提供成员列表（user_ids）。';
+        var canRun = fn === 'batchmute' ? !!bot.muteMember : !!bot.unmuteMember;
+        if (!canRun) return warnUnsupported(fn, fn === 'batchmute' ? '批量禁言' : '批量解除禁言');
+        var okCount = 0, missCount = 0;
+        ids.forEach(function(uid){
+          var t = resolveMemberArg(uid, scope);
+          if (!t) { missCount++; return; }
+          if (fn === 'batchmute') runMute(t); else runUnmute(t);
+          okCount++;
+        });
+        if (!okCount) return '⚠️ 未能识别任何目标成员，批量动作未执行。';
+        return missCount ? '⚠️ 已对 ' + okCount + ' 名成员执行，' + missCount + ' 个目标未能识别。' : '';
+      }
+      if (fn === 'muteall' || fn === 'unmuteall') {
+        if (!bot.muteAll) return warnUnsupported(fn, '全体禁言');
+        var enable = fn === 'muteall';
+        bot.muteAll(group, enable, enable ? duration : undefined).then(function(r){
+          if (r && r.code !== undefined && r.code !== 0) logActionFail(fn, 'code=' + r.code + ' ' + (r.message || ''));
+        }).catch(function(e){ logActionFail(fn, (e && e.message) || ''); });
+        return '';
+      }
+      return '';
     }
-    function parseMember(s) {
+    function logActionFail(fn, detail) {
+      try { ctx.logger.warn('[娱乐群管] 群管动作失败: ' + fn + (detail ? ' — ' + detail : '')); } catch(e){}
+    }
+    function warnUnsupported(fn, label) {
+      try { ctx.logger.warn('[娱乐群管] 群管动作未执行: ' + fn + ' 当前机器人未开放' + label + '接口'); } catch(e){}
+      return '⚠️ 当前机器人未开放' + label + '接口，已记录日志。';
+    }
+    // 成员解析：<@openid>/<@!openid>/@openid 文本 → 纯 OpenID → 数字 QQ（引擎绑定表）
+    function resolveMemberArg(s, scope) {
       s = String(s || '').trim();
-      var m = s.match(/^<@!?([0-9A-Za-z_\-]{16,64})>$/);
-      if (m) return m[1];
-      if (/^[0-9A-Za-z_\-]{16,64}$/.test(s)) return s;
-      return ''; // 数字QQ/昵称在 openid 体系下无法直接定位
+      if (!s) return '';
+      var cleaned = s.replace(/^<@!?/, '').replace(/^@/, '').replace(/[<>]/g, '').trim();
+      if (/^[0-9A-Za-z_\-]{16,64}$/.test(cleaned)) return cleaned;
+      if (/^\d{5,12}$/.test(cleaned)) {
+        try {
+          if (ctx.engine && typeof ctx.engine.resolveOpenidByQq === 'function') return ctx.engine.resolveOpenidByQq(cleaned) || '';
+        } catch (e) {}
+      }
+      return '';
     }
 
     // ---------- 规则执行 ----------

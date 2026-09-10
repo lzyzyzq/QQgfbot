@@ -6,32 +6,34 @@ const bus = new EventEmitter();
 
 const sent = [];
 const kb = [];
+const deleted = [];
+const BOUND = '1234567890ABCDEF1234567890ABCDEF';
 const bot = {
   sendGroupMessage: async (g, c) => { sent.push({ g, c }); },
   sendMarkdownGroup: async (g, m) => { sent.push({ g, m: 'md:' + m }); },
   sendKeyboardGroup: async (g, k) => { kb.push({ g, rows: k && k.rows }); },
-  deleteMessage: async () => {},
-  muteMember: async () => { sent.push({ act: 'mute' }); },
-  unmuteMember: async () => {},
-  kickMember: async () => {},
-  muteAll: async () => {},
+  deleteMessage: async (g, m) => { deleted.push({ g, m }); },
+  muteMember: async (g, m, d) => { sent.push({ act: 'mute', d }); },
+  unmuteMember: async (g, m) => { sent.push({ act: 'unmute' }); },
+  kickMember: async () => { sent.push({ act: 'kick' }); },
+  muteAll: async () => { sent.push({ act: 'muteall' }); },
   getStatus: async () => 'ok',
 };
 const ctx = {
   config: {},
   bot,
   eventBus: bus,
-  engine: {},
-  link: { linkify: (t) => t },
-  logger: { info: (...a) => console.log('  [log]', ...a), error: (...a) => console.log('  [logE]', ...a), warn: (...a) => console.log('  [logW]', ...a) },
+  engine: { resolveOpenidByQq: (qq) => (String(qq) === '12345678' ? BOUND : null) },
+  link: { mode: () => 'on', linkify: (t, cmd) => '[' + t + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(cmd) + '&enter=false&reply=false)' },
+  logger: { info: (...a) => {}, error: (...a) => console.log('  [logE]', ...a), warn: (...a) => console.log('  [logW]', ...a) },
 };
 const mod = require(require('path').join(__dirname, '..', 'plugins', '娱乐群管.js'));
 mod.onEnable(ctx);
 
 function fire(content, authorId) {
-  sent.length = 0; kb.length = 0;
+  sent.length = 0; kb.length = 0; deleted.length = 0;
   bus.emit('message.group', { id: 'msg_1', content, groupId: 'grpA', author: { id: authorId || 'AABBCCDDEEFF001122334455667788', name: '小明' }, type: 'message.group' });
-  return new Promise((r) => setTimeout(r, 30)).then(() => ({ sent: sent.slice(), kb: kb.slice() }));
+  return new Promise((r) => setTimeout(r, 30)).then(() => ({ sent: sent.slice(), kb: kb.slice(), deleted: deleted.slice() }));
 }
 
 (async () => {
@@ -138,6 +140,29 @@ function fire(content, authorId) {
 
   r = await fire('解禁 <@DDEEFF00112233445566778899AABB>', 'AABBCCDDEEFF001122334455667788');
   check('绑定后 解除禁言回执', r.sent.some((x) => x.c && x.c.indexOf('已受理') >= 0), r.sent);
+
+  // ---- 4.2.90 扩展：菜单外显 / 禁言分钟 / 批量禁言 / 数字QQ发积分 / 清屏撤回 ----
+  r = await fire('菜单');
+  check('菜单含文字外显 markdown', r.sent.some((x) => x.m && x.m.indexOf('mqqapi://aio/') >= 0), r.sent);
+
+  r = await fire('禁言 <@DDEEFF00112233445566778899AABB> 5', 'AABBCCDDEEFF001122334455667788');
+  check('禁言带分钟→mute_seconds=300', r.sent.some((x) => x.act === 'mute' && x.d === 300), r.sent);
+
+  r = await fire('批量禁言 <@DDEEFF00112233445566778899AABB>,<@EEFF00112233445566778899AABBCC>', 'AABBCCDDEEFF001122334455667788');
+  check('批量禁言→两名成员各禁言一次', r.sent.filter((x) => x.act === 'mute').length === 2, r.sent);
+
+  r = await fire('发积分 12345678 7', 'AABBCCDDEEFF001122334455667788');
+  check('发积分 数字QQ→解析后写盘', r.sent.length === 1 && r.sent[0].c.indexOf('已向对方发放 7 积分') >= 0, r.sent);
+  r = await fire('我的信息', BOUND);
+  check('QQ映射目标 我的信息积分=7', r.sent[0].c.indexOf('积分：7') >= 0, r.sent[0].c);
+
+  r = await fire('清屏');
+  check('清屏→撤回指令消息', r.deleted.length === 1 && r.deleted[0].m === 'msg_1', r.deleted);
+
+  const fsLib = require('fs');
+  const rootTxt = fsLib.readFileSync(path.join(__dirname, '..', 'plugins', '娱乐群管.txt'), 'utf8');
+  const runTxt = fsLib.readFileSync(path.join(__dirname, '..', 'plugins', '词库', '娱乐群管.txt'), 'utf8');
+  check('默认词库与运行目录副本一致', rootTxt === runTxt);
 
   require('fs').rmSync(process.env.LZYQZB_DATA_DIR,{recursive:true,force:true});console.log('\n== ' + ok + ' passed, ' + fail + ' failed ==');
   process.exit(fail ? 1 : 0);
