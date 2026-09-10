@@ -2,7 +2,7 @@
 // broadcast：chime/weather/morning/evening 生成播报文本，text 发送自定义文本（{time} 替换为北京时间）
 // toggle：到点切换 switchKey 开关状态
 // 发送目标按群归属路由（group_members 最新 bot_id），无归属回退默认 bot
-import { getConfig, setConfig, getDb } from '../db/index';
+import { getConfig, setConfig, getDb, addSystemLog } from '../db/index';
 import { getBotInstance } from './bot';
 import { ScheduleTask, getSwitchState } from '../shared/bot-controls';
 import { loadBroadcastTaskById, broadcastContent } from './broadcast';
@@ -243,38 +243,59 @@ const TEXT_TITLE: Record<string, string> = {
   evening: '每日晚报',
   text: '定时播报',
 };
+// 图片发送失败回退文字时写入运行记录：面板/日志直接可见降级原因，不再静默
+function logImageFallback(t: ScheduleTask, gid: string, bot: any, reason: string): void {
+  try {
+    addSystemLog('warn', 'schedule', `定时任务 ${t.id} 图片发送失败，已回退文字`, `contentType=${t.contentType} reason=${reason}`, '', gid, bot && bot.getBotId ? bot.getBotId() : '');
+  } catch { /* ignore */ }
+}
+
 async function sendTextImage(bot: any, gid: string, text: string, t: ScheduleTask): Promise<void> {
+  let reason = '';
   try {
     const buf = await renderTextCard({
       title: TEXT_TITLE[t.contentType] || '定时播报',
       text,
       footer: bjNow().full,
     });
-    if (buf.length < 128) return;
-    const up = await bot.uploadGroupImageBuffer(gid, buf, 'broadcast.png');
-    if (up && (up.file_info || up.url)) {
-      await bot.sendGroupImageMessage(gid, up.file_info || up.url);
-      return;
+    if (buf.length < 128) {
+      reason = `渲染结果过小(${buf.length}B)`;
+    } else {
+      const up = await bot.uploadGroupImageBuffer(gid, buf, 'broadcast.png');
+      if (up && (up.file_info || up.url)) {
+        await bot.sendGroupImageMessage(gid, up.file_info || up.url);
+        return;
+      }
+      reason = '富媒体上传返回空（上传接口失败）';
     }
   } catch (err: any) {
-    runnerLogger.warn(`定时任务 ${t.id} 图片发送群 ${gid} 失败，回退文字: ${err && err.message ? err.message : err}`);
+    reason = '渲染/发送异常: ' + (err && err.message ? err.message : err);
   }
+  runnerLogger.warn(`定时任务 ${t.id} 图片发送群 ${gid} 失败，回退文字: ${reason}`);
+  logImageFallback(t, gid, bot, reason);
   await bot.sendGroupMessage(gid, text);
 }
 
 // 整点报时（chime）图片发送：渲染大时间居中卡片，失败回退文字
 async function sendChimeImage(bot: any, gid: string, t: ScheduleTask): Promise<void> {
+  let reason = '';
   try {
     const buf = await renderChimeCard();
-    if (buf.length < 128) return;
-    const up = await bot.uploadGroupImageBuffer(gid, buf, 'chime.png');
-    if (up && (up.file_info || up.url)) {
-      await bot.sendGroupImageMessage(gid, up.file_info || up.url);
-      return;
+    if (buf.length < 128) {
+      reason = `渲染结果过小(${buf.length}B)`;
+    } else {
+      const up = await bot.uploadGroupImageBuffer(gid, buf, 'chime.png');
+      if (up && (up.file_info || up.url)) {
+        await bot.sendGroupImageMessage(gid, up.file_info || up.url);
+        return;
+      }
+      reason = '富媒体上传返回空（上传接口失败）';
     }
   } catch (err: any) {
-    runnerLogger.warn(`定时任务 ${t.id} 整点报时图片渲染/发送群 ${gid} 失败，回退文字: ${err && err.message ? err.message : err}`);
+    reason = '渲染/发送异常: ' + (err && err.message ? err.message : err);
   }
+  runnerLogger.warn(`定时任务 ${t.id} 整点报时图片渲染/发送群 ${gid} 失败，回退文字: ${reason}`);
+  logImageFallback(t, gid, bot, reason);
   await bot.sendGroupMessage(gid, contentFor(t));
 }
 
@@ -415,7 +436,15 @@ async function dispatch(t: ScheduleTask) {
   } else {
     groups = Array.isArray(t.groups) && t.groups.length ? t.groups : allGroupIds();
   }
-  runnerLogger.info(`定时任务触发: id=${t.id} type=${t.type} contentType=${t.contentType} time=${t.time || '-'} botId=${t.botId || '按群归属'} groups=${groups.length} images=${images.length} plugin=${t.pluginName || '-'} at=${Array.isArray(t.atUsers) ? t.atUsers.length : 0} linkMode=${t.linkMode === undefined ? '全局' : t.linkMode}`);
+  runnerLogger.info(`定时任务触发: id=${t.id} type=${t.type} contentType=${t.contentType} time=${t.time || '-'} botId=${t.botId || '按群归属'} groups=${groups.length} images=${images.length} plugin=${t.pluginName || '-'} at=${Array.isArray(t.atUsers) ? t.atUsers.length : 0} sendType=${t.sendType || '未设置(按文字)'} linkMode=${t.linkMode === undefined ? '全局' : t.linkMode}`);
+  // 写一条运行记录（每任务每天一次）：让面板「运行记录」直接看到发送方式与图片判定，排查「图片变文字」无需翻服务端日志
+  const dispLogKey = 'displog:' + t.id;
+  if (lastFire[dispLogKey] !== bjNow().ymd) {
+    lastFire[dispLogKey] = bjNow().ymd;
+    try {
+      addSystemLog('info', 'schedule', `定时任务 ${t.id} 触发`, `contentType=${t.contentType} sendType=${t.sendType || '未设置'} 图片发送=${sendAsImage ? '是' : '否'} 目标群=${groups.length}`, '', '', t.botId || '');
+    } catch { /* ignore */ }
+  }
   for (const gid of groups) {
     try {
       const bot = botForTask(t, gid);
