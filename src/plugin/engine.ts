@@ -171,6 +171,8 @@ export class PluginEngine {
   private dynImport: (u: string) => Promise<any>;
   /** 权限/模式类 key 跨插件共享（无插件实例前缀），其余存储 key 均带 plugin.{实例id}. 前缀 */
   private sharedPermKeys = new Set(['super_master_id', 'mini_masters', 'members', 'global_mode']);
+  /** 插件通过 ctx.eventBus.on 注册的监听器 id（按 pluginId 归组），disable/unload 时统一反注册，避免禁用后仍响应、reload 后重复叠加 */
+  private ctxListenerIds = new Map<string, Set<string>>();
 
   constructor(eventBus: EventBus, botApi: BotAPI, pluginsDir?: string, dynImport?: (u: string) => Promise<any>) {
     this.eventBus = eventBus;
@@ -189,6 +191,14 @@ export class PluginEngine {
 
   getPluginsDir(): string {
     return this.pluginsDir;
+  }
+
+  /** 反注册某插件通过 ctx.eventBus.on 注册的全部监听器（disable/unload/reload 时调用，避免禁用后仍响应与重复叠加） */
+  private unregisterCtxListeners(id: string): void {
+    const set = this.ctxListenerIds.get(id);
+    if (!set) return;
+    for (const lid of set) { try { this.eventBus.off(lid); } catch {} }
+    this.ctxListenerIds.delete(id);
   }
 
   /** 已加载插件清单：名称 + 真实版本（来源为各插件 manifest，随插件文件更新而准确变化） */
@@ -1093,6 +1103,9 @@ export class PluginEngine {
     entry.loaded = false;
     entry.error = undefined;
 
+    // 反注册该插件注册的事件监听器：禁用后不再响应消息（重新启用时 onEnable 会重新订阅）
+    this.unregisterCtxListeners(id);
+
     const db = getDb();
     db.prepare('UPDATE plugins SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
 
@@ -1202,6 +1215,9 @@ export class PluginEngine {
     } catch (err: any) {
       logger.error(`Plugin ${id} py cleanup failed: ${err.message}`);
     }
+
+    // 代码插件：反注册通过 ctx.eventBus.on 注册的监听器，避免 reload 后旧监听器残留导致重复回复
+    this.unregisterCtxListeners(id);
 
     this.plugins.delete(id);
     this.eventBus.emit('plugin.unloaded', { pluginId: id });
@@ -2363,10 +2379,21 @@ export class PluginEngine {
           return `[${text}](mqqapi://aio/%69nlinecmd?command=${encodeURIComponent(String(cmd == null ? '' : cmd))}&enter=false&reply=false)`;
         },
       },
-      // 包装 eventBus：插件订阅事件时自动携带 pluginId，EventBus 按机器人分配关系过滤该插件监听者
+      // 包装 eventBus：插件订阅事件时自动携带 pluginId，EventBus 按机器人分配关系过滤该插件监听者；
+      // 同时登记 listener id，disable/unload 时统一反注册（否则禁用后仍响应、每次 reload 重复叠加）
       eventBus: {
-        on: (evt: string, handler: (data: any) => void | Promise<void>) => this.eventBus.on(evt as any, handler, { pluginId }),
-        off: (listenerId: string) => this.eventBus.off(listenerId),
+        on: (evt: string, handler: (data: any) => void | Promise<void>) => {
+          const listenerId = this.eventBus.on(evt as any, handler, { pluginId });
+          let set = this.ctxListenerIds.get(pluginId);
+          if (!set) { set = new Set<string>(); this.ctxListenerIds.set(pluginId, set); }
+          set.add(listenerId);
+          return listenerId;
+        },
+        off: (listenerId: string) => {
+          this.eventBus.off(listenerId);
+          const set = this.ctxListenerIds.get(pluginId);
+          if (set) set.delete(listenerId);
+        },
       },
       logger: createLogger(`plugin:${pluginId}`),
       storage,
@@ -2658,7 +2685,13 @@ export class PluginEngine {
         const pluginName = file.slice(0, -ext.length);
         const id = 'file-' + pluginName;
         if (existingIds.has(id)) {
-          continue; // 已存在，跳过
+          // 已有同 id 记录：若它只是"只读文件资源"（历史：.txt 先被登记为 file-{name} 占位），
+          // 而同名 .js/.mjs 可执行文件存在，则不能早退——否则 JS 引擎永远加载不到，
+          // 表现为面板显示该插件"已启用"但消息静默不回复。交给下方分支升级为 code。
+          const occupied = db.prepare('SELECT id, type FROM plugins WHERE id = ?').get(id) as any;
+          if (!(occupied && occupied.type === 'file')) {
+            continue; // 已存在且是 code/py/php/zip 实例，跳过
+          }
         }
 
         const fullPath = path.join(this.pluginsDir, file);

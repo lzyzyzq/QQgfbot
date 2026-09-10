@@ -123,10 +123,56 @@ describe('PluginEngine', () => {
     expect(engine.list().some((p) => p.id === 'test-reload')).toBe(true)
   })
 
+  it('should upgrade a type=file placeholder row to code when matching .js exists (词库引擎不被 .txt 占位挡住)', async () => {
+    const dir = path.join(testDir, 'file-shadow-case')
+    fs.mkdirSync(dir, { recursive: true })
+    const code = `
+      module.exports = {
+        manifest: { id: 'file-ent', name: '娱乐群管', version: '1.0.0', description: '', author: 'system' },
+        onEnable: function(ctx) { ctx.eventBus.on('message.group', function() {}); ctx.logger.info('ent engine enabled'); },
+        onDisable: function(ctx) { ctx.logger.info('ent engine disabled'); }
+      };
+    `
+    fs.writeFileSync(path.join(dir, '娱乐群管.js'), code, 'utf-8')
+    fs.writeFileSync(path.join(dir, '娱乐群管.txt'), '规则 demo\n触发 demo\n回复文本 hi\n结束规则\n', 'utf-8')
+    const db = getDb()
+    db.prepare(
+      "INSERT OR REPLACE INTO plugins (id, name, description, code, enabled, version, type, approved, owner) VALUES ('file-娱乐群管','娱乐群管.txt','文件资源插件（.txt）','',0,1,'file',1,'system')"
+    ).run()
+
+    const shadowEngine = new PluginEngine(eventBus, {} as any, dir, (u: string) => import(u))
+    await shadowEngine.loadAllFromDb()
+    const row = db.prepare("SELECT type, enabled FROM plugins WHERE id = 'file-娱乐群管'").get() as any
+    expect(row.type).toBe('code')
+    expect(row.enabled).toBe(1)
+    expect(shadowEngine.isEnabled('file-娱乐群管')).toBe(true)
+    expect(eventBus.getListenerCount('message.group')).toBeGreaterThan(0)
+    await shadowEngine.shutdown()
+    db.prepare("DELETE FROM plugins WHERE id = 'file-娱乐群管'").run()
+  })
+
   it('should delete a plugin', async () => {
     await engine.loadFromCode('test-delete', 'Delete Test', VALID_PLUGIN_CODE)
     await engine.deletePlugin('test-delete')
     expect(engine.list().some((p) => p.id === 'test-delete')).toBe(false)
+  })
+
+  it('should unregister event listeners on disable and reload (no stale/double replies)', async () => {
+    const code = `
+      module.exports = {
+        manifest: { id: 'x', name: 'Listener Cleanup', version: '1.0.0', description: '', author: 't' },
+        onEnable: function(ctx) { ctx.eventBus.on('message.group', function() {}); },
+        onDisable: function(ctx) {}
+      };
+    `
+    const base = eventBus.getListenerCount('message.group')
+    await engine.loadFromCode('test-listener-cleanup', 'Listener Cleanup', code)
+    await engine.enable('test-listener-cleanup')
+    expect(eventBus.getListenerCount('message.group')).toBe(base + 1)
+    await engine.reload('test-listener-cleanup')
+    expect(eventBus.getListenerCount('message.group')).toBe(base + 1)
+    await engine.disable('test-listener-cleanup')
+    expect(eventBus.getListenerCount('message.group')).toBe(base)
   })
 
   it('should toggle plugin enabled state', async () => {
