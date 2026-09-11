@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.98",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.98.zip",
+  "version": "4.2.99",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.99.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.98.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.99.zip"
     }
   ],
-  "changeLog": "插件现在遵循「按机器人分配」：机器人未勾选的插件不再响应，只回已分配的插件；无分配记录时为全局模式。修复重启服务后已停止的机器人又被显示/拉起为开启的问题。"
+  "changeLog": "升级后自动为已有分配记录的机器人补齐 PHP/PY 插件分配；修正仪表盘版本显示"
 }
