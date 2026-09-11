@@ -8,15 +8,15 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "4.2.100",
-    "changeLog": "插件列表显示名去除 .php/.py/.js 后缀（类型列已标注类型，名字更清爽）"
+    "version": "1.0.0",
+    "changeLog": "补丁版本号重置，改从 1.0.0 起算；框架版本与插件版本分开维护与展示"
   },
   "releases": [
     {
       "version": "4.2.100",
       "tag": "v4.2.100",
       "date": "2026-09-11",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v4.2.100/qqbot-card-editor-patch-4.2.100.zip",
         "mirrors": [
@@ -1438,6 +1438,40 @@
           }
         ],
         "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-4.2.59.zip"
+      }
+    },
+    {
+      "version": "1.0.0",
+      "tag": "v1.0.0",
+      "date": "2026-09-11",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.0/qqbot-card-editor-patch-1.0.0.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.0/qqbot-card-editor-patch-1.0.0.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.0/qqbot-card-editor-patch-1.0.0.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.0.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.0/qqbot-card-editor-1.0.0.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.0/qqbot-card-editor-1.0.0.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.0/qqbot-card-editor-1.0.0.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.0.zip"
       }
     }
   ],
