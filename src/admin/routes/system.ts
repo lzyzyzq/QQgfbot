@@ -816,7 +816,8 @@ export function createSystemRoutes(
     try { pkgVer = String(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')).version || ''); } catch {}
 
     res.json({
-      version: cfgSafe('update.version') || pkgVer || '',
+      // 版本优先取实际安装版本（package.json，随补丁更新），避免面板配置过时导致仪表盘显示旧版本/-
+      version: pkgVer || cfgSafe('update.version') || '',
       uptime: process.uptime(),          // 进程运行时长（秒）
       osUptime: os.uptime(),             // 系统运行时长（秒）
       host: { platform: os.platform(), arch: os.arch(), hostname: os.hostname(), release: os.release() },

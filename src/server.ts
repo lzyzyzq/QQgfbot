@@ -22,7 +22,7 @@ import type { AdminConfig } from './admin/config';
 // ===== 业务 API imports =====
 import { initDb, closeDb, getConfig, setConfig, getDb } from './db/index';
 import { seedExamplePlugins } from './db/seed';
-import { EventBus, initAssignmentCache } from './core/event-bus';
+import { EventBus, initAssignmentCache, migratePhpPyAssignments } from './core/event-bus';
 import { startScheduleRunner } from './core/schedule-runner';
 import { createBot, getBot, registerBot, runWithBotContext, currentBotId, getBotInstance, alsBotId } from './core/bot';
 import { WebhookManager } from './core/webhook';
@@ -936,6 +936,8 @@ async function main() {
   });
   setPluginEngine(pluginEngine);
   await pluginEngine.loadAllFromDb();
+  // 一次性迁移：为已有分配记录的机器人补上 PHP/PY 插件分配，避免升级后突然不回复
+  migratePhpPyAssignments();
 
   // 启动 PHP 插件桥（执行 plugins/ 下的 .php 插件，需环境安装 php-cli）
   try {

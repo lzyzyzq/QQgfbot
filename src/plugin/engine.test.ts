@@ -173,6 +173,7 @@ describe('PluginEngine', () => {
     expect(eventBus.getListenerCount('message.group')).toBe(base + 1)
     await engine.disable('test-listener-cleanup')
     expect(eventBus.getListenerCount('message.group')).toBe(base)
+    await engine.deletePlugin('test-listener-cleanup')
   })
 
   it('should toggle plugin enabled state', async () => {

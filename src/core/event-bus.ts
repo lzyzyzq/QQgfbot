@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../utils/logger';
-import { getDb, getConfig } from '../db/index';
+import { getDb, getConfig, setConfig } from '../db/index';
 
 const logger = createLogger('event-bus');
 
@@ -175,6 +175,38 @@ export function pluginAllowedForEvent(pluginId: string, botId: string, event: st
     if (mode === null && pluginHasAllowPolicy(pid)) return false;
   }
   return true;
+}
+
+// 一次性迁移：4.2.98 起 PHP/PY 插件也遵循「按机器人分配」。旧版本这些插件无条件运行，
+// 为避免升级后处于「按分配运行」的机器人突然不回复，给已存在分配记录的机器人补上全部
+// PHP/PY 插件分配（assigned=1）。仅补缺失记录，不覆盖用户已做的勾选；用配置开关保证只跑一次。
+export function migratePhpPyAssignments(): void {
+  try {
+    if (getConfig('migration.php_py_assignment_v1') === '1') return;
+    const db = getDb();
+    const botRows = db.prepare(
+      'SELECT DISTINCT bot_id FROM bot_plugins WHERE bot_id IS NOT NULL AND bot_id != ?'
+    ).all('') as any[];
+    if (botRows.length === 0) { setConfig('migration.php_py_assignment_v1', '1'); return; }
+    const pluginRows = db.prepare("SELECT id FROM plugins WHERE type IN ('php','py')").all() as any[];
+    // 该实例尚无 PHP/PY 插件行时先不落标记，等插件登记后再迁移
+    if (pluginRows.length === 0) return;
+    const ins = db.prepare(
+      `INSERT INTO bot_plugins (bot_id, plugin_id, assigned, updated_at)
+       VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+       ON CONFLICT(bot_id, plugin_id) DO NOTHING`
+    );
+    let added = 0;
+    for (const b of botRows) {
+      for (const p of pluginRows) {
+        try { const r = ins.run(String(b.bot_id), String(p.id)); added += (r && r.changes) || 0; } catch {}
+      }
+    }
+    setConfig('migration.php_py_assignment_v1', '1');
+    logger.info(`PHP/PY assignment migration done: +${added} row(s) for ${botRows.length} bot(s)`);
+  } catch (e: any) {
+    logger.warn(`PHP/PY assignment migration failed: ${e.message}`);
+  }
 }
 
 export class EventBus {
