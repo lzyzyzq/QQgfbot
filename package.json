@@ -1,6 +1,6 @@
 {
   "name": "qq-bot-platform",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "QQ机器人平台 - 基于QQ开放平台官方API的本地运行机器人",
   "main": "dist/server.js",
   "scripts": {
