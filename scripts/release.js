@@ -140,7 +140,7 @@ if (pkg.version !== ver) {
 // 3) 归类改动范围：plugins/ 目录=插件升级；其余（排除 dist/CHANGELOG/版本登记/站点刷新等生成物）=框架升级
 const GEN_EXCLUDE = [
   /^dist\//, /^CHANGELOG\.md$/, /^update-config\.json$/, /^package(-lock)?\.json$/,
-  /^downloads\.html$/, /^index\.html$/, /^releases\.(html|json)$/, /^\.release-body-/,
+  /^downloads\.html$/, /^index\.html$/, /^releases\.(html|json)$/, /^\.release-body-/, /\.zip$/,
 ];
 const isGenerated = (f) => GEN_EXCLUDE.some((re) => re.test(f));
 const pluginChanged = changedFiltered.some((f) => f.startsWith('plugins/'));
