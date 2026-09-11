@@ -1,16 +1,28 @@
 {
   "ok": true,
-  "version": "1.0.0",
-  "frameworkVersion": "1.0.0",
-  "pluginVersion": "1.0.0",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.0.zip",
+  "version": "1.0.1",
+  "frameworkVersion": "1.0.1",
+  "pluginVersion": "1.0.1",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.1.zip",
   "fullUrl": "",
   "mirrors": [
     {
-      "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.0.zip"
+      "name": "8091（合并补丁）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.1.zip"
+    },
+    {
+      "name": "8091（框架补丁）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.1.zip"
+    },
+    {
+      "name": "8091（插件补丁）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.1.zip"
     }
   ],
-  "changeLog": "补丁版本号重置，改从 1.0.0 起算；框架版本与插件版本分开维护与展示",
-  "changeType": "框架升级 + 插件升级"
+  "changeLog": "四类更新包分离：框架补丁/插件补丁/框架全量/插件全量各自独立打包与地址；更新系统菜单与面板配置新增四类入口",
+  "changeType": "框架升级 + 插件升级",
+  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.1.zip",
+  "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.1.zip",
+  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.1.zip",
+  "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.1.zip"
 }
