@@ -24,7 +24,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import net from 'net';
-import { spawn } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
 import os from 'os';
 import multer from 'multer';
 
@@ -429,6 +429,10 @@ export function createSystemRoutes(
       updateVersion: getConfig('update.version') || '4.2.65',
       updatePatchUrl: getConfig('update.patch_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.65.zip',
       updateFullUrl: getConfig('update.full_url') || '',
+      updateFrameworkPatchUrl: getConfig('update.framework_patch_url') || '',
+      updatePluginPatchUrl: getConfig('update.plugin_patch_url') || '',
+      updateFrameworkFullUrl: getConfig('update.framework_full_url') || '',
+      updatePluginFullUrl: getConfig('update.plugin_full_url') || '',
       updateChangeLog: getConfig('update.changelog') || '',
       updateConfigUrl: getConfig('update.config_url') || '',
     });
@@ -469,6 +473,10 @@ export function createSystemRoutes(
     if (req.body.updateVersion !== undefined) setConfig('update.version', String(req.body.updateVersion).trim() || '4.2.59');
     if (req.body.updatePatchUrl !== undefined) setConfig('update.patch_url', String(req.body.updatePatchUrl).trim());
     if (req.body.updateFullUrl !== undefined) setConfig('update.full_url', String(req.body.updateFullUrl).trim());
+    if (req.body.updateFrameworkPatchUrl !== undefined) setConfig('update.framework_patch_url', String(req.body.updateFrameworkPatchUrl).trim());
+    if (req.body.updatePluginPatchUrl !== undefined) setConfig('update.plugin_patch_url', String(req.body.updatePluginPatchUrl).trim());
+    if (req.body.updateFrameworkFullUrl !== undefined) setConfig('update.framework_full_url', String(req.body.updateFrameworkFullUrl).trim());
+    if (req.body.updatePluginFullUrl !== undefined) setConfig('update.plugin_full_url', String(req.body.updatePluginFullUrl).trim());
     if (req.body.updateChangeLog !== undefined) setConfig('update.changelog', String(req.body.updateChangeLog));
     if (req.body.updateConfigUrl !== undefined) setConfig('update.config_url', String(req.body.updateConfigUrl).trim());
     res.json({ ok: true });
@@ -726,6 +734,35 @@ export function createSystemRoutes(
     return out;
   }
 
+  // PM2 进程状态（仪表盘「部署进程状态」）：pm2 jlist JSON，10s 缓存；未安装 pm2 时 available:false
+  let pm2Cache: { at: number; data: any } = { at: 0, data: null };
+  function pm2Status(): any {
+    const now = Date.now();
+    if (pm2Cache.data && now - pm2Cache.at < 10000) return pm2Cache.data;
+    let data: any = { available: false, processes: [] };
+    try {
+      const out = execFileSync('pm2', ['jlist'], { encoding: 'utf8', timeout: 6000, stdio: ['ignore', 'pipe', 'ignore'] });
+      const arr = JSON.parse(out || '[]');
+      const processes = (Array.isArray(arr) ? arr : []).map((p: any) => {
+        const env = p.pm2_env || {};
+        return {
+          id: p.pm_id,
+          name: p.name || '',
+          status: env.status || '',
+          mode: env.exec_mode || '',
+          pid: env.pid || 0,
+          cpu: p.monit && p.monit.cpu != null ? p.monit.cpu : 0,
+          mem: p.monit && p.monit.memory ? Math.round(p.monit.memory / 1048576) : 0,
+          restarts: env.restart_time || 0,
+          uptime: env.pm_uptime ? Math.round((now - env.pm_uptime) / 1000) : 0,
+        };
+      });
+      data = { available: true, processes };
+    } catch { data = { available: false, processes: [] }; }
+    pm2Cache = { at: now, data };
+    return data;
+  }
+
   router.get('/stats', (_req: Request, res: Response) => {
     // 统计插件数量：与插件列表页一致，按 plugins 目录实际可展示插件去重计数
     // （避免历史 DB 遗留重复记录（uuid code + file- 双实例）导致统计虚高、本地/服务器数量对不上）
@@ -852,6 +889,7 @@ export function createSystemRoutes(
       nodeVersion: process.version,
       pid: process.pid,
       pluginCount,
+      pm2: pm2Status(),
       framework: {
         name: 'NapCatQQ',
         version: napcatVersion,

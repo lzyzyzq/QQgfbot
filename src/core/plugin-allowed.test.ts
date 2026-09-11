@@ -52,9 +52,9 @@ describe('pluginAllowedForEvent (按机器人分配 + 按群开关)', () => {
     expect(pluginAllowedForEvent('php-更新系统', 'botGlobal', 'message.group', 'g1')).toBe(true)
   })
 
-  it('per-bot 模式下未勾选（无记录）一律不跑', () => {
+  it('per-bot 模式下未勾选（无记录=跟随全局）放行', () => {
     markBotHasAssignment('b1')
-    expect(pluginAllowedForEvent('php-更新系统', 'b1', 'message.group', 'g1')).toBe(false)
+    expect(pluginAllowedForEvent('php-更新系统', 'b1', 'message.group', 'g1')).toBe(true)
   })
 
   it('per-bot 模式下已分配(assigned=1)放行', () => {

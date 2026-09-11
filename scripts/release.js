@@ -46,6 +46,7 @@ let frameworkNote = '';
 let baseUrl = '';
 let doGh = false;
 let autoVer = false;
+let noPush = false;
 const extraFiles = [];
 for (let i = 1; i < args.length; i++) {
   if (args[i] === '--from') fromTag = args[++i] || '';
@@ -54,6 +55,7 @@ for (let i = 1; i < args.length; i++) {
   else if (args[i] === '--base-url') baseUrl = args[++i] || '';
   else if (args[i] === '--gh') doGh = true;
   else if (args[i] === '--auto') autoVer = true;
+  else if (args[i] === '--no-push') noPush = true;
   else if (args[i] === '--extra-file') extraFiles.push(args[++i] || '');
 }
 if (ver === '--auto') { autoVer = true; ver = ''; }
@@ -77,7 +79,7 @@ if (status) {
   console.error('工作区有未提交改动，请先提交/清理：\n' + status);
   process.exit(1);
 }
-sh('git pull --ff-only origin main');
+if (!noPush) sh('git pull --ff-only origin main');
 
 // 1) 确定基线 tag 与变更文件
 if (!fromTag) {
@@ -226,24 +228,58 @@ clBlock.push(...commitLines.map((c) => '- ' + c));
 run('npm run build');
 console.log('tsc 编译完成');
 
-// 5) 打补丁包：变更文件 + 全量 dist + CHANGELOG + package.json + update-config.json
-const zip = new AdmZip();
-const used = new Set();
-function addFile(rel) {
-  const fp = path.join(ROOT, rel);
-  if (used.has(rel) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) return;
-  used.add(rel);
-  zip.addLocalFile(fp, path.dirname(rel));
+// 5) 打包：合并补丁（兼容旧客户端）+ 框架补丁 + 插件补丁 + 框架全量 + 插件全量
+const pluginFiles = changedFiltered.filter((f) => f.startsWith('plugins/'));
+const frameworkFiles = changedFiltered.filter((f) => !f.startsWith('plugins/'));
+
+function writeZip(outName, files, opts) {
+  const z = new AdmZip();
+  const used = new Set();
+  const add = (rel) => {
+    const fp = path.join(ROOT, rel);
+    if (used.has(rel) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) return;
+    used.add(rel);
+    z.addLocalFile(fp, path.dirname(rel));
+  };
+  for (const f of files) add(f);
+  if (opts && opts.dist && fs.existsSync(path.join(ROOT, 'dist'))) {
+    for (const f of walkDir(path.join(ROOT, 'dist'))) add(f);
+  }
+  if (opts && opts.meta) { add('CHANGELOG.md'); add('package.json'); add('update-config.json'); }
+  z.writeZip(path.join(ROOT, outName));
+  return used.size;
 }
-for (const f of changedFiltered) addFile(f);
-if (fs.existsSync(path.join(ROOT, 'dist'))) {
-  for (const f of walkDir(path.join(ROOT, 'dist'))) addFile(f);
+
+// 框架全量：全部受版本控制的文件（含 plugins/，即完整可运行框架）+ dist 编译产物
+function fullFrameworkFiles() {
+  const out = [];
+  const seen = new Set();
+  const excl = [/^\.git\//, /^node_modules\//, /^data\//, /^web\/node_modules\//, /^\.monkeycode\//, /\.zip$/, /^dist-full-/, /^downloads\.html$/, /^index\.html$/, /^releases\.(html|json)$/];
+  const push = (rel) => { if (rel && !seen.has(rel)) { seen.add(rel); out.push(rel); } };
+  try { for (const f of sh('git ls-files').split('\n')) if (f && !excl.some((re) => re.test(f))) push(f); } catch (e) {}
+  if (fs.existsSync(path.join(ROOT, 'dist'))) for (const f of walkDir(path.join(ROOT, 'dist'))) push(f);
+  return out;
 }
-addFile('CHANGELOG.md');
-addFile('package.json');
-addFile('update-config.json');
-zip.writeZip(zipPath);
-console.log('补丁包：' + zipName + '（' + used.size + ' 文件）');
+
+const combinedZip = zipName;
+const fwPatchZip = 'qqbot-card-editor-framework-patch-' + ver + '.zip';
+const plgPatchZip = 'qqbot-card-editor-plugin-patch-' + ver + '.zip';
+const fwFullZip = 'qqbot-card-editor-framework-full-' + ver + '.zip';
+const plgFullZip = 'qqbot-card-editor-plugin-full-' + ver + '.zip';
+
+const nCombined = writeZip(combinedZip, changedFiltered, { dist: true, meta: true });
+console.log('合并补丁包：' + combinedZip + '（' + nCombined + ' 文件）');
+const nFwPatch = writeZip(fwPatchZip, frameworkFiles, { dist: true, meta: true });
+console.log('框架补丁包：' + fwPatchZip + '（' + nFwPatch + ' 文件）');
+const nPlgPatch = writeZip(plgPatchZip, pluginFiles, {});
+console.log('插件补丁包：' + plgPatchZip + '（' + nPlgPatch + ' 文件）');
+const nFwFull = writeZip(fwFullZip, fullFrameworkFiles(), {});
+console.log('框架全量包：' + fwFullZip + '（' + nFwFull + ' 文件）');
+const nPlgFull = writeZip(plgFullZip, (() => {
+  const dir = path.join(ROOT, 'plugins');
+  return fs.existsSync(dir) ? walkDir(dir) : [];
+})(), {});
+console.log('插件全量包：' + plgFullZip + '（' + nPlgFull + ' 文件）');
 
 // 6) update-config.json 登记
 const ucPath = path.join(ROOT, 'update-config.json');
@@ -270,10 +306,16 @@ uc.ok = true;
 uc.version = ver;
 uc.frameworkVersion = frameworkVersion;
 uc.pluginVersion = pluginVersion;
-uc.patchUrl = pUrl;
+uc.patchUrl = pUrl;                                  // 兼容旧客户端：合并补丁（框架+插件）
 uc.fullUrl = String(uc.fullUrl || '');
+uc.frameworkPatchUrl = host + '/' + fwPatchZip;
+uc.pluginPatchUrl = host + '/' + plgPatchZip;
+uc.frameworkFullUrl = host + '/' + fwFullZip;
+uc.pluginFullUrl = host + '/' + plgFullZip;
 uc.mirrors = [
-  { name: '8091 唯一更新源（补丁）', patchUrl: pUrl },
+  { name: '8091（合并补丁）', patchUrl: pUrl },
+  { name: '8091（框架补丁）', patchUrl: uc.frameworkPatchUrl },
+  { name: '8091（插件补丁）', patchUrl: uc.pluginPatchUrl },
 ];
 uc.changeLog = changeLog;
 if (frameworkChanged || pluginChanged) {
@@ -284,20 +326,26 @@ console.log('update-config.json 已登记 ' + ver + '（框架版本 ' + framewo
 
 // 7) commit + tag + push（仓库双写：源码 + 包 + 登记 + CHANGELOG；zip 被 gitignore 故强制入库）
 sh('git add package.json CHANGELOG.md update-config.json');
-sh('git add -f ' + zipName);
+sh('git add -f ' + [combinedZip, fwPatchZip, plgPatchZip, fwFullZip, plgFullZip].join(' '));
 sh('git commit -m "release: ' + ver + '（自动发布）"');
 sh('git tag ' + tag);
-sh('git push origin main --tags');
-console.log('已推送 main + tag ' + tag);
+if (noPush) {
+  console.log('离线模式（--no-push）：已本地提交并打 tag ' + tag + '，未 push。');
+  console.log('网络恢复后执行：git push origin main && git push origin ' + tag);
+} else {
+  sh('git push origin main --tags');
+  console.log('已推送 main + tag ' + tag);
+}
 
 // 8) GitHub Release（可选）
-if (doGh) {
+if (doGh && !noPush) {
   const ghOk = sh('gh auth status') || '';
   if (ghOk.indexOf('Logged in') >= 0) {
     const body = clBlock.join('\n').trim();
     const bf = path.join(ROOT, '.release-body-' + ver + '.md');
     fs.writeFileSync(bf, body, 'utf8');
-    sh('gh release create ' + tag + ' "' + zipPath + '" --title "' + tag + '" --notes-file "' + bf + '"');
+    const assets = [combinedZip, fwPatchZip, plgPatchZip, fwFullZip, plgFullZip].map((z) => '"' + z + '"').join(' ');
+    sh('gh release create ' + tag + ' ' + assets + ' --title "' + tag + '" --notes-file "' + bf + '"');
     fs.unlinkSync(bf);
     console.log('GitHub Release 已创建：' + tag);
   } else {

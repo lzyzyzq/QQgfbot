@@ -490,7 +490,7 @@ export async function renderUpdateCard(data: UpdateCardData): Promise<Buffer> {
   const logH = logTitleH + bodyH + 16;
   const infoH = 96;
   const histH = 42;
-  const cmdH = 2 * 58 + 20;
+  const cmdH = 3 * 58 + 20;
   const footerH = 40;
   const infoY0 = BANNER + 14;
   const logY0 = infoY0 + infoH + 14;
@@ -545,10 +545,12 @@ export async function renderUpdateCard(data: UpdateCardData): Promise<Buffer> {
   <text x="${PAD_X + 16}" y="${histY0 + 22}" font-family="${FONT}" font-size="14" fill="#94a3b8">上次更新 ${escSvg(fit(stripEmoji(lastUpdate), 300, 14))}</text>
   <text x="${W - PAD_X - 16}" y="${histY0 + 22}" font-family="${FONT}" font-size="14" fill="#94a3b8" text-anchor="end">更新记录 ${recordCount} 条</text>`;
 
-  // 命令按钮 2x2
+  // 命令按钮 3x2：四类更新包（框架补丁/插件补丁/框架全量/插件全量）+ 检查/记录
   const cmdRows = [
-    { label: '更新补丁', desc: '下载补丁包升级' },
-    { label: '更新全量', desc: '下载全量包升级' },
+    { label: '更新框架补丁', desc: '仅框架文件，增量升级' },
+    { label: '更新插件补丁', desc: '仅插件文件，增量升级' },
+    { label: '更新框架全量', desc: '下载完整框架包' },
+    { label: '更新插件全量', desc: '下载完整插件包' },
     { label: '检查更新', desc: '对比版本状态' },
     { label: '更新记录', desc: '查看更新历史' },
   ].map((c, i) => {

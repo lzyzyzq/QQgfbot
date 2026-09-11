@@ -508,6 +508,10 @@ function 更新配置() {
     'version' => (string)($bridge['version'] ?? ''),
     'patchUrl' => (string)($bridge['patchUrl'] ?? ''),
     'fullUrl' => (string)($bridge['fullUrl'] ?? ''),
+    'frameworkPatchUrl' => (string)($bridge['frameworkPatchUrl'] ?? ''),
+    'pluginPatchUrl' => (string)($bridge['pluginPatchUrl'] ?? ''),
+    'frameworkFullUrl' => (string)($bridge['frameworkFullUrl'] ?? ''),
+    'pluginFullUrl' => (string)($bridge['pluginFullUrl'] ?? ''),
     'changeLog' => (string)($bridge['changeLog'] ?? ''),
     'configUrl' => trim((string)($bridge['configUrl'] ?? '')),
     'botName' => trim((string)($bridge['botName'] ?? '')),
@@ -516,6 +520,10 @@ function 更新配置() {
   $cfg['sourceUrl'] = '';
   $cfg['patchUrls'] = array();
   $cfg['fullUrls'] = array();
+  $cfg['frameworkPatchUrls'] = array();
+  $cfg['pluginPatchUrls'] = array();
+  $cfg['frameworkFullUrls'] = array();
+  $cfg['pluginFullUrls'] = array();
 
   $urls = array();
   if ($cfg['configUrl'] !== '') {
@@ -541,12 +549,20 @@ function 更新配置() {
     if ($v !== '') $cfg['version'] = $v;
     if ($p !== '') $cfg['patchUrl'] = $p;
     if ($f !== '') $cfg['fullUrl'] = $f;
+    foreach (array('frameworkPatchUrl', 'pluginPatchUrl', 'frameworkFullUrl', 'pluginFullUrl') as $kf) {
+      $vv = trim((string)($j[$kf] ?? ''));
+      if ($vv !== '') $cfg[$kf] = $vv;
+    }
     if (trim((string)($j['changeLog'] ?? '')) !== '') $cfg['changeLog'] = trim((string)$j['changeLog']);
     $cfg['sourceUrl'] = $u;
     $mir = is_array($j['mirrors'] ?? null) ? $j['mirrors'] : array();
     $add = function (&$arr, $v) { $v = trim((string)$v); if ($v !== '' && !in_array($v, $arr, true)) $arr[] = $v; };
     $add($cfg['patchUrls'], $cfg['patchUrl']);
     $add($cfg['fullUrls'], $cfg['fullUrl']);
+    $add($cfg['frameworkPatchUrls'], $cfg['frameworkPatchUrl']);
+    $add($cfg['pluginPatchUrls'], $cfg['pluginPatchUrl']);
+    $add($cfg['frameworkFullUrls'], $cfg['frameworkFullUrl']);
+    $add($cfg['pluginFullUrls'], $cfg['pluginFullUrl']);
     foreach ($mir as $m) {
       if (!is_array($m)) continue;
       $add($cfg['patchUrls'], $m['patchUrl'] ?? '');
@@ -555,6 +571,10 @@ function 更新配置() {
     // 兜底本机配置地址也纳入候选
     $add($cfg['patchUrls'], $local['patchUrl']);
     $add($cfg['fullUrls'], $local['fullUrl']);
+    $add($cfg['frameworkPatchUrls'], $local['frameworkPatchUrl']);
+    $add($cfg['pluginPatchUrls'], $local['pluginPatchUrl']);
+    $add($cfg['frameworkFullUrls'], $local['frameworkFullUrl']);
+    $add($cfg['pluginFullUrls'], $local['pluginFullUrl']);
     break;
   }
   if (count($cfg['patchUrls']) === 0) {

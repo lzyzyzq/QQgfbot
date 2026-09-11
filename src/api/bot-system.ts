@@ -1001,12 +1001,18 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
 router.get('/php-bridge/update-config', (req: Request, res: Response) => {
   let botName = '';
   try { botName = resolveBotName(); } catch {}
+  let localUc: any = {};
+  try { localUc = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'update-config.json'), 'utf-8')) || {}; } catch {}
   res.json({
     ok: true,
-    version: getConfig('update.version') || '4.2.65',
-    patchUrl: getConfig('update.patch_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.65.zip',
-    fullUrl: getConfig('update.full_url') || '',
-    changeLog: getConfig('update.changelog') || '',
+    version: getConfig('update.version') || localUc.version || '4.2.65',
+    patchUrl: getConfig('update.patch_url') || localUc.patchUrl || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.65.zip',
+    fullUrl: getConfig('update.full_url') || localUc.fullUrl || '',
+    frameworkPatchUrl: getConfig('update.framework_patch_url') || localUc.frameworkPatchUrl || '',
+    pluginPatchUrl: getConfig('update.plugin_patch_url') || localUc.pluginPatchUrl || '',
+    frameworkFullUrl: getConfig('update.framework_full_url') || localUc.frameworkFullUrl || '',
+    pluginFullUrl: getConfig('update.plugin_full_url') || localUc.pluginFullUrl || '',
+    changeLog: getConfig('update.changelog') || localUc.changeLog || '',
     configUrl: getConfig('update.config_url') || '',
     // 供「更新系统」插件在群内提醒中标注是哪个机器人发的（多机器人同群时区分）
     botName,

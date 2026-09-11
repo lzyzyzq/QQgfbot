@@ -282,6 +282,11 @@ input[type="file"]{color:var(--text2)}
     <h3>机器人状态</h3>
     <div class="table-wrap" id="dashBotList"><table><thead><tr><th>名称</th><th>AppID</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
   </div>
+  <div class="card">
+    <h3>部署进程状态（PM2 · 实时）</h3>
+    <div class="table-wrap" id="dashPm2"><table><thead><tr><th>编号</th><th>名称</th><th>状态</th><th>CPU</th><th>内存</th><th>重启</th><th>运行时长</th></tr></thead><tbody></tbody></table></div>
+    <div id="dashPm2Host" style="margin-top:8px;color:var(--text2);font-size:12px"></div>
+  </div>
   <div class="card" id="featureCard">
     <h3>功能模块</h3>
     <div style="color:var(--text2);font-size:13px;line-height:1.8" id="featureList">加载中...</div>
@@ -634,6 +639,10 @@ input[type="file"]{color:var(--text2)}
     <div class="form-group"><label>更新包版本号（如 4.2.59；群内「检查更新」以此对比当前版本，高于当前版本才提示有更新）</label><input id="cfgUpdateVersion" type="text" placeholder="4.2.59"></div>
     <div class="form-group"><label>补丁包下载地址</label><input id="cfgUpdatePatchUrl" type="text" placeholder="https://.../qqbot-card-editor-patch-4.2.59.zip"></div>
     <div class="form-group"><label>全量包下载地址</label><input id="cfgUpdateFullUrl" type="text" placeholder="https://.../qqbot-card-editor-4.2.59-full.zip"></div>
+    <div class="form-group"><label>框架补丁包下载地址（仅含框架源码变更；留空则回退到上面的「补丁包下载地址」）</label><input id="cfgUpdateFrameworkPatchUrl" type="text" placeholder="https://.../qqbot-card-editor-framework-patch-1.0.0.zip"></div>
+    <div class="form-group"><label>插件补丁包下载地址（仅含 plugins/ 变更；留空则回退到上面的「补丁包下载地址」）</label><input id="cfgUpdatePluginPatchUrl" type="text" placeholder="https://.../qqbot-card-editor-plugin-patch-1.0.0.zip"></div>
+    <div class="form-group"><label>框架全量包下载地址（完整框架，不含插件数据；留空则回退到上面的「全量包下载地址」）</label><input id="cfgUpdateFrameworkFullUrl" type="text" placeholder="https://.../qqbot-card-editor-framework-full-1.0.0.zip"></div>
+    <div class="form-group"><label>插件全量包下载地址（完整 plugins/；留空则回退到上面的「全量包下载地址」）</label><input id="cfgUpdatePluginFullUrl" type="text" placeholder="https://.../qqbot-card-editor-plugin-full-1.0.0.zip"></div>
     <div class="form-group"><label>更新内容说明（群内更新完成后回复此内容，每行一条）</label><textarea id="cfgUpdateChangeLog" rows="4" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px;font-family:inherit"></textarea></div>
     <div class="form-group"><label>更新配置远程地址（可选；本机更新系统插件/服务端接收从这里拉取云端更新配置）</label><input id="cfgUpdateConfigUrl" type="text" placeholder="https://3000-xxxx.monkeycode-ai.online/api/bot/php-bridge/update-config"><p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">留空=默认依次拉取 GitHub raw（lzyzyzq/QQgfbot）→ GitHub 加速镜像 → 8091 备用 的 update-config.json（AI 发版统一维护版本/下载地址/镜像列表/更新内容）。手动填地址（可用逗号分隔多个）可优先指定某源；全部拉取失败时自动回退本机面板「更新系统配置」</p></div>
     <div class="form-group" style="margin-top:12px"><button class="btn btn-primary" onclick="saveUpdateConfig()">保存更新配置</button> <button class="btn btn-outline" onclick="recordUpdateNow()">记录本次更新</button> <button class="btn btn-outline" onclick="loadUpdateRecords()">刷新升级列表</button> <span id="updMsg" style="font-size:13px;color:var(--text2)"></span></div>
@@ -1595,28 +1604,43 @@ let termHistory=[];
 let termHistIdx=-1;
 function termAppend(html){const out=docById('termOut');out.insertAdjacentHTML('beforeend',html);out.scrollTop=out.scrollHeight;}
 // 服务端固定英文输出（PM2 启停/进程表/host metrics）转中文显示；仅命中已知格式，其余原样保留
+const PM2_HEAD_CN={id:'编号',name:'名称',namespace:'命名空间',version:'版本',mode:'模式',pid:'PID',uptime:'运行时长',restarts:'重启次数',status:'状态',cpu:'CPU',mem:'内存',user:'用户',watching:'监听'};
+const PM2_VAL_CN={online:'在线',stopped:'已停止',errored:'错误',launching:'启动中',stopping:'停止中',restarting:'重启中',waiting:'等待中',waiting_restart:'等待重启',fork:'fork 模式',cluster:'cluster 模式',fork_mode:'fork 模式',cluster_mode:'cluster 模式'};
 function zhServerLine(line){
   let s=String(line==null?'':line);
   if(/\[PM2\]/.test(s)){
-    s=s.replace(/(\[PM2\])\s*Starting\s+(.+?)\s+in\s+(\w+)_mode/gi,'$1 正在启动 $2（$3 模式）')
+    s=s.replace(/(\[PM2\])\s*Applying action\s+restartProcessId\s+on app/gi,'$1 正在重启进程 · 应用')
+       .replace(/(\[PM2\])\s*Applying action\s+([A-Za-z]+)\s+on app/gi,'$1 执行操作 $2 · 应用')
+       .replace(/(\[PM2\])\s*Starting\s+(.+?)\s+in\s+(\w+)_mode/gi,'$1 正在启动 $2（$3 模式）')
        .replace(/(\[PM2\])\s*Done\./gi,'$1 完成。')
-       .replace(/(\[PM2\])\s*Applying action\s*(.*)$/gi,'$1 执行操作 $2')
        .replace(/(\[PM2\])\s*Launching\s+in\s+(.+)$/gi,'$1 正在启动（$2）')
        .replace(/(\[PM2\])\s*Killing/gi,'$1 正在结束')
-       .replace(/(\[PM2\])\s*Restarting/gi,'$1 正在重启');
+       .replace(/(\[PM2\])\s*Restarting/gi,'$1 正在重启')
+       .replace(/(\[PM2\])\s*Stopping/gi,'$1 正在停止')
+       .replace(/(\[PM2\])\s*Reloading/gi,'$1 正在重载')
+       .replace(/(\[PM2\])\s*Stopped/gi,'$1 已停止')
+       .replace(/(\[PM2\])\s*Online/gi,'$1 已上线');
   }
   if(/host metrics/i.test(s)){
-    s=s.replace(/host metrics/gi,'主机指标').replace(/\bcpu:/gi,'CPU：').replace(/ram usage:/gi,'内存占用：')
+    return s.replace(/host metrics/gi,'主机指标').replace(/\bcpu\s*:/gi,'CPU：').replace(/ram usage\s*:/gi,'内存占用：')
        .replace(/⇓/g,'下行 ').replace(/⇑/g,'上行 ').replace(/\bdrop\b/gi,'丢包');
-    return s;
   }
   if(/^\s*│.*│\s*$/.test(s)){
-    const map={id:'编号',name:'名称',namespace:'命名空间',version:'版本',mode:'模式',pid:'PID',uptime:'运行时长',restarts:'重启次数',status:'状态',cpu:'CPU',mem:'内存',user:'用户',watching:'监听',online:'在线',stopped:'已停止',errored:'错误',launching:'启动中',stopping:'停止中',restarting:'重启中',waiting:'等待中'};
-    return s.split('│').map(function(p){const t=p.trim();const c=map[t.toLowerCase()];return c?' '+c+' ':p;}).join('│');
+    return s.split('│').map(function(p){
+      const t=p.trim();
+      if(!t) return p;
+      const head=PM2_HEAD_CN[t.toLowerCase()];
+      if(head) return ' '+head+' ';
+      const val=PM2_VAL_CN[t.toLowerCase()];
+      if(val) return ' '+val+' ';
+      return p;
+    }).join('│');
   }
   return s;
 }
-function termPrint(text,cls){termAppend('<div class="'+(cls||'')+'">'+esc(zhServerLine(String(text==null?'':text)))+'</div>');}
+// 多行输出按行翻译（termPrint 会整段传入，必须逐行处理才能命中行级规则）
+function zhServerText(text){return String(text==null?'':text).split(/\r?\n/).map(zhServerLine).join('\n');}
+function termPrint(text,cls){termAppend('<div class="'+(cls||'')+'">'+esc(zhServerText(String(text==null?'':text)))+'</div>');}
 function termSetCwd(cwd){
   cwd=cwd||'/var/www/php';
   docById('termCwd').textContent=cwd;
@@ -1752,7 +1776,7 @@ async function loadDashboard(){try{const stats=await api('/api/system/stats');
     const botTxt=l.bot_name||l.bot_id||'';
     feed+='<div style="display:flex;gap:8px;align-items:baseline;font-size:12px;padding:3px 0;border-bottom:1px dashed rgba(127,127,127,.12)">'+
       '<span style="color:var(--text2);width:72px;flex:none;font-variant-numeric:tabular-nums">'+dashEventTime(l.created_at)+'</span>'+
-      '<span style="flex:none;color:'+dashLevelColor(l.level)+';font-weight:600">'+((l.level||'info').toUpperCase())+'</span>'+
+      '<span style="flex:none;color:'+dashLevelColor(l.level)+';font-weight:600">'+esc(runLogLevelCN(l.level||'info'))+'</span>'+
       (botTxt?('<span style="flex:none;color:var(--text2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(String(l.bot_id||''))+'">['+esc(String(botTxt))+']</span>'):'')+
       '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(String((l.message||'')+(l.detail?(' '+l.detail):'')))+'">'+esc(String(l.message||''))+(l.detail?('<span style="color:var(--text2)"> '+esc(String(l.detail))+'</span>'):'')+'</span></div>';
   }
@@ -1761,15 +1785,18 @@ async function loadDashboard(){try{const stats=await api('/api/system/stats');
   const features=(stats.features||[]).join('、');
   docById('featureList').textContent=features||'暂无功能模块';
   docById('dashBotList').querySelector('tbody').innerHTML='';
+  renderDashPm2(stats.pm2);
   await loadDashBots();
 }catch(e){}}
 
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h+'h '+m+'m'}
 function fmtUptimeCN(s){s=Math.max(0,Math.floor(Number(s)||0));const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);if(d>0)return d+'天'+h+'小时';if(h>0)return h+'小时'+m+'分';return m+'分'}
-const RUNLOG_LEVEL_CN={info:'信息',warn:'警告',error:'错误',debug:'调试'};
-const RUNLOG_CAT_CN={message:'消息',auth:'认证',member:'成员',system:'系统',schedule:'定时任务',plugin:'插件',plugins:'插件',bot:'机器人',group:'群组',napcat:'NapCat',editor:'词库编辑',interaction:'互动',qqbind:'QQ绑定',file:'文件',update:'更新'};
-function runLogLevelCN(v){return RUNLOG_LEVEL_CN[String(v||'').toLowerCase()]||String(v||'')}
+const RUNLOG_LEVEL_CN={info:'信息',warn:'警告',error:'错误',debug:'调试',trace:'追踪',fatal:'致命'};
+const RUNLOG_CAT_CN={message:'消息',send:'回复',auth:'认证',member:'成员',system:'系统',schedule:'定时任务',plugin:'插件',plugins:'插件',bot:'机器人',group:'群组',napcat:'NapCat',editor:'词库编辑',interaction:'互动',qqbind:'QQ绑定',file:'文件',update:'更新'};
+function runLogLevelCN(v){const k=String(v||'').toLowerCase();return RUNLOG_LEVEL_CN[k]||k.toUpperCase()||''}
 function runLogCatCN(v){return RUNLOG_CAT_CN[String(v||'').toLowerCase()]||String(v||'')}
+const BOT_STATUS_CN={running:'运行中',stopped:'已停止',error:'错误',errored:'错误',starting:'启动中',stopping:'停止中',restarting:'重启中',pending:'待启动',offline:'离线',online:'在线'};
+function botStatusCN(v){const k=String(v||'').toLowerCase();return BOT_STATUS_CN[k]||String(v||'')}
 function dashMiniCard(label,val,cls){return '<div class="stat-card"><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(String(val))+'</div></div>'}
 function dashGauge(label,val,pct,color){
   const p=Math.max(0,Math.min(100,Number(pct)||0));
@@ -1783,9 +1810,27 @@ function dashEventTime(s){
 }
 function dashLevelColor(lv){return lv==='error'?'#ef4444':(lv==='warn'?'#f59e0b':'#9ca3af')}
 
-async function loadDashBots(){try{const bots=await getBotsCached();docById('dashBotList').querySelector('tbody').innerHTML=bots.slice(0,5).map(b=>`<tr style="cursor:pointer" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')"><td><strong>${esc(b.name)}</strong></td><td>${esc(b.appId)}</td><td><span class="tag tag-${b.status}">${b.status}</span></td><td onclick="event.stopPropagation()">${b.status==='running'?`<button class="btn btn-warn btn-xs" onclick="stopBot('${b.id}')">停止</button>`:`<button class="btn btn-success btn-xs" onclick="startBot('${b.id}')">启动</button>`}<button class="btn btn-outline btn-xs" onclick="showInviteBot('${b.id}','${b.name}')">邀请</button><button class="btn btn-outline btn-xs" onclick="showGroupMgr('${b.id}','${b.name}','${b.appId}')">群管</button></td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--text2);text-align:center">暂无机器人</td></tr>'}catch{}}
+function renderDashPm2(pm2){
+  const wrap=docById('dashPm2');
+  const hostEl=docById('dashPm2Host');
+  if(!wrap)return;
+  const tb=wrap.querySelector('tbody');
+  const p=(pm2&&pm2.processes)||[];
+  if(!pm2||!pm2.available){
+    tb.innerHTML='<tr><td colspan="7" style="color:var(--text2);text-align:center">未检测到 PM2（本机非 PM2 部署，或未安装 pm2）</td></tr>';
+    if(hostEl)hostEl.textContent='';
+    return;
+  }
+  tb.innerHTML=p.map(function(x){
+    const cls=x.status==='online'?'tag-running':((x.status==='stopped'||x.status==='errored')?'tag-stopped':'tag-warn');
+    return '<tr><td>'+esc(String(x.id))+'</td><td><strong>'+esc(x.name)+'</strong></td><td><span class="tag '+cls+'">'+esc(botStatusCN(x.status))+'</span></td><td>'+(x.cpu||0)+'%</td><td>'+(x.mem||0)+' MB</td><td>'+(x.restarts||0)+'</td><td>'+esc(fmtUptimeCN(x.uptime||0))+'</td></tr>';
+  }).join('')||'<tr><td colspan="7" style="color:var(--text2);text-align:center">PM2 无进程</td></tr>';
+  if(hostEl)hostEl.textContent='主机指标：共 '+p.length+' 个进程 · 在线 '+p.filter(function(x){return x.status==='online'}).length+' 个';
+}
 
-async function loadBots(){botResetSel();try{const bots=await api('/api/bots');_botsCache=bots||[];_botsCacheTime=Date.now();botCount=bots.length;docById('botBadge').textContent=botCount;const p=currentUserPermissions||{};const canAdd=currentUser?.role==='super_master'||p.canAddBot;const addBtn=docById('botActionBar')?.querySelector('button');if(addBtn)addBtn.style.display=canAdd?'':'none';docById('botList').innerHTML=bots.map(b=>`<tr style="cursor:pointer" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')"><td style="width:32px;text-align:center;cursor:default" onclick="event.stopPropagation()"><input type="checkbox" class="bot-check" value="${b.id}" onclick="event.stopPropagation();botUpd(this)"></td><td><strong>${esc(b.name)}</strong></td><td>${esc(b.appId)}</td><td>${esc(b.owner)}</td><td><span class="tag tag-${b.status}">${b.status}</span></td><td>${new Date(b.createdAt).toLocaleString()}</td><td onclick="event.stopPropagation()"><button class="btn btn-primary btn-xs" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')">进入管理</button> ${b.status==='running'?`<button class="btn btn-warn btn-xs" onclick="stopBot('${b.id}')">停止</button><button class="btn btn-outline btn-xs" onclick="restartBot('${b.id}')">重启</button>`:`<button class="btn btn-success btn-xs" onclick="startBot('${b.id}')">启动</button>`}<button class="btn btn-outline btn-xs" onclick="showInviteBot('${b.id}','${b.name}')">邀请</button><button class="btn btn-outline btn-xs" onclick="showGroupMgr('${b.id}','${b.name}','${b.appId}')">群管</button><button class="btn btn-outline btn-xs" onclick="showBotDetail('${b.id}')">详情</button>${(currentUser?.role==='super_master'||p.canEditBot)?`<button class="btn btn-outline btn-xs" onclick="editBot('${b.id}')">编辑</button>`:''}${(currentUser?.role==='super_master'||p.canDeleteBot)?`<button class="btn btn-danger btn-xs" onclick="delBot('${b.id}')">删除</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" style="color:var(--text2);text-align:center">暂无机器人</td></tr>'}catch{}}
+async function loadDashBots(){try{const bots=await getBotsCached();docById('dashBotList').querySelector('tbody').innerHTML=bots.slice(0,5).map(b=>`<tr style="cursor:pointer" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')"><td><strong>${esc(b.name)}</strong></td><td>${esc(b.appId)}</td><td><span class="tag tag-${b.status}">${botStatusCN(b.status)}</span></td><td onclick="event.stopPropagation()">${b.status==='running'?`<button class="btn btn-warn btn-xs" onclick="stopBot('${b.id}')">停止</button>`:`<button class="btn btn-success btn-xs" onclick="startBot('${b.id}')">启动</button>`}<button class="btn btn-outline btn-xs" onclick="showInviteBot('${b.id}','${b.name}')">邀请</button><button class="btn btn-outline btn-xs" onclick="showGroupMgr('${b.id}','${b.name}','${b.appId}')">群管</button></td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--text2);text-align:center">暂无机器人</td></tr>'}catch{}}
+
+async function loadBots(){botResetSel();try{const bots=await api('/api/bots');_botsCache=bots||[];_botsCacheTime=Date.now();botCount=bots.length;docById('botBadge').textContent=botCount;const p=currentUserPermissions||{};const canAdd=currentUser?.role==='super_master'||p.canAddBot;const addBtn=docById('botActionBar')?.querySelector('button');if(addBtn)addBtn.style.display=canAdd?'':'none';docById('botList').innerHTML=bots.map(b=>`<tr style="cursor:pointer" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')"><td style="width:32px;text-align:center;cursor:default" onclick="event.stopPropagation()"><input type="checkbox" class="bot-check" value="${b.id}" onclick="event.stopPropagation();botUpd(this)"></td><td><strong>${esc(b.name)}</strong></td><td>${esc(b.appId)}</td><td>${esc(b.owner)}</td><td><span class="tag tag-${b.status}">${botStatusCN(b.status)}</span></td><td>${new Date(b.createdAt).toLocaleString()}</td><td onclick="event.stopPropagation()"><button class="btn btn-primary btn-xs" onclick="enterBotManage('${b.id}','${esc(b.appId)}','${esc(b.name)}','membersync')">进入管理</button> ${b.status==='running'?`<button class="btn btn-warn btn-xs" onclick="stopBot('${b.id}')">停止</button><button class="btn btn-outline btn-xs" onclick="restartBot('${b.id}')">重启</button>`:`<button class="btn btn-success btn-xs" onclick="startBot('${b.id}')">启动</button>`}<button class="btn btn-outline btn-xs" onclick="showInviteBot('${b.id}','${b.name}')">邀请</button><button class="btn btn-outline btn-xs" onclick="showGroupMgr('${b.id}','${b.name}','${b.appId}')">群管</button><button class="btn btn-outline btn-xs" onclick="showBotDetail('${b.id}')">详情</button>${(currentUser?.role==='super_master'||p.canEditBot)?`<button class="btn btn-outline btn-xs" onclick="editBot('${b.id}')">编辑</button>`:''}${(currentUser?.role==='super_master'||p.canDeleteBot)?`<button class="btn btn-danger btn-xs" onclick="delBot('${b.id}')">删除</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" style="color:var(--text2);text-align:center">暂无机器人</td></tr>'}catch{}}
 
 function showAddBot(){docById('modalBotTitle').textContent='添加机器人';docById('botName').value='';docById('botAppId').value='';docById('botSecret').value='';docById('botSandbox').value='false';docById('botIntents').value='0';docById('editBotId').value='';docById('modalAddBot').classList.add('active');loadAddBotNapcatStatus()}
 
@@ -1796,7 +1841,7 @@ async function showBotDetail(id){
     const d=await api('/api/bots/'+id+'/detail');
     const b=d.bot;
     const ownerTxt=d.ownerInfo?esc(d.ownerInfo.username+(d.ownerInfo.qq?' ('+d.ownerInfo.qq+')':'')):'-';
-    let h='<table class="table" style="margin-bottom:12px"><tr><th>名称</th><td>'+esc(b.name)+'</td><th>状态</th><td><span class="tag tag-'+esc(b.status)+'">'+esc(b.status)+'</span></td></tr>'+
+    let h='<table class="table" style="margin-bottom:12px"><tr><th>名称</th><td>'+esc(b.name)+'</td><th>状态</th><td><span class="tag tag-'+esc(b.status)+'">'+esc(botStatusCN(b.status))+'</span></td></tr>'+
       '<tr><th>AppID</th><td>'+esc(b.appId)+'</td><th>AppSecret</th><td>'+esc(b.clientSecret)+(b.clientSecret==='******'?' <span style="color:var(--text2);font-size:12px">(已隐藏，需超主开放)</span>':'')+'</td></tr>'+
       '<tr><th>回调链接</th><td colspan="3"><code>'+esc(d.webhookUrl)+'</code></td></tr>'+
       '<tr><th>归属者</th><td>'+ownerTxt+'</td><th>环境</th><td>'+(b.sandbox?'沙箱':'生产')+'</td></tr></table>';
@@ -3054,7 +3099,7 @@ async function renameFile(path){const nn=prompt('新名称',path.split('/').pop(
 
 async function delFile(path){if(confirm('确定删除 "'+path+'" ?')){await api('/api/files/delete',{method:'POST',body:{path}});loadFiles()}}
 
-async function loadSettings(){loadLinkMode();try{const data=await api('/api/system/config');docById('cfgPort').value=data.serverPort||data.adminPort;docById('cfgPanelHost').value=data.panelHost||'';docById('cfgBotName').value=data.botName||'';docById('cfgChimeTexts').value=data.chimeTexts||'';docById('cfgChimeCity').value=data.chimeCity||'北京';docById('cfgChimeAd').value=data.chimeAd||'';docById('cfgWeatherTextApi').value=data.weatherTextApi||'';docById('cfgWeatherPngApi').value=data.weatherPngApi||'';docById('cfgFooterText').value=data.footerText||'';docById('cfgFooterAds').value=data.footerAds||'';docById('cfgQQLoginToken').value=data.qqLoginToken||'';docById('cfgAuthCodePanelLogin').checked=!!data.authCodePanelLogin;docById('cfgLicenseAutoShutdown').checked=data.licenseAutoShutdown!==false;docById('cfgUpdateVersion').value=data.updateVersion||'4.2.59';docById('cfgUpdatePatchUrl').value=data.updatePatchUrl||'';docById('cfgUpdateFullUrl').value=data.updateFullUrl||'';docById('cfgUpdateChangeLog').value=data.updateChangeLog||'';docById('cfgUpdateConfigUrl').value=data.updateConfigUrl||''}catch{};if(currentUser){const uname=currentUser.username||'';docById('personalUser').value=uname;try{const admins=await api('/api/auth/admins');const self=admins.find(a=>a.username===uname||(currentUser.role==='super_master'&&a.role==='super_master')||a.username===uname.replace('qq_',''));if(self){docById('personalQQ').value=self.qq||'';docById('personalQQ').placeholder='修改QQ号后点保存（超级主人可修改）';}}catch{}}if(currentUser?.role==='super_master'){try{
+async function loadSettings(){loadLinkMode();try{const data=await api('/api/system/config');docById('cfgPort').value=data.serverPort||data.adminPort;docById('cfgPanelHost').value=data.panelHost||'';docById('cfgBotName').value=data.botName||'';docById('cfgChimeTexts').value=data.chimeTexts||'';docById('cfgChimeCity').value=data.chimeCity||'北京';docById('cfgChimeAd').value=data.chimeAd||'';docById('cfgWeatherTextApi').value=data.weatherTextApi||'';docById('cfgWeatherPngApi').value=data.weatherPngApi||'';docById('cfgFooterText').value=data.footerText||'';docById('cfgFooterAds').value=data.footerAds||'';docById('cfgQQLoginToken').value=data.qqLoginToken||'';docById('cfgAuthCodePanelLogin').checked=!!data.authCodePanelLogin;docById('cfgLicenseAutoShutdown').checked=data.licenseAutoShutdown!==false;docById('cfgUpdateVersion').value=data.updateVersion||'4.2.59';docById('cfgUpdatePatchUrl').value=data.updatePatchUrl||'';docById('cfgUpdateFullUrl').value=data.updateFullUrl||'';docById('cfgUpdateFrameworkPatchUrl').value=data.updateFrameworkPatchUrl||'';docById('cfgUpdatePluginPatchUrl').value=data.updatePluginPatchUrl||'';docById('cfgUpdateFrameworkFullUrl').value=data.updateFrameworkFullUrl||'';docById('cfgUpdatePluginFullUrl').value=data.updatePluginFullUrl||'';docById('cfgUpdateChangeLog').value=data.updateChangeLog||'';docById('cfgUpdateConfigUrl').value=data.updateConfigUrl||''}catch{};if(currentUser){const uname=currentUser.username||'';docById('personalUser').value=uname;try{const admins=await api('/api/auth/admins');const self=admins.find(a=>a.username===uname||(currentUser.role==='super_master'&&a.role==='super_master')||a.username===uname.replace('qq_',''));if(self){docById('personalQQ').value=self.qq||'';docById('personalQQ').placeholder='修改QQ号后点保存（超级主人可修改）';}}catch{}}if(currentUser?.role==='super_master'){try{
   // 机器人筛选下拉
   try{const bots=await getBotsCached();docById('adminBotFilter').innerHTML='<option value="">全部机器人</option>'+bots.map(b=>'<option value="'+esc(b.appId)+'">'+esc(b.name)+'（'+esc(b.appId)+'）</option>').join('')}catch(e){}
   const botFilter=docById('adminBotFilter').value;
@@ -3460,7 +3505,7 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
    const msg=docById('cfgMsg');
    msg.textContent='保存中...';msg.style.color='var(--text2)';
    try{
-      await api('/api/system/config',{method:'PUT',body:{authCodePanelLogin:docById('cfgAuthCodePanelLogin').checked,licenseAutoShutdown:docById('cfgLicenseAutoShutdown').checked,port:docById('cfgPort').value,panelHost:docById('cfgPanelHost').value.trim(),botName:docById('cfgBotName').value.trim(),chimeTexts:docById('cfgChimeTexts').value,chimeCity:docById('cfgChimeCity').value.trim()||'北京',chimeAd:docById('cfgChimeAd').value.trim(),weatherTextApi:docById('cfgWeatherTextApi').value.trim(),weatherPngApi:docById('cfgWeatherPngApi').value.trim(),footerText:docById('cfgFooterText').value.trim(),footerAds:docById('cfgFooterAds').value,qqLoginToken:docById('cfgQQLoginToken').value.trim(),updateVersion:docById('cfgUpdateVersion').value.trim(),updatePatchUrl:docById('cfgUpdatePatchUrl').value.trim(),updateFullUrl:docById('cfgUpdateFullUrl').value.trim(),updateChangeLog:docById('cfgUpdateChangeLog').value,updateConfigUrl:docById('cfgUpdateConfigUrl').value.trim()}});
+      await api('/api/system/config',{method:'PUT',body:{authCodePanelLogin:docById('cfgAuthCodePanelLogin').checked,licenseAutoShutdown:docById('cfgLicenseAutoShutdown').checked,port:docById('cfgPort').value,panelHost:docById('cfgPanelHost').value.trim(),botName:docById('cfgBotName').value.trim(),chimeTexts:docById('cfgChimeTexts').value,chimeCity:docById('cfgChimeCity').value.trim()||'北京',chimeAd:docById('cfgChimeAd').value.trim(),weatherTextApi:docById('cfgWeatherTextApi').value.trim(),weatherPngApi:docById('cfgWeatherPngApi').value.trim(),footerText:docById('cfgFooterText').value.trim(),footerAds:docById('cfgFooterAds').value,qqLoginToken:docById('cfgQQLoginToken').value.trim(),updateVersion:docById('cfgUpdateVersion').value.trim(),updatePatchUrl:docById('cfgUpdatePatchUrl').value.trim(),updateFullUrl:docById('cfgUpdateFullUrl').value.trim(),updateFrameworkPatchUrl:docById('cfgUpdateFrameworkPatchUrl').value.trim(),updatePluginPatchUrl:docById('cfgUpdatePluginPatchUrl').value.trim(),updateFrameworkFullUrl:docById('cfgUpdateFrameworkFullUrl').value.trim(),updatePluginFullUrl:docById('cfgUpdatePluginFullUrl').value.trim(),updateChangeLog:docById('cfgUpdateChangeLog').value,updateConfigUrl:docById('cfgUpdateConfigUrl').value.trim()}});
      msg.textContent='✅ 已保存，重启后生效';
    }catch(e){msg.textContent='保存失败: '+e.message;msg.style.color='var(--danger)'}
  }
@@ -3469,7 +3514,7 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
     const msg=docById('updMsg');
     msg.textContent='保存中...';msg.style.color='var(--text2)';
     try{
-      await api('/api/system/config',{method:'PUT',body:{updateVersion:docById('cfgUpdateVersion').value.trim(),updatePatchUrl:docById('cfgUpdatePatchUrl').value.trim(),updateFullUrl:docById('cfgUpdateFullUrl').value.trim(),updateChangeLog:docById('cfgUpdateChangeLog').value,updateConfigUrl:docById('cfgUpdateConfigUrl').value.trim()}});
+      await api('/api/system/config',{method:'PUT',body:{updateVersion:docById('cfgUpdateVersion').value.trim(),updatePatchUrl:docById('cfgUpdatePatchUrl').value.trim(),updateFullUrl:docById('cfgUpdateFullUrl').value.trim(),updateFrameworkPatchUrl:docById('cfgUpdateFrameworkPatchUrl').value.trim(),updatePluginPatchUrl:docById('cfgUpdatePluginPatchUrl').value.trim(),updateFrameworkFullUrl:docById('cfgUpdateFrameworkFullUrl').value.trim(),updatePluginFullUrl:docById('cfgUpdatePluginFullUrl').value.trim(),updateChangeLog:docById('cfgUpdateChangeLog').value,updateConfigUrl:docById('cfgUpdateConfigUrl').value.trim()}});
       msg.textContent='✅ 更新配置已保存（群内「检查更新」立即生效）';msg.style.color='var(--success)';
     }catch(e){msg.textContent='保存失败: '+e.message;msg.style.color='var(--danger)'}
   }

@@ -39,13 +39,16 @@ const assignmentCache = new Map<string, boolean>();
 // 记录每个 bot_id 是否已有任何分配记录；无记录（undefined）表示该机器人处于全局模式
 const botHasAssignment = new Set<string>();
 
+// 返回该插件在该机器人的分配态：true=已分配，false=显式未分配，null=跟随全局（无记录）。
+// 语义：上传即用——无记录（跟随全局）等同「已分配」放行，只有用户显式点成「未分配」(assigned=0) 才不运行。
 export function getPluginAssignment(pluginId: string, botId: string): boolean | null {
   try {
     if (!botHasAssignment.has(botId)) return null;
     const key = `${botId}\u0001${pluginId}`;
     if (assignmentCache.has(key)) return assignmentCache.get(key) === true;
     const row = getDb().prepare('SELECT assigned FROM bot_plugins WHERE bot_id = ? AND plugin_id = ?').get(botId, pluginId) as any;
-    const val = !!row && row.assigned === 1;
+    if (!row) return null; // 无记录=跟随全局，放行
+    const val = row.assigned === 1;
     assignmentCache.set(key, val);
     return val;
   } catch {
@@ -163,7 +166,7 @@ export function getMasterBotId(): string {
 export function pluginAllowedForEvent(pluginId: string, botId: string, event: string, groupId?: string): boolean {
   const pid = String(pluginId || '');
   if (!pid) return true;
-  // 按机器人分配：per-bot 模式下未勾选/无记录一律不跑；无任何分配记录为全局模式（放行）
+  // 按机器人分配：无记录（跟随全局）等同已分配放行，仅显式未分配(assigned=0)不跑
   if (botId) {
     const assigned = getPluginAssignment(pid, String(botId));
     if (assigned === false) return false;
