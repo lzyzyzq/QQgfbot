@@ -5,6 +5,7 @@ import { EventBus, pluginAllowedForEvent } from './event-bus';
 import { BotAPI } from '../plugin/types';
 import { createLogger } from '../utils/logger';
 import { getConfig, getDb } from '../db/index';
+import { phpTempFileName } from './php-temp-name';
 
 const logger = createLogger('php-plugin');
 
@@ -124,8 +125,7 @@ function prepareInjectedFiles(pluginsDir: string, phpFiles: string[]): string[] 
   const dataDir = path.resolve(process.cwd(), 'data', 'database');
   const bridgeUrl = `http://127.0.0.1:${process.env.PORT || '3000'}`;
   return phpFiles.map((f) => {
-    const name = path.basename(f, '.php');
-    const tmp = path.join(tmpDir, `__php_${name.replace(/[^A-Za-z0-9_-]/g, '_')}.php`);
+    const tmp = path.join(tmpDir, phpTempFileName(f));
     try {
       const src = fs.readFileSync(f, 'utf-8');
       const head = '<?php\n' +
@@ -191,9 +191,15 @@ export async function setupPhpPlugins(eventBus: EventBus, botApi: BotAPI, plugin
           let pluginRow: any = null;
           if (baseName !== 'php_helpers.php') {
             pluginRow = getDb().prepare('SELECT id, enabled FROM plugins WHERE name = ?').get(baseName) as any;
-            if (pluginRow && pluginRow.enabled === 0) continue;
+            if (pluginRow && pluginRow.enabled === 0) {
+              logger.warn(`PHP 插件 ${baseName} 在面板中处于禁用状态，已跳过执行`);
+              continue;
+            }
             // 按机器人分配/按群开关过滤：与 JS 插件共用同一判定，杜绝 PHP 插件绕过「按分配运行」
-            if (pluginRow && pluginRow.id && !pluginAllowedForEvent(String(pluginRow.id), String(payload.botId), 'message.' + type, payload.groupId)) continue;
+            if (pluginRow && pluginRow.id && !pluginAllowedForEvent(String(pluginRow.id), String(payload.botId), 'message.' + type, payload.groupId)) {
+              logger.warn(`PHP 插件 ${baseName} 未分配给机器人(${payload.botId})或已被该群禁用，已跳过执行`);
+              continue;
+            }
           }
           const r = await runPhpPlugin(runFiles[i] || phpFiles[i], payload);
           if (r.timedOut) logger.warn(`PHP 插件 ${path.basename(phpFiles[i])} 超时；${r.out ? '已回传累积回复' : '无累积回复'}`);

@@ -254,7 +254,7 @@ function writeZip(outName, files, opts) {
 function fullFrameworkFiles() {
   const out = [];
   const seen = new Set();
-  const excl = [/^\.git\//, /^node_modules\//, /^data\//, /^web\/node_modules\//, /^\.monkeycode\//, /\.zip$/, /^dist-full-/, /^downloads\.html$/, /^index\.html$/, /^releases\.(html|json)$/, /(^|\/)__pycache__\//, /(^|\/)\.tmp\//, /(^|\/)\.approvals\.json$/];
+  const excl = [/^\.git\//, /^node_modules\//, /^data\//, /^web\/node_modules\//, /^\.monkeycode\//, /\.zip$/, /^dist-full-/, /(^|\/)__pycache__\//, /(^|\/)\.tmp\//, /(^|\/)\.approvals\.json$/];
   const push = (rel) => { if (rel && !seen.has(rel)) { seen.add(rel); out.push(rel); } };
   // core.quotepath=false：否则中文文件名被转义成八进制，existsSync 找不到而静默漏包（复读.php 等）
   try { for (const f of sh('git -c core.quotepath=false ls-files').split('\n')) if (f && !excl.some((re) => re.test(f))) push(f); } catch (e) {}
@@ -332,6 +332,20 @@ sh('git add package.json CHANGELOG.md update-config.json');
 sh('git add -f ' + [combinedZip, fwPatchZip, plgPatchZip, fwFullZip, plgFullZip].join(' '));
 sh('git commit -m "release: ' + ver + '（自动发布）"');
 sh('git tag ' + tag);
+
+// 7.5) 用新 tag 刷新站点：让「版本列表」立即包含本次版本，并把站点文件重打进框架全量包，
+//      否则服务器端下载页会一直停留在上一个版本（releases.json 陈旧）。
+try {
+  sh('node scripts/site-gen.mjs');
+  const nFwFull2 = writeZip(fwFullZip, fullFrameworkFiles(), {});
+  sh('git add releases.json releases.html downloads.html index.html');
+  sh('git add -f ' + fwFullZip);
+  sh('git commit -m "chore(site): 刷新至 ' + ver + '（重打全量包）"');
+  console.log('站点已刷新至 ' + ver + '，框架全量包重打（' + nFwFull2 + ' 文件，含最新版本列表）');
+} catch (e) {
+  console.warn('站点刷新失败（忽略，不影响包与 tag）：' + (e && e.message ? e.message : e));
+}
+
 if (noPush) {
   console.log('离线模式（--no-push）：已本地提交并打 tag ' + tag + '，未 push。');
   console.log('网络恢复后执行：git push origin main && git push origin ' + tag);
