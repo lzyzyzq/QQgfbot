@@ -151,7 +151,7 @@ if (!frameworkChanged && !pluginChanged) {
 }
 
 // 解析提交及其改动文件，用于把更新日志按「框架升级 / 插件升级」分开
-const rawLog = sh("git -c core.quotepath=false log --no-merges --pretty=format:@@%h|%s --name-only " + fromTag + '..HEAD');
+const rawLog = sh("git -c core.quotepath=false log --no-merges --pretty=format:'@@%h|%s' --name-only " + fromTag + '..HEAD');
 const commits = [];
 {
   let cur = null;
