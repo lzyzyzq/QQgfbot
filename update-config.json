@@ -1,15 +1,16 @@
 {
   "ok": true,
-  "version": "4.2.100",
+  "version": "1.0.0",
   "frameworkVersion": "1.0.0",
   "pluginVersion": "1.0.0",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.100.zip",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.0.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.100.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.0.zip"
     }
   ],
-  "changeLog": "插件列表显示名去除 .php/.py/.js 后缀（类型列已标注类型，名字更清爽）"
+  "changeLog": "补丁版本号重置，改从 1.0.0 起算；框架版本与插件版本分开维护与展示",
+  "changeType": "框架升级 + 插件升级"
 }
