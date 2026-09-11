@@ -563,7 +563,8 @@ async function main() {
   if (cfgAppId) {
     const existingBot = botRegistry.list().find((b) => b.appId === cfgAppId);
     if (existingBot) {
-      botRegistry.setStatus(existingBot.id, 'running');
+      // 不再无条件置为 running：尊重用户在面板的「停止」，
+      // 避免被关闭的机器人在每次重启服务后又被显示成开启（状态持久化于 bots.json）
       if (cfgAppSecret && existingBot.clientSecret !== cfgAppSecret) {
         botRegistry.update(existingBot.id, { clientSecret: cfgAppSecret });
       }
@@ -949,13 +950,22 @@ async function main() {
 
   const existingAppId = getConfig('bot.app_id');
   if (existingAppId) {
-    try { await bot.start(); serverLogger.info('Bot auto-started'); }
-    catch (err: any) { serverLogger.warn(`Bot auto-start failed: ${err.message}`); }
+    const regEntry = botRegistry.list().find((b) => b.appId === existingAppId);
+    // 尊重面板「停止」：被用户关闭的机器人在重启服务后不自动拉起（防止关了又变成开启）；
+    // 因授权到期被自动停机的（licenseStopped）仍启动，交由 watchdog 按续期状态恢复。
+    const userStopped = !!regEntry && regEntry.status === 'stopped' && !regEntry.licenseStopped;
+    if (!userStopped) {
+      try { await bot.start(); serverLogger.info('Bot auto-started'); }
+      catch (err: any) { serverLogger.warn(`Bot auto-start failed: ${err.message}`); }
+    } else {
+      serverLogger.info(`Bot ${existingAppId} is stopped in panel, skip auto-start`);
+    }
   }
 
   // 为 registry 中其他运行中的机器人注册 BotCore（各自独立 access_token 发消息）
   try {
     for (const entry of botRegistry.list()) {
+      if (entry.status === 'stopped' && !entry.licenseStopped) continue;
       if (entry.appId && entry.appId !== existingAppId && entry.clientSecret) {
         try {
           const core = registerBot(eventBus, entry.appId, entry.clientSecret);
