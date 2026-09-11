@@ -1733,7 +1733,6 @@ async function loadDashboard(){try{const stats=await api('/api/system/stats');
     dashMiniCard('机器人在线',online+' / '+(stats.bots?stats.bots.total:0),'green')+
     dashMiniCard('插件数量',stats.pluginCount||0,'yellow')+
     dashMiniCard('系统版本',stats.frameworkVersion||'1.0.0','blue')+
-    dashMiniCard('补丁版本',stats.version||'-','blue')+
     dashMiniCard('插件版本',stats.pluginVersion||'-','blue')+
     dashMiniCard('进程已运行',fmtTime(stats.uptime||0),'green');
   const mem=stats.memory||{};
@@ -3787,7 +3786,7 @@ function copySelectedRunLogs(){
     const l=byId[id];if(!l)return'';
     const ts=new Date(l.created_at+'Z').toLocaleString();
     const who=[(l.bot_name||l.bot_id)?('机器人:'+(l.bot_name||l.bot_id)+(l.bot_name&&l.bot_id?(' ['+l.bot_id+']'):'')):'',l.user_id?('用户:'+l.user_id):'',l.group_id?('群:'+l.group_id):''].filter(Boolean).join(' ');
-    return '['+ts+'] ['+(l.level||'info').toUpperCase()+'] ['+(l.category||'')+'] '+(who?('['+who+'] '):'')+(l.message||'')+(l.detail?('\n  详情: '+l.detail):'');
+    return '['+ts+'] ['+runLogLevelCN(l.level)+'] ['+runLogCatCN(l.category)+'] '+(who?('['+who+'] '):'')+(l.message||'')+(l.detail?('\n  详情: '+l.detail):'');
   }).filter(Boolean);
   const txt=parts.join('\n\n');
   if(!txt){alert('没有可复制的内容');return}
