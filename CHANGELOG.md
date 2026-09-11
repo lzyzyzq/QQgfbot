@@ -1,3 +1,21 @@
+## 1.0.8（2026-09-11）
+
+### 发布说明
+
+群内绑定QQ/解绑QQ/绑定QQ群同步到面板用户管理与OpenID列表（补齐群归属，解绑保留群信息）
+
+### 框架升级（框架文件变更）
+
+**框架修复/新增说明**：engine 绑定链路对齐 /api/bot/bind-qq：bindUserQQ 支持 groupId 写 groups+group_members，unbindUser 改为清QQ保留群归属，bindGroupNumber 记录来源机器人；发版脚本补丁包内嵌最新 update-config
+
+- 修复：fix(release): 补丁包在写入 update-config.json 后重打，避免内嵌上一版更新配置（478bcb8）
+- 修复：fix: 群内绑定QQ/群号同步用户管理与OpenID列表（engine绑定链路对齐/bind-qq：写入groups+group_members；解绑保留群归属）（2a26650）
+
+### 插件升级 / 新增插件（plugins/ 目录变更）
+
+- 修复：fix: 群内绑定QQ/群号同步用户管理与OpenID列表（engine绑定链路对齐/bind-qq：写入groups+group_members；解绑保留群归属）（2a26650）
+
+---
 ## 1.0.7（2026-09-11）
 
 ### 发布说明
