@@ -327,6 +327,12 @@ if (frameworkChanged || pluginChanged) {
 fs.writeFileSync(ucPath, JSON.stringify(uc, null, 2) + '\n', 'utf8');
 console.log('update-config.json 已登记 ' + ver + '（框架版本 ' + frameworkVersion + '，插件版本 ' + pluginVersion + '，范围 ' + (uc.changeType || '补丁') + '）');
 
+// 6.5) update-config.json 已更新，重打内嵌 meta 的合并补丁/框架补丁，
+//      否则补丁包内嵌的是上一版 update-config.json，部署后本地配置回退旧版本。
+const nCombined2 = writeZip(combinedZip, changedFiltered, { dist: true, meta: true });
+const nFwPatch2 = writeZip(fwPatchZip, frameworkFiles, { dist: true, meta: true });
+console.log('补丁包已重打（内嵌最新 update-config.json）：' + combinedZip + '（' + nCombined2 + ' 文件）、' + fwPatchZip + '（' + nFwPatch2 + ' 文件）');
+
 // 7) commit + tag + push（仓库双写：源码 + 包 + 登记 + CHANGELOG；zip 被 gitignore 故强制入库）
 sh('git add package.json CHANGELOG.md update-config.json');
 sh('git add -f ' + [combinedZip, fwPatchZip, plgPatchZip, fwFullZip, plgFullZip].join(' '));
