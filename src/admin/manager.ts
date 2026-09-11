@@ -42,7 +42,7 @@ export class BotManager extends EventEmitter {
     const entry = this.registry.get(id);
     if (!entry) return null;
     this.registry.setStatus(id, 'running');
-    this.logger.info(`Bot [${entry.name}] start requested`);
+    this.logger.info(`机器人 [${entry.name}] 收到启动请求`);
     this.emit('botStarted', id);
     return entry;
   }
@@ -50,7 +50,7 @@ export class BotManager extends EventEmitter {
   stopBot(id: string): void {
     const entry = this.registry.get(id);
     this.registry.setStatus(id, 'stopped');
-    this.logger.info(`Bot [${entry?.name || id}] stopped`);
+    this.logger.info(`机器人 [${entry?.name || id}] 已停止`);
     this.emit('botStopped', id);
   }
 
@@ -65,7 +65,7 @@ export class BotManager extends EventEmitter {
     for (const bot of bots) {
       if (bot.status === 'running') {
         await this.startBot(bot.id).catch((err) => {
-          this.logger.error(`Bot [${bot.name}] auto-start failed: ${err}`);
+          this.logger.error(`机器人 [${bot.name}] 自动启动失败：${err}`);
         });
       }
     }

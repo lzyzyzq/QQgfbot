@@ -20,6 +20,11 @@ $用户 = (string)($in['userId'] ?? '');
 
 if ($类型 !== 'group' || $群 === '') exit(0);
 
+// 状态按「机器人 + 群」隔离：多机器人同库时各机器人独立开关，互不串扰
+$botId = getenv('PHP_PLUGIN_BOT_ID');
+$botId = $botId !== false ? (string)$botId : '';
+$状态键 = ($botId !== '' ? $botId . '@' : '') . $群;
+
 // 剥离消息开头对机器人的 @ 提及，避免控制词匹配失败
 while (true) {
   $去 = preg_replace('/^<@!?[0-9A-Fa-f]+>\s*/', '', $消息);
@@ -28,7 +33,7 @@ while (true) {
   $消息 = trim($去);
 }
 
-$状态 = 读('复读状态', $群);
+$状态 = 读('复读状态', $状态键);
 $开启 = ($状态 === true || $状态 === 1 || $状态 === '1');
 
 $是开始 = in_array($消息, array('开始', '开始复读', '复读开始', '开启复读'), true);
@@ -40,16 +45,21 @@ if ($是开始 || $是停止) {
     exit(0);
   }
   if ($是开始) {
-    写('复读状态', $群, true);
+    写('复读状态', $状态键, true);
     echo json_encode(array('replies' => array(回复文本("复读已开启，发送「停止」立即关闭。"))), JSON_UNESCAPED_UNICODE);
     exit(0);
   }
-  写('复读状态', $群, false);
+  写('复读状态', $状态键, false);
   echo json_encode(array('replies' => array(回复文本("复读已停止，后续消息不再复读。"))), JSON_UNESCAPED_UNICODE);
   exit(0);
 }
 
 if (!$开启) exit(0);
 if ($消息 === '') exit(0);
+
+// 防回显死循环：机器人自己发出的控制回复被 QQ 回推为「群消息」时直接忽略，
+// 否则会形成「复读→回推→再复读」的自我刷屏（表现为复读的其实是机器人自己的话）。
+$自产 = array('复读已开启，发送「停止」立即关闭。', '复读已停止，后续消息不再复读。', '「复读」控制仅 超级主人 / 群主 / 群管理员 可用。');
+if (in_array($消息, $自产, true)) exit(0);
 
 echo json_encode(array('replies' => array(回复文本($消息))), JSON_UNESCAPED_UNICODE);

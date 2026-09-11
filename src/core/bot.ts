@@ -141,12 +141,12 @@ export class BotCore {
     if (!this.config.appSecret) throw new Error('BotSecret not configured');
 
     this.status = 'connecting';
-    logger.info('Bot initializing...');
+    logger.info('机器人初始化中...');
 
     try {
       await this.refreshAccessToken();
       this.status = 'connected';
-      logger.info('Bot ready (webhook mode)');
+      logger.info('机器人就绪（webhook 模式）');
       this.eventBus.emit('bot.connected', { appId: this.config.appId });
     } catch (err: any) {
       this.status = 'error';
@@ -249,7 +249,7 @@ export class BotCore {
   async stop(): Promise<void> {
     this.accessToken = null;
     this.status = 'stopped';
-    logger.info('Bot stopped');
+    logger.info('机器人已停止');
   }
 
   // 机器人发送消息的运行记录（写入 system_logs，供运行记录页面判断机器人是否回复）

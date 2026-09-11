@@ -1,5 +1,5 @@
-// 重启控制 v1.2.0 - 超级主人群内「重启机器人/重启服务器」10 秒倒计时后本机 pm2 重启；
-// 启动后（onEnable）自动向机器人所在全部群广播运行状态：重启路径会显示「重启完成 · 用时 X 秒」，
+// 重启控制 v1.2.1 - 超级主人群内「重启机器人/重启服务器」10 秒倒计时后本机 pm2 重启；
+// 启动后（每个机器人 bot.connected）各自向「该机器人所在的群」广播运行状态：重启路径会显示「重启完成 · 用时 X 秒」，
 // 广播含就绪重试（HTTP/WS 未就绪时自动等待重发），不再静默丢失。
 // @ts-nocheck
 // 状态/重启广播底部的外显文字指令菜单（点击即触发，可自定义文字与指令）
@@ -9,23 +9,30 @@ module.exports = {
   manifest: {
     id: 'mod-restart-ctl',
     name: '重启控制',
-    version: '1.2.0',
-    description: '超主重启机器人/服务器（10秒倒计时），重启完成自动向全部群广播「用时X秒」状态',
+    version: '1.2.1',
+    description: '超主重启机器人/服务器（10秒倒计时），重启完成各机器人向自己所在全部群广播「用时X秒」状态',
     author: '511742399'
   },
 
   async init() {},
 
   onEnable: function(ctx) {
-    ctx.logger.info('重启控制 v1.2.0 已加载');
+    ctx.logger.info('重启控制 v1.2.1 已加载');
     var self = this;
     // 事件自监听：消息直接进入 handleCommand（标准 JS 插件消息入口）
     var h = function(data) { self.handleCommand(ctx, data).catch(function() {}); };
     ctx.eventBus.on('message.group', h);
     ctx.eventBus.on('message.c2c', h);
     ctx.eventBus.on('message.guild', h);
-    // 启动后延迟广播状态到全部群（自启广播，onEnable 触发，不等 PHP 脚本）
-    setTimeout(function() { self.broadcastStatus(ctx); }, 5000);
+    // 每个机器人就绪后各向「自己所在的群」广播一次运行状态。
+    // 之前只在 onEnable 调全局接口，结果是只有默认机器人会广播、其他机器人所在群收不到。
+    var broadcasted = {};
+    ctx.eventBus.on('bot.connected', function(data) {
+      var botId = String((data && data.appId) || '');
+      if (!botId || broadcasted[botId]) return;
+      broadcasted[botId] = true;
+      setTimeout(function() { self.broadcastStatus(ctx, botId).catch(function() {}); }, 3000);
+    });
   },
 
   handleCommand: async function(ctx, data) {
@@ -75,12 +82,14 @@ module.exports = {
     });
   },
 
-  getAllGroups: function() {
-    return this.callLocalApi('GET', '/api/bot/php-bridge/groups');
+  getAllGroups: function(botId) {
+    var q = botId ? ('?bot_id=' + encodeURIComponent(botId)) : '';
+    return this.callLocalApi('GET', '/api/bot/php-bridge/groups' + q);
   },
 
-  getStatus: function() {
-    return this.callLocalApi('GET', '/api/bot/php-bridge/bot-status');
+  getStatus: function(botId) {
+    var q = botId ? ('?bot_id=' + encodeURIComponent(botId)) : '';
+    return this.callLocalApi('GET', '/api/bot/php-bridge/bot-status' + q);
   },
 
   sendImage: async function(ctx, groupId, base64, name) {
@@ -95,8 +104,9 @@ module.exports = {
     return false;
   },
 
-  broadcastStatus: async function(ctx) {
+  broadcastStatus: async function(ctx, botId) {
     var self = this;
+    botId = String(botId || '');
     var fs = require('fs');
     var path = require('path');
     // 读取重启时间戳：群命令/面板/服务端重启前写入 .reboot-ts，用于计算「重启用时 X 秒」
@@ -117,8 +127,8 @@ module.exports = {
         // HTTP 服务未就绪时接口返回 null，等待重试
         var st = null;
         var groups = null;
-        try { st = await self.getStatus(); } catch (e) {}
-        try { groups = await self.getAllGroups(); } catch (e) {}
+        try { st = await self.getStatus(botId); } catch (e) {}
+        try { groups = await self.getAllGroups(botId); } catch (e) {}
         if (!st) continue;
         var list = (groups && groups.groups) || [];
         var s = st.status ? st.status : null;

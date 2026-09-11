@@ -924,9 +924,10 @@ router.post('/php-bridge/send-reply', async (req: Request, res: Response) => {
 
 // 机器人状态卡：返回状态数据 + 渲染好的 PNG base64，供「重启控制」插件重启/自启后广播全群。
 // 失败时 ok=false + error，插件据此渲染错误图。
-router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
-  if (!isLocal(_req)) { rejectNonLocal(res); return; }
+router.get('/php-bridge/bot-status', async (req: Request, res: Response) => {
+  if (!isLocal(req)) { rejectNonLocal(res); return; }
   try {
+    const reqBotId = String((req.query.bot_id as string) || '').trim();
     const uptime = Math.floor(process.uptime());
     const days = Math.floor(uptime / 86400);
     const hours = Math.floor((uptime % 86400) / 3600);
@@ -936,7 +937,7 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
     let groupCount = 0;
     let pluginCount = 0;
     try {
-      const botRows = botGroupRows();
+      const botRows = botGroupRows(reqBotId || undefined);
       groupCount = botRows.length;
     } catch {}
     try {
@@ -966,7 +967,7 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
       (Math.floor((osUpSecs % 86400) / 3600) > 0 ? Math.floor((osUpSecs % 86400) / 3600) + '小时' : '') +
       (Math.floor((osUpSecs % 3600) / 60) > 0 ? Math.floor((osUpSecs % 3600) / 60) + '分' : '') +
       (osUpSecs % 60) + '秒';
-    const botName = resolveBotName();
+    const botName = resolveBotName(reqBotId || undefined);
     const port = process.env.PORT || String(getConfig('server.port') || '3000');
     const data = {
       ok: true,
@@ -980,7 +981,7 @@ router.get('/php-bridge/bot-status', async (_req: Request, res: Response) => {
       pluginCount: String(pluginCount),
       groupCount: String(groupCount),
       botName,
-      botId: (() => { try { return getBot() && typeof (getBot() as any).getBotId === 'function' ? String((getBot() as any).getBotId()) : currentBotId(); } catch { return currentBotId(); } })(),
+      botId: reqBotId || (() => { try { return getBot() && typeof (getBot() as any).getBotId === 'function' ? String((getBot() as any).getBotId()) : currentBotId(); } catch { return currentBotId(); } })(),
       serverUptimeText: serverUpText,
       memTotalMb: osMemTotalMb,
       memFreeMb: osMemFreeMb,
