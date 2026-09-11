@@ -254,9 +254,10 @@ function writeZip(outName, files, opts) {
 function fullFrameworkFiles() {
   const out = [];
   const seen = new Set();
-  const excl = [/^\.git\//, /^node_modules\//, /^data\//, /^web\/node_modules\//, /^\.monkeycode\//, /\.zip$/, /^dist-full-/, /^downloads\.html$/, /^index\.html$/, /^releases\.(html|json)$/];
+  const excl = [/^\.git\//, /^node_modules\//, /^data\//, /^web\/node_modules\//, /^\.monkeycode\//, /\.zip$/, /^dist-full-/, /^downloads\.html$/, /^index\.html$/, /^releases\.(html|json)$/, /(^|\/)__pycache__\//, /(^|\/)\.tmp\//, /(^|\/)\.approvals\.json$/];
   const push = (rel) => { if (rel && !seen.has(rel)) { seen.add(rel); out.push(rel); } };
-  try { for (const f of sh('git ls-files').split('\n')) if (f && !excl.some((re) => re.test(f))) push(f); } catch (e) {}
+  // core.quotepath=false：否则中文文件名被转义成八进制，existsSync 找不到而静默漏包（复读.php 等）
+  try { for (const f of sh('git -c core.quotepath=false ls-files').split('\n')) if (f && !excl.some((re) => re.test(f))) push(f); } catch (e) {}
   if (fs.existsSync(path.join(ROOT, 'dist'))) for (const f of walkDir(path.join(ROOT, 'dist'))) push(f);
   return out;
 }
@@ -277,7 +278,9 @@ const nFwFull = writeZip(fwFullZip, fullFrameworkFiles(), {});
 console.log('框架全量包：' + fwFullZip + '（' + nFwFull + ' 文件）');
 const nPlgFull = writeZip(plgFullZip, (() => {
   const dir = path.join(ROOT, 'plugins');
-  return fs.existsSync(dir) ? walkDir(dir) : [];
+  if (!fs.existsSync(dir)) return [];
+  const junk = [/(^|\/)__pycache__\//, /(^|\/)\.tmp\//, /(^|\/)\.approvals\.json$/];
+  return walkDir(dir).filter((f) => !junk.some((re) => re.test(f)));
 })(), {});
 console.log('插件全量包：' + plgFullZip + '（' + nPlgFull + ' 文件）');
 
