@@ -473,7 +473,7 @@ export function getAllGroupMembers(keyword = '', groupOpenid = '', botId = '', g
 // 超管编辑成员 QQ：写入 user_mappings（权威绑定）并回填 group_members.qq_id，
 // 同时同步 admin.json 中该 openid 的 qq/avatar/nickname，保证面板权限与个人信息一致。
 // 改 QQ 时同步旧 QQ 在所有机器人（OpenID）上的绑定，保证多机器人身份识别随账号切换生效。
-export function updateMemberBinding(openid: string, qq: string, botId?: string): void {
+export function updateMemberBinding(openid: string, qq: string, botId?: string, opts?: { groupId?: string; nickname?: string }): void {
   const db = getDb();
   try {
     const oldQq = getQQByOpenid(openid);
@@ -483,6 +483,24 @@ export function updateMemberBinding(openid: string, qq: string, botId?: string):
   const bid = (botId || (gRow && gRow.bot_id) || getMappingByOpenid(openid)?.bot_id || '').trim();
   setUserMapping(openid, qq, '', bid);
   db.prepare('UPDATE group_members SET qq_id = ? WHERE member_openid = ?').run(qq, openid);
+  // 同步所在群（面板「用户管理 / OpenID 列表」按群串联）：确保 groups + group_members 记录存在。
+  // 与 /api/bot/bind-qq 的行为对齐——群内插件绑定过去只写 user_mappings，导致面板里没有群归属。
+  const groupId = String(opts?.groupId || '').trim();
+  if (groupId) {
+    try {
+      const nick = String(opts?.nickname || '').trim();
+      db.exec(`CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY, name TEXT, member_count INTEGER DEFAULT 0, last_active DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+      db.prepare(`INSERT INTO groups (id, name, member_count, last_active) VALUES (?, '', 0, CURRENT_TIMESTAMP)
+        ON CONFLICT(id) DO UPDATE SET last_active=CURRENT_TIMESTAMP`).run(groupId);
+      if (bid) {
+        try { db.prepare("UPDATE groups SET bot_id = ? WHERE id = ? AND (bot_id IS NULL OR bot_id = '')").run(bid, groupId); } catch {}
+      }
+      db.prepare(`INSERT INTO group_members (group_id, member_openid, qq_id, nickname, bot_id, first_seen, last_seen)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(group_id, member_openid) DO UPDATE SET qq_id=excluded.qq_id, nickname=CASE WHEN excluded.nickname<>'' THEN excluded.nickname ELSE nickname END, bot_id=CASE WHEN excluded.bot_id<>'' THEN excluded.bot_id ELSE bot_id END, last_seen=CURRENT_TIMESTAMP`)
+        .run(groupId, openid, qq, nick, bid);
+    } catch {}
+  }
   try {
     const file = path.resolve(process.cwd(), 'data', 'admin.json');
     if (fs.existsSync(file)) {
@@ -499,6 +517,35 @@ export function updateMemberBinding(openid: string, qq: string, botId?: string):
     }
   } catch {}
 }
+
+// 解绑用户 QQ：清除 user_mappings 与该 OpenID 的 qq_id，但保留 group_members 群归属，
+// 使面板「用户管理 / OpenID 列表」解绑后仍能看到该用户及其所在群（仅 QQ 变为未绑定）。
+// 传入 groupId 时只清该群；不传则清全部群。需要彻底删除成员请用 removeMemberBinding。
+export function clearMemberQQ(openid: string, groupId?: string): void {
+  const db = getDb();
+  db.prepare('DELETE FROM user_mappings WHERE openid = ?').run(openid);
+  if (groupId) {
+    db.prepare("UPDATE group_members SET qq_id = '' WHERE member_openid = ? AND group_id = ?").run(openid, groupId);
+  } else {
+    db.prepare("UPDATE group_members SET qq_id = '' WHERE member_openid = ?").run(openid);
+  }
+  try {
+    const file = path.resolve(process.cwd(), 'data', 'admin.json');
+    if (fs.existsSync(file)) {
+      const admins = JSON.parse(fs.readFileSync(file, 'utf-8')) as any[];
+      let changed = false;
+      for (const a of admins) {
+        if (a && a.openid === openid && (a.qq || a.avatar)) {
+          delete a.qq;
+          delete a.avatar;
+          changed = true;
+        }
+      }
+      if (changed) fs.writeFileSync(file, JSON.stringify(admins, null, 2));
+    }
+  } catch {}
+}
+
 
 // 超管删除成员：解绑 user_mappings、删除 group_members 记录；admin.json 中若存在该 openid
 // 则仅清空 qq/avatar（保留账号与角色，面板权限仍按 openid 生效）。

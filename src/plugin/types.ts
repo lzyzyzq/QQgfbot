@@ -215,12 +215,12 @@ export interface PluginEngineAPI {
   findGroupOwner(groupId: string): { openid: string; qq_id: string; nickname: string; role: string } | null;
   /** 用户信息聚合：OpenID → { openid, qq_number, nickname, avatar, permission, auth_code, auth_role, logs } */
   getUserProfile(openid: string, limit?: number): any;
-  /** 绑定 OpenID → QQ（写入 user_mappings，同步 admin.json/group_members；botId 记录来源机器人，实现按机器人隔离） */
-  bindUserQQ(openid: string, qq: string, nickname?: string, botId?: string): { ok: boolean; error?: string };
-  /** 解绑 OpenID → QQ（清除 user_mappings + group_members + admin.json 关联） */
-  unbindUser(openid: string): { ok: boolean; error?: string };
-  /** 群 OpenID → 数字群号绑定（写入 groups.group_number，群不存在时自动收录） */
-  bindGroupNumber(groupOpenid: string, groupNumber: string, name?: string): { ok: boolean; error?: string };
+  /** 绑定 OpenID → QQ（写入 user_mappings，同步 admin.json/groups/group_members；botId 记录来源机器人，groupId 同步群归属） */
+  bindUserQQ(openid: string, qq: string, nickname?: string, botId?: string, groupId?: string): { ok: boolean; error?: string };
+  /** 解绑 OpenID → QQ（清 user_mappings + qq_id，保留群归属；groupId 限定单群） */
+  unbindUser(openid: string, groupId?: string): { ok: boolean; error?: string };
+  /** 群 OpenID → 数字群号绑定（写入 groups.group_number，群不存在时自动收录；botId 记录来源机器人） */
+  bindGroupNumber(groupOpenid: string, groupNumber: string, name?: string, botId?: string): { ok: boolean; error?: string };
   /** 解绑 群 OpenID → 数字群号（清空 groups.group_number） */
   unbindGroupNumber(groupOpenid: string): { ok: boolean; error?: string };
   /** 群成员头像 URL：优先该群内成员绑定的 QQ（qlogo），其次用户全局绑定，未绑定返回空串 */

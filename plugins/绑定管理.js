@@ -492,7 +492,7 @@ module.exports = {
           var udone = [];
           var ulastErr = '';
           for (var ui = 0; ui < mentions.length; ui++) {
-            var ur = ctx.engine.unbindUser ? ctx.engine.unbindUser(mentions[ui]) : null;
+            var ur = ctx.engine.unbindUser ? ctx.engine.unbindUser(mentions[ui], gid) : null;
             if (ur && ur.ok) udone.push(mentions[ui]);
             else ulastErr = (ur && ur.error) || '未绑定';
           }
@@ -505,7 +505,7 @@ module.exports = {
           }
           return true;
         }
-        var ures = ctx.engine.unbindUser ? ctx.engine.unbindUser(openid) : null;
+        var ures = ctx.engine.unbindUser ? ctx.engine.unbindUser(openid, gid) : null;
         if (ures && ures.ok) {
           var ubt = botTag();
           await replyTpl('unbind-ok', { botTag: ubt }, function() { return _fbUnbindOk(ubt); });
@@ -534,7 +534,7 @@ module.exports = {
           } catch (e) { canBind = true; }
           if (!canBind) { await replyTpl('bindUser-denied', {}, _fbBindUserDenied); return true; }
         }
-        var res = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(uoid, uqq, '', data.botId) : { ok: false, error: '引擎不支持绑定' };
+        var res = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(uoid, uqq, '', data.botId, gid) : { ok: false, error: '引擎不支持绑定' };
         if (res.ok) {
           var ubt2 = botTag();
           await replyTpl('bindUser-ok', { uoid: uoid, uqq: uqq, botTag: ubt2 }, function() { return _fbBindUserOk(uoid, uqq, ubt2); });
@@ -558,7 +558,7 @@ module.exports = {
           var bdone = [];
           var blastErr = '';
           for (var bi = 0; bi < mentions.length; bi++) {
-            var br = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(mentions[bi], qq, '', data.botId) : { ok: false, error: '引擎不支持绑定' };
+            var br = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(mentions[bi], qq, '', data.botId, gid) : { ok: false, error: '引擎不支持绑定' };
             if (br && br.ok) bdone.push(mentions[bi]);
             else blastErr = (br && br.error) || '未知错误';
           }
@@ -571,7 +571,7 @@ module.exports = {
           }
           return true;
         }
-        var res = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(openid, qq, nickname, data.botId) : { ok: false, error: '引擎不支持绑定' };
+        var res = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(openid, qq, nickname, data.botId, gid) : { ok: false, error: '引擎不支持绑定' };
         if (res.ok) {
           var qbt = botTag();
           await replyTpl('bindQQ-ok', { qq: qq, nickname: nickname, botTag: qbt }, function() { return _fbBindQQOk(qq, nickname, qbt, rs.linkFn); });
@@ -598,7 +598,7 @@ module.exports = {
         var gnum = content.substring(6).trim();
         var gname = '';
         try { gname = ctx.engine.getGroupName ? ctx.engine.getGroupName(gid) : ''; } catch (e) {}
-        var res2 = ctx.engine.bindGroupNumber ? ctx.engine.bindGroupNumber(gid, gnum, gname) : { ok: false, error: '引擎不支持绑定群' };
+        var res2 = ctx.engine.bindGroupNumber ? ctx.engine.bindGroupNumber(gid, gnum, gname, data.botId) : { ok: false, error: '引擎不支持绑定群' };
         if (res2.ok) {
           var gbt = botTag();
           await replyTpl('bindGroup-ok', { gid: gid, gnum: gnum, botTag: gbt }, function() { return _fbBindGroupOk(gid, gnum, gbt); });

@@ -13,7 +13,7 @@ import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { AsyncLocalStorage } from 'async_hooks';
 import { isNapcatModule, initNapcatPlugin, readNapcatConfig, writeNapcatConfig } from './napcat';
-import { loadAdminRoleByQQ, updateMemberBinding, removeMemberBinding } from '../core/napcat';
+import { loadAdminRoleByQQ, updateMemberBinding, clearMemberQQ } from '../core/napcat';
 import { currentBotId as getCurrentBotId } from '../core/bot';
 import { loadBroadcastCatalog, loadBroadcastTaskById, runBroadcastNow } from '../core/broadcast';
 import { PythonRuntime } from './python-runtime';
@@ -2197,40 +2197,42 @@ export class PluginEngine {
           };
         } catch { return null; }
       },
-      // 绑定 OpenID → QQ（写入 user_mappings，同步 admin.json/group_members）
-      bindUserQQ: (openid: string, qq: string, nickname?: string, botId?: string) => {
+      // 绑定 OpenID → QQ（写入 user_mappings，同步 admin.json/groups/group_members）
+      // groupId：绑定发生所在群，传入后同步群归属，面板「用户管理 / OpenID 列表」即时可见
+      bindUserQQ: (openid: string, qq: string, nickname?: string, botId?: string, groupId?: string) => {
         try {
           const db = getDb();
           if (!openid || !qq) return { ok: false, error: 'openid 与 qq 均不能为空' };
-          updateMemberBinding(openid, String(qq), botId);
+          updateMemberBinding(openid, String(qq), botId, { groupId, nickname });
           if (nickname) {
             db.prepare('UPDATE user_mappings SET nickname = ? WHERE openid = ?').run(String(nickname).substring(0, 50), openid);
           }
           return { ok: true };
         } catch (e: any) { return { ok: false, error: e.message }; }
       },
-      // 解绑 OpenID → QQ（清除 user_mappings + group_members + admin.json 关联）
-      unbindUser: (openid: string) => {
+      // 解绑 OpenID → QQ：清 user_mappings + 该 OpenID 的 qq_id，保留群归属（解绑不等于退群）
+      unbindUser: (openid: string, groupId?: string) => {
         try {
           if (!openid) return { ok: false, error: 'openid 不能为空' };
-          removeMemberBinding(openid);
+          clearMemberQQ(openid, groupId);
           return { ok: true };
         } catch (e: any) { return { ok: false, error: e.message }; }
       },
       // 群 OpenID → 数字群号绑定（写入 groups.group_number，群不存在时自动收录）
-      bindGroupNumber: (groupOpenid: string, groupNumber: string, name?: string) => {
+      bindGroupNumber: (groupOpenid: string, groupNumber: string, name?: string, botId?: string) => {
         try {
           const db = getDb();
           if (!groupOpenid) return { ok: false, error: '群 OpenID 不能为空' };
           const num = String(groupNumber || '').trim();
           if (!/^\d{6,15}$/.test(num)) return { ok: false, error: 'QQ 群号应为 6-15 位数字' };
           const row = db.prepare('SELECT id FROM groups WHERE id = ?').get(groupOpenid) as any;
+          const bid = String(botId || '').trim();
           if (row) {
-            db.prepare('UPDATE groups SET group_number = ?, name = CASE WHEN ? IS NOT NULL AND ? != \'\' THEN ? ELSE name END, last_active = CURRENT_TIMESTAMP WHERE id = ?')
-              .run(num, name || null, name || null, name || null, groupOpenid);
+            db.prepare('UPDATE groups SET group_number = ?, name = CASE WHEN ? IS NOT NULL AND ? != \'\' THEN ? ELSE name END, bot_id = CASE WHEN ? != \'\' AND (bot_id IS NULL OR bot_id = \'\') THEN ? ELSE bot_id END, last_active = CURRENT_TIMESTAMP WHERE id = ?')
+              .run(num, name || null, name || null, name || null, bid, bid, groupOpenid);
           } else {
-            db.prepare('INSERT INTO groups (id, name, group_number, last_active) VALUES (?, ?, ?, CURRENT_TIMESTAMP)')
-              .run(groupOpenid, name || groupOpenid, num);
+            db.prepare('INSERT INTO groups (id, name, group_number, bot_id, last_active) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)')
+              .run(groupOpenid, name || groupOpenid, num, bid);
           }
           return { ok: true };
         } catch (e: any) { return { ok: false, error: e.message }; }
