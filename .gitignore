@@ -29,3 +29,7 @@ _tmp_shot.webp
 
 plugins/__pycache__/
 __pycache__/
+
+# local ops helper scripts / full dist tarballs served via dev http server (not part of release)
+*-armbian.sh
+dist-full-*.tar.gz
