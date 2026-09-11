@@ -1,10 +1,10 @@
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { EventBus } from './event-bus';
+import { EventBus, pluginAllowedForEvent } from './event-bus';
 import { BotAPI } from '../plugin/types';
 import { createLogger } from '../utils/logger';
-import { getConfig } from '../db/index';
+import { getConfig, getDb } from '../db/index';
 
 const logger = createLogger('py-plugin');
 
@@ -117,6 +117,11 @@ export async function setupPyPlugins(eventBus: EventBus, botApi: BotAPI, plugins
       };
       for (const f of pyFiles) {
         try {
+          const baseName = path.basename(f);
+          const pluginRow = getDb().prepare('SELECT id, enabled FROM plugins WHERE name = ?').get(baseName) as any;
+          if (pluginRow && pluginRow.enabled === 0) continue;
+          // 按机器人分配/按群开关过滤：与 JS/PHP 插件共用同一判定
+          if (pluginRow && pluginRow.id && !pluginAllowedForEvent(String(pluginRow.id), String(payload.botId), 'message.' + type, payload.groupId)) continue;
           const r = await runPyPlugin(py.cmd, f, payload);
           if (!r.ok || !r.out) continue;
           let res: any = {};

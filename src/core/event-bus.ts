@@ -158,6 +158,25 @@ export function getMasterBotId(): string {
   return masterBotIdCache;
 }
 
+// 统一判定某插件是否允许处理该事件：按机器人分配 + 按群开关。
+// JS 插件、PHP 插件、Python 插件共用此逻辑，避免 PHP/PY 绕过按分配运行。
+export function pluginAllowedForEvent(pluginId: string, botId: string, event: string, groupId?: string): boolean {
+  const pid = String(pluginId || '');
+  if (!pid) return true;
+  // 按机器人分配：per-bot 模式下未勾选/无记录一律不跑；无任何分配记录为全局模式（放行）
+  if (botId) {
+    const assigned = getPluginAssignment(pid, String(botId));
+    if (assigned === false) return false;
+  }
+  // 按群开关
+  if (botId && event === 'message.group' && groupId) {
+    const mode = getPluginGroupMode(pid, String(groupId));
+    if (mode === 'deny') return false;
+    if (mode === null && pluginHasAllowPolicy(pid)) return false;
+  }
+  return true;
+}
+
 export class EventBus {
   private listeners: Listener[] = [];
 
@@ -192,24 +211,9 @@ export class EventBus {
     const tasks: Promise<void>[] = [];
 
     for (const listener of matched) {
-      // 按机器人分配过滤：事件带 botId 且监听者带 pluginId 时才判断
-      // per-bot 模式（该机器人有 bot_plugins 分配记录）严格独立：只运行勾选的插件，未勾选一律跳过
+      // 按机器人分配 + 按群开关统一过滤（与 PHP/PY 插件共用同一判定）
       if (botId && listener.meta?.pluginId) {
-        const assigned = getPluginAssignment(listener.meta.pluginId, String(botId));
-        if (assigned === false) {
-          skippedByPlugin++;
-          continue;
-        }
-      }
-      // 按群开关过滤：仅消息群事件带 groupId 时判断
-      // mode='deny' → 该插件在此群禁用；未配置但插件存在 allow 白名单 → 未命中群一律跳过
-      if (botId && listener.meta?.pluginId && event === 'message.group' && data && data.groupId) {
-        const mode = getPluginGroupMode(listener.meta.pluginId, String(data.groupId));
-        if (mode === 'deny') {
-          skippedByPlugin++;
-          continue;
-        }
-        if (mode === null && pluginHasAllowPolicy(listener.meta.pluginId)) {
+        if (!pluginAllowedForEvent(listener.meta.pluginId, String(botId), event, data && data.groupId)) {
           skippedByPlugin++;
           continue;
         }

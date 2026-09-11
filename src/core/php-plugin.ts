@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { EventBus } from './event-bus';
+import { EventBus, pluginAllowedForEvent } from './event-bus';
 import { BotAPI } from '../plugin/types';
 import { createLogger } from '../utils/logger';
 import { getConfig, getDb } from '../db/index';
@@ -188,9 +188,12 @@ export async function setupPhpPlugins(eventBus: EventBus, botApi: BotAPI, plugin
         try {
           // 尊重管理面板启用状态：被禁用的 PHP 插件不执行（php_helpers.php 不登记，跳过查询）
           const baseName = path.basename(phpFiles[i]);
+          let pluginRow: any = null;
           if (baseName !== 'php_helpers.php') {
-            const row = getDb().prepare('SELECT enabled FROM plugins WHERE name = ?').get(baseName) as any;
-            if (row && row.enabled === 0) continue;
+            pluginRow = getDb().prepare('SELECT id, enabled FROM plugins WHERE name = ?').get(baseName) as any;
+            if (pluginRow && pluginRow.enabled === 0) continue;
+            // 按机器人分配/按群开关过滤：与 JS 插件共用同一判定，杜绝 PHP 插件绕过「按分配运行」
+            if (pluginRow && pluginRow.id && !pluginAllowedForEvent(String(pluginRow.id), String(payload.botId), 'message.' + type, payload.groupId)) continue;
           }
           const r = await runPhpPlugin(runFiles[i] || phpFiles[i], payload);
           if (r.timedOut) logger.warn(`PHP 插件 ${path.basename(phpFiles[i])} 超时；${r.out ? '已回传累积回复' : '无累积回复'}`);
