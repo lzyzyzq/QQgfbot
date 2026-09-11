@@ -1,15 +1,19 @@
-// 绑定管理 v1.1.0 - 群内绑定QQ号 / 绑定QQ群号 / 群主绑定指定用户
+// 绑定管理 v1.2.0 - 群内绑定QQ号 / 绑定QQ群号 / 群主绑定指定用户（@用户）
 // 用法：
 //   群里发「绑定QQ 123456789」→ 把当前 OpenID 绑定到 QQ 号（跨机器人身份识别）
+//   群里发「绑定QQ 123456789 @用户」→ 群主/管理员把被 @ 用户的 OpenID 绑定到 QQ 号（可 @ 多个）
 //   群里发「绑定QQ群 123456789」→ 群主/管理员把当前群绑定到数字群号（成员行自动带群号）
+//   群里发「解绑QQ群」→ 群主/管理员解绑当前群的群号
+//   群里发「解绑QQ @用户」→ 群主/管理员解绑被 @ 用户的 OpenID→QQ（可 @ 多个）
 //   群里发「绑定用户 123456789 <OpenID>」→ 群主/管理员把指定 OpenID 绑定到 QQ 号（用户本人不便操作时用）
 //   私聊发「绑定QQ 123456789」→ 同样可绑定自己的 QQ 号
+// 绑定按机器人隔离：写入 user_mappings 时记录来源 botId，各机器人各自 OpenID→QQ。
 // ReplySpec 回复可视化：内置模板可被后台 config plugin.file-绑定管理.reply 覆盖
 /*__REPLY_SPEC_BEGIN__*/
 var REPLY_SPEC = {
   name: "绑定管理",
-  version: "1.1.0",
-  desc: "绑定QQ：OpenID 绑定到 QQ 号；绑定QQ群：把当前群绑定到数字群号；绑定用户：群主/管理员给指定用户绑定（QQ+OpenID）",
+  version: "1.2.0",
+  desc: "绑定QQ/解绑QQ（可 @他人）；绑定QQ群/解绑QQ群；绑定用户（QQ+OpenID）",
   branches: [
     {
       key: "unbind-ok",
@@ -184,6 +188,53 @@ var REPLY_SPEC = {
       lines: [
         { "t": "text", "v": "❌ 绑定失败：{err}" }
       ]
+    },
+    {
+      key: "unbindGroup-ok",
+      label: "解绑QQ群 · 成功",
+      scope: ["group"],
+      triggers: ["解绑QQ群", "解绑qq群", "解绑群"],
+      lines: [
+        { "t": "text", "v": "✅ 已解绑本群群号{bindNote}{botTag}" }
+      ]
+    },
+    {
+      key: "unbindGroup-fail",
+      label: "解绑QQ群 · 失败（无权限/未绑定）",
+      scope: ["group"],
+      triggers: ["解绑QQ群", "解绑qq群", "解绑群"],
+      lines: [
+        { "t": "text", "v": "❌ 解绑失败：{err}" }
+      ]
+    },
+    {
+      key: "bind-others-denied",
+      label: "绑定/解绑他人 · 非群主/管理员被拒",
+      scope: ["group"],
+      triggers: ["绑定QQ QQ号 @用户", "解绑QQ @用户"],
+      lines: [
+        { "t": "text", "v": "🔒 仅群主/管理员或机器人管理员可绑定/解绑他人" }
+      ]
+    },
+    {
+      key: "bind-others-ok",
+      label: "绑定他人 OpenID→QQ · 成功",
+      scope: ["group"],
+      triggers: ["绑定QQ QQ号 @用户"],
+      lines: [
+        { "t": "text", "v": "✅ 已绑定 {count} 个用户的 OpenID→QQ：{uqq}{botTag}" },
+        { "t": "text", "v": "{oids}" }
+      ]
+    },
+    {
+      key: "unbind-others-ok",
+      label: "解绑他人 OpenID→QQ · 成功",
+      scope: ["group"],
+      triggers: ["解绑QQ @用户"],
+      lines: [
+        { "t": "text", "v": "✅ 已解绑 {count} 个用户的 OpenID 绑定{botTag}" },
+        { "t": "text", "v": "{oids}" }
+      ]
     }
   ]
 };
@@ -280,6 +331,21 @@ function _fbBindGroupDenied() {
 function _fbBindGroupOk(gid, gnum, bt) {
   return '✅ 群绑定成功\n群 OpenID：' + gid + '\n群号：' + gnum + (bt || '') + '\n群成员行已自动关联该群号';
 }
+function _fbUnbindGroupOk(bindNote, bt) {
+  return '✅ 已解绑本群群号' + (bindNote || '') + (bt || '');
+}
+function _fbUnbindGroupFail(err) {
+  return '❌ 解绑失败：' + (err || '无解绑权限或未绑定');
+}
+function _fbOthersDenied() {
+  return '🔒 仅群主/管理员或机器人管理员可绑定/解绑他人';
+}
+function _fbBindOthersOk(count, uqq, oids, bt) {
+  return '✅ 已绑定 ' + count + ' 个用户的 OpenID→QQ：' + uqq + (bt || '') + '\n' + oids;
+}
+function _fbUnbindOthersOk(count, oids, bt) {
+  return '✅ 已解绑 ' + count + ' 个用户的 OpenID 绑定' + (bt || '') + '\n' + oids;
+}
 
 // ===== ReplySpec 运行上下文（onEnable 初始化一次；config 覆盖 plugin.file-绑定管理.reply）=====
 var _REPLY_RS = null;
@@ -328,8 +394,8 @@ module.exports = {
   manifest: {
     id: 'mod-bind-manage',
     name: '绑定管理',
-    version: '1.1.0',
-    description: '绑定QQ：OpenID 绑定到 QQ 号；绑定QQ群：把当前群绑定到数字群号；绑定用户：群主/管理员给指定用户绑定（QQ+OpenID）',
+    version: '1.2.0',
+    description: '绑定QQ/解绑QQ（可 @他人）；绑定QQ群/解绑QQ群；绑定用户（QQ+OpenID）',
     author: '511742399'
   },
 
@@ -341,6 +407,15 @@ module.exports = {
       var gid = data.groupId || '';
       var msgId = data.id;
       var rs = _getReplyRs(ctx);
+
+      // 被 @ 的用户 OpenID（从剥离机器人前缀后的 content 提取，排除自己），用于群管理批量绑定/解绑他人
+      var mentions = [];
+      var mre = /<@!?([A-Za-z0-9_\-]{16,64})>/g;
+      var mm;
+      while ((mm = mre.exec(content)) !== null) {
+        var mo = mm[1];
+        if (mo && mo !== openid && mentions.indexOf(mo) < 0) mentions.push(mo);
+      }
 
       var reply = async function(text) {
         try {
@@ -374,15 +449,62 @@ module.exports = {
         return '｜机器人：' + b;
       };
 
+      // 群管理权限（超级主人/群主/管理员；后台未设置角色时放行，便于私域群使用）
+      var canManage = false;
+      try {
+        var myRole = ctx.engine.getGroupMemberRole ? ctx.engine.getGroupMemberRole(gid, openid) : '';
+        canManage = myRole === 'owner' || myRole === 'admin' || myRole === 'super' || myRole === 'master' || myRole === '' || !myRole;
+      } catch (e) { canManage = true; }
+
       var mBindQQ = content === '绑定QQ' || content === '绑定qq';
       var mBindQQPre = content.indexOf('绑定QQ ') === 0 || content.indexOf('绑定qq ') === 0;
       var mBindGroup = content === '绑定QQ群' || content === '绑定qq群';
       var mBindGroupPre = content.indexOf('绑定QQ群 ') === 0 || content.indexOf('绑定qq群 ') === 0;
-      var mUnbind = content === '解绑QQ' || content === '解绑qq' || content === '解绑绑定';
+      var mUnbind = content === '解绑QQ' || content === '解绑qq' || content === '解绑绑定' || content.indexOf('解绑QQ ') === 0 || content.indexOf('解绑qq ') === 0;
+      var mUnbindGroup = content === '解绑QQ群' || content === '解绑qq群' || content === '解绑群';
       var mBindUserHelp = content === '绑定用户' || content === '绑定指定用户';
       var mBindUser = content.indexOf('绑定用户 ') === 0;
 
+      if (mUnbindGroup) {
+        if (!gid) {
+          await replyTpl('unbindGroup-fail', { err: '仅群聊可解绑群号' }, function() { return _fbUnbindGroupFail('仅群聊可解绑群号'); });
+          return true;
+        }
+        if (!canManage) {
+          await replyTpl('unbindGroup-fail', { err: '仅群主/管理员或机器人管理员可解绑群号' }, function() { return _fbUnbindGroupFail('仅群主/管理员或机器人管理员可解绑群号'); });
+          return true;
+        }
+        var gr = ctx.engine.unbindGroupNumber ? ctx.engine.unbindGroupNumber(gid) : { ok: false, error: '引擎不支持解绑群' };
+        if (gr && gr.ok) {
+          var gubt = botTag();
+          await replyTpl('unbindGroup-ok', { bindNote: '', botTag: gubt }, function() { return _fbUnbindGroupOk('', gubt); });
+        } else {
+          var gverr = (gr && gr.error) || '无解绑权限或未绑定';
+          await replyTpl('unbindGroup-fail', { err: gverr }, function() { return _fbUnbindGroupFail(gverr); });
+        }
+        return true;
+      }
+
       if (mUnbind) {
+        // 带 @用户：群管理批量解绑他人 OpenID→QQ
+        if (mentions.length > 0) {
+          if (!canManage) { await replyTpl('bind-others-denied', {}, _fbOthersDenied); return true; }
+          var udone = [];
+          var ulastErr = '';
+          for (var ui = 0; ui < mentions.length; ui++) {
+            var ur = ctx.engine.unbindUser ? ctx.engine.unbindUser(mentions[ui]) : null;
+            if (ur && ur.ok) udone.push(mentions[ui]);
+            else ulastErr = (ur && ur.error) || '未绑定';
+          }
+          var uobot = botTag();
+          var uoidList = udone.map(function(o) { return '• ' + o; }).join('\n');
+          if (udone.length > 0) {
+            await replyTpl('unbind-others-ok', { count: udone.length, oids: uoidList, botTag: uobot }, function() { return _fbUnbindOthersOk(udone.length, uoidList, uobot); });
+          } else {
+            await replyTpl('unbind-fail', { err: ulastErr || '未绑定' }, function() { return _fbUnbindFail(ulastErr || '未绑定'); });
+          }
+          return true;
+        }
         var ures = ctx.engine.unbindUser ? ctx.engine.unbindUser(openid) : null;
         if (ures && ures.ok) {
           var ubt = botTag();
@@ -412,7 +534,7 @@ module.exports = {
           } catch (e) { canBind = true; }
           if (!canBind) { await replyTpl('bindUser-denied', {}, _fbBindUserDenied); return true; }
         }
-        var res = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(uoid, uqq, '') : { ok: false, error: '引擎不支持绑定' };
+        var res = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(uoid, uqq, '', data.botId) : { ok: false, error: '引擎不支持绑定' };
         if (res.ok) {
           var ubt2 = botTag();
           await replyTpl('bindUser-ok', { uoid: uoid, uqq: uqq, botTag: ubt2 }, function() { return _fbBindUserOk(uoid, uqq, ubt2); });
@@ -428,9 +550,28 @@ module.exports = {
         return true;
       }
       if (mBindQQPre) {
-        var qq = content.substring(5).trim();
+        var qq = content.substring(5).trim().split(/\s+/)[0];
         if (!/^\d{5,11}$/.test(qq)) { await replyTpl('bindQQ-badqq', {}, _fbBadqq); return true; }
-        var res = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(openid, qq, nickname) : { ok: false, error: '引擎不支持绑定' };
+        // 带 @用户：群管理把被 @ 用户的 OpenID 绑定到该 QQ（每人各自机器人下独立）
+        if (mentions.length > 0) {
+          if (!canManage) { await replyTpl('bind-others-denied', {}, _fbOthersDenied); return true; }
+          var bdone = [];
+          var blastErr = '';
+          for (var bi = 0; bi < mentions.length; bi++) {
+            var br = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(mentions[bi], qq, '', data.botId) : { ok: false, error: '引擎不支持绑定' };
+            if (br && br.ok) bdone.push(mentions[bi]);
+            else blastErr = (br && br.error) || '未知错误';
+          }
+          var bobt = botTag();
+          var boidList = bdone.map(function(o) { return '• ' + o; }).join('\n');
+          if (bdone.length > 0) {
+            await replyTpl('bind-others-ok', { count: bdone.length, uqq: qq, oids: boidList, botTag: bobt }, function() { return _fbBindOthersOk(bdone.length, qq, boidList, bobt); });
+          } else {
+            await replyTpl('bindQQ-fail', { err: blastErr || '未知错误' }, function() { return _fbBindFail(blastErr || '未知错误'); });
+          }
+          return true;
+        }
+        var res = ctx.engine.bindUserQQ ? ctx.engine.bindUserQQ(openid, qq, nickname, data.botId) : { ok: false, error: '引擎不支持绑定' };
         if (res.ok) {
           var qbt = botTag();
           await replyTpl('bindQQ-ok', { qq: qq, nickname: nickname, botTag: qbt }, function() { return _fbBindQQOk(qq, nickname, qbt, rs.linkFn); });
@@ -440,13 +581,6 @@ module.exports = {
         }
         return true;
       }
-
-      // 群管理操作：绑定QQ群（需群主/管理员；后台未设置角色时放行，便于私域群使用）
-      var canManage = false;
-      try {
-        var role = ctx.engine.getGroupMemberRole ? ctx.engine.getGroupMemberRole(gid, openid) : '';
-        canManage = role === 'owner' || role === 'admin' || role === 'super' || role === 'master' || role === '' || !role;
-      } catch (e) { canManage = true; }
 
       if (mBindGroup) {
         if (!canManage) {

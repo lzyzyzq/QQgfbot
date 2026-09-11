@@ -1000,8 +1000,11 @@ router.get('/php-bridge/bot-status', async (req: Request, res: Response) => {
 // 说明：该接口数据仅为版本号/下载地址/更新文案，无敏感信息，允许跨机访问，
 // 供「更新系统」插件从远程面板（configUrl 指定）拉取统一配置使用。
 router.get('/php-bridge/update-config', (req: Request, res: Response) => {
+  // bot_id 由 PHP 插件（PHP_PLUGIN_BOT_ID）带上；据此解析对应机器人的名称，
+  // 否则多机器人同群/跨群时更新提示一律显示全局默认名（历史 bug：全部显示「空空在php」）
+  const reqBotId = String((req.query.bot_id as string) || '');
   let botName = '';
-  try { botName = resolveBotName(); } catch {}
+  try { botName = resolveBotName(reqBotId || undefined); } catch {}
   let localUc: any = {};
   try { localUc = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'update-config.json'), 'utf-8')) || {}; } catch {}
   res.json({
@@ -1017,7 +1020,7 @@ router.get('/php-bridge/update-config', (req: Request, res: Response) => {
     configUrl: getConfig('update.config_url') || '',
     // 供「更新系统」插件在群内提醒中标注是哪个机器人发的（多机器人同群时区分）
     botName,
-    botId: String((req.query.bot_id as string) || (() => { try { const b = getBot() as any; return b && typeof b.getBotId === 'function' ? b.getBotId() : currentBotId(); } catch { return currentBotId(); } })()),
+    botId: reqBotId || currentBotId(),
   });
 });
 

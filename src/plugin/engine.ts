@@ -2198,11 +2198,11 @@ export class PluginEngine {
         } catch { return null; }
       },
       // 绑定 OpenID → QQ（写入 user_mappings，同步 admin.json/group_members）
-      bindUserQQ: (openid: string, qq: string, nickname?: string) => {
+      bindUserQQ: (openid: string, qq: string, nickname?: string, botId?: string) => {
         try {
           const db = getDb();
           if (!openid || !qq) return { ok: false, error: 'openid 与 qq 均不能为空' };
-          updateMemberBinding(openid, String(qq));
+          updateMemberBinding(openid, String(qq), botId);
           if (nickname) {
             db.prepare('UPDATE user_mappings SET nickname = ? WHERE openid = ?').run(String(nickname).substring(0, 50), openid);
           }
@@ -2232,6 +2232,18 @@ export class PluginEngine {
             db.prepare('INSERT INTO groups (id, name, group_number, last_active) VALUES (?, ?, ?, CURRENT_TIMESTAMP)')
               .run(groupOpenid, name || groupOpenid, num);
           }
+          return { ok: true };
+        } catch (e: any) { return { ok: false, error: e.message }; }
+      },
+      // 解绑 群 OpenID → 数字群号（清空 groups.group_number）
+      unbindGroupNumber: (groupOpenid: string) => {
+        try {
+          const db = getDb();
+          if (!groupOpenid) return { ok: false, error: '群 OpenID 不能为空' };
+          const row = db.prepare('SELECT group_number FROM groups WHERE id = ?').get(groupOpenid) as any;
+          if (!row) return { ok: false, error: '该群尚未收录' };
+          if (!row.group_number) return { ok: false, error: '该群未绑定群号' };
+          db.prepare("UPDATE groups SET group_number = '' WHERE id = ?").run(groupOpenid);
           return { ok: true };
         } catch (e: any) { return { ok: false, error: e.message }; }
       },

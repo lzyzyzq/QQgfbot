@@ -1,5 +1,5 @@
 // ============================================================
-// GitHub绑定 v1.0.2 - 群内把 QQ/OpenID 绑定到 GitHub 用户名（轻量验证）
+// GitHub绑定 v1.1.0 - 群内把 QQ 绑定到 GitHub 用户名（按 QQ 统一，跨机器人；QQ 不可得回退 OpenID）
 // ------------------------------------------------------------
 // 普通用户命令：
 //   绑定GitHub <用户名>       → 绑定（例：绑定GitHub lzyzyzq）
@@ -10,6 +10,7 @@
 // v1.0.1 修复：QQ 会往「绑定」等词中间插空格/不可见字符拆分（如 "GitHub绑 定 xxx"），
 //   解析改为先清除空白后容错匹配；无法识别的 github/gh/绑定 开头消息一律给帮助（不再被主人权限拦截静默）。
 // v1.0.2 修复：兜底帮助收窄为 github/gh 相关词，避免抢答「绑定主人」等其他插件的「绑定+名词」指令。
+// v1.1.0 增强：绑定键由 OpenID 改为 QQ（qq:<QQ>），同一 QQ 在各机器人下共享同一 GitHub 绑定；旧 OpenID 键自动兼容读取。
 // 说明：用户名存在性用 GitHub 公开 API 校验（无需仓库 token，也不入库任何密钥）；
 //   绑定结果存 ctx.storage：ghbind_<openid>=用户名（正向），ghbinv_<小写名>=openid（反向）。
 //   本绑定供「公开流水挂名 / 昵称展示 / 授权标签」等场景使用。
@@ -40,8 +41,8 @@ module.exports = {
   manifest: {
     id: 'gh-bind',
     name: 'GitHub绑定',
-    version: '1.0.2',
-    description: '绑定GitHub：OpenID/QQ 绑定到 GitHub 用户名；我的GitHub / 解绑GitHub / GitHub绑定列表',
+    version: '1.1.0',
+    description: '绑定GitHub：按 QQ 统一绑定（跨机器人），QQ 不可得时回退 OpenID；我的GitHub / 解绑GitHub / GitHub绑定列表',
     author: '511742399'
   },
 
@@ -67,22 +68,38 @@ module.exports = {
       return false;
     },
 
-    // ========== 绑定读写 ==========
+    // ========== 绑定读写（按 QQ 键控，跨机器人统一；QQ 不可得时回退 OpenID） ==========
+    resolveQq: function(ctx, openid) {
+      try { if (ctx.identity && ctx.identity.getQQ) { var q = ctx.identity.getQQ(openid); if (q) return String(q); } } catch(e) {}
+      try { if (ctx.engine && ctx.engine.getUserProfile) { var p = ctx.engine.getUserProfile(openid); if (p && p.qq_number) return String(p.qq_number); } } catch(e) {}
+      return '';
+    },
+    // QQ 可用 → qq:<QQ>（同一 QQ 在不同机器人下共享绑定）；否则 oid:<OpenID>
+    bindKey: function(ctx, openid) {
+      var qq = this.resolveQq(ctx, openid);
+      return qq ? ('qq:' + qq) : ('oid:' + openid);
+    },
     getBind: function(ctx, openid) {
+      var k = this.bindKey(ctx, openid);
+      var v = ctx.storage.get('ghbind_' + k) || '';
+      if (v) return v;
+      // 兼容旧数据：早期按 OpenID 存储的绑定
       return ctx.storage.get('ghbind_' + openid) || '';
     },
     setBind: function(ctx, openid, name) {
-      ctx.storage.set('ghbind_' + openid, name);
+      var k = this.bindKey(ctx, openid);
+      ctx.storage.set('ghbind_' + k, name);
       ctx.storage.set('ghbinv_' + String(name).toLowerCase(), openid);
       var list = [];
       try { list = JSON.parse(ctx.storage.get('ghbind_all') || '[]'); } catch(e) { list = []; }
-      if (list.indexOf(openid) === -1) list.push(openid);
+      if (list.indexOf(k) === -1) list.push(k);
       if (list.length > 500) list = list.slice(list.length - 500);
       ctx.storage.set('ghbind_all', JSON.stringify(list));
     },
     unsetBind: function(ctx, openid) {
       var old = this.getBind(ctx, openid);
       if (old) ctx.storage.set('ghbinv_' + String(old).toLowerCase(), '');
+      ctx.storage.set('ghbind_' + this.bindKey(ctx, openid), '');
       ctx.storage.set('ghbind_' + openid, '');
     }
   },
@@ -162,7 +179,9 @@ module.exports = {
       for (var i = 0; i < list.length; i++) {
         var oid = list[i];
         var name = self.methods.getBind(ctx, oid);
-        if (name) rows.push(oid + ' → ' + name);
+        if (!name) continue;
+        var label = (oid.indexOf('qq:') === 0) ? ('QQ ' + oid.slice(3)) : oid;
+        rows.push(label + ' → ' + name);
       }
       if (!rows.length) { reply(data, '暂无任何 GitHub 绑定。'); return; }
       var txt = 'GitHub 绑定列表（' + rows.length + ' 条）：\n' + rows.slice(0, 30).join('\n');
@@ -197,7 +216,7 @@ module.exports = {
       try { handle(data); } catch(e) { ctx.logger.error('GitHub绑定异常：' + (e && e.message || e)); }
     });
     self._listenerIds = [lid1, lid2];
-    ctx.logger.info('GitHub绑定 v1.0.1 已启用（绑定GitHub <用户名> / 我的GitHub / 解绑GitHub）');
+    ctx.logger.info('GitHub绑定 v1.1.0 已启用（绑定GitHub <用户名> / 我的GitHub / 解绑GitHub；按 QQ 跨机器人）');
   },
 
   onDisable: function(ctx) {

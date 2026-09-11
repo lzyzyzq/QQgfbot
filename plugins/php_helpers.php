@@ -525,13 +525,18 @@ function 更新配置() {
   $cfg['frameworkFullUrls'] = array();
   $cfg['pluginFullUrls'] = array();
 
+  // 8091 必须是第一个尝试的源：循环遇到首个可达源即 break。
+  // 历史上曾把面板 configUrl（指向 GitHub Pages 的旧 4.2.x 配置）排在最前，
+  // 导致服务器能访问 GitHub Pages 时反而拉回旧配置、把机器人「更新」降级到 4.2.100。
   $urls = array();
+  foreach (array(
+    'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json',
+  ) as $u) $urls[] = $u;
   if ($cfg['configUrl'] !== '') {
     foreach (preg_split('/[\s,]+/', $cfg['configUrl']) as $u) { $u = trim($u); if ($u !== '') $urls[] = $u; }
   }
   foreach (array(
-    // 8091 主源优先（快且稳），其后为 GitHub / 镜像兜底，任一可达即用，全部失败再回退本机面板配置
-    'https://8091-6f61dc7363389b7a.monkeycode-ai.online/update-config.json',
+    // GitHub / 镜像仅作兜底，避免 8091 不可达时无源可用
     'https://raw.githubusercontent.com/lzyzyzq/QQgfbot/main/update-config.json',
     'https://lzyzyzq.github.io/QQgfbot/update-config.json',
     'https://raw.gitmirror.com/lzyzyzq/QQgfbot/main/update-config.json',
@@ -744,8 +749,15 @@ function download_file($url, $dst, $timeout = 30, &$errRef = null) { return 下�
 
 // 版本号比较：a>b 返回 1，a==b 返回 0，a<b 返回 -1（按数字分段比较，忽略非数字字符）
 function 版本比较($a, $b) {
-  $pa = explode('.', preg_replace('/[^0-9.]/', '', (string)$a));
-  $pb = explode('.', preg_replace('/[^0-9.]/', '', (string)$b));
+  $sa = preg_replace('/[^0-9.]/', '', (string)$a);
+  $sb = preg_replace('/[^0-9.]/', '', (string)$b);
+  // 旧版本线（4.2.x）整体低于当前版本线：历史重建时 4.2.59→0.0.1 … 4.2.100→0.0.42，1.0.0 起为新线。
+  // 否则若服务器状态被旧配置写成 4.2.100，按段比较会得出「4.2.100 > 1.0.6」而拒绝升级。
+  $legacyA = (strpos($sa . '.', '4.2.') === 0);
+  $legacyB = (strpos($sb . '.', '4.2.') === 0);
+  if ($legacyA !== $legacyB) return $legacyA ? -1 : 1;
+  $pa = explode('.', $sa);
+  $pb = explode('.', $sb);
   $n = max(count($pa), count($pb));
   for ($i = 0; $i < $n; $i++) {
     $x = (int)($pa[$i] ?? 0); $y = (int)($pb[$i] ?? 0);
