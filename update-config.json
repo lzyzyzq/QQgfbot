@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.99",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.99.zip",
+  "version": "4.2.100",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.100.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.99.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.100.zip"
     }
   ],
-  "changeLog": "升级后自动为已有分配记录的机器人补齐 PHP/PY 插件分配；修正仪表盘版本显示"
+  "changeLog": "插件列表显示名去除 .php/.py/.js 后缀（类型列已标注类型，名字更清爽）"
 }
