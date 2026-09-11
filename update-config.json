@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "version": "4.2.96",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.96.zip",
+  "version": "4.2.97",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.97.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091 唯一更新源（补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.96.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.97.zip"
     }
   ],
-  "changeLog": "累计补丁（自 4.2.91）：PHP插件超时回传回复、无curl回退、更新提醒标注机器人名、多源兜底、仪表盘兜底、重启广播外显修复"
+  "changeLog": "修复：PHP/PY 插件现在遵循「按机器人分配」，机器人未勾选的插件不再响应；仅勾选（已分配）的插件回复。无任何分配记录时仍为全局模式（跑全部启用插件）。"
 }
