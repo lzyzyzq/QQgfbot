@@ -14,6 +14,7 @@ const runnerLogger = createLogger('schedule-runner');
 
 let timer: NodeJS.Timeout | null = null;
 const lastFire: Record<string, string> = {};
+let lastTickErr = '';
 
 function bjNow() {
   const d = new Date(Date.now() + 8 * 3600 * 1000);
@@ -218,21 +219,29 @@ async function callPluginBroadcast(t: ScheduleTask, gid: string): Promise<void> 
 }
 
 async function sendImageFor(bot: any, gid: string, url: string) {
+  let reason = '';
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 15000);
     const resp = await fetch(url, { signal: ctrl.signal });
     clearTimeout(timer);
-    if (!resp.ok) return;
-    const buf = Buffer.from(await resp.arrayBuffer());
-    if (buf.length < 128) return;
-    const up = await bot.uploadGroupImageBuffer(gid, buf, 'task_image.png');
-    if (up && (up.file_info || up.url)) {
-      await bot.sendGroupImageMessage(gid, up.file_info || up.url);
+    if (!resp.ok) reason = `下载失败 HTTP ${resp.status}`;
+    else {
+      const buf = Buffer.from(await resp.arrayBuffer());
+      if (buf.length < 128) reason = `图片过小(${buf.length}B)`;
+      else {
+        const up = await bot.uploadGroupImageBuffer(gid, buf, 'task_image.png');
+        if (up && (up.file_info || up.url)) {
+          await bot.sendGroupImageMessage(gid, up.file_info || up.url);
+          return;
+        }
+        reason = '富媒体上传返回空（上传接口失败）';
+      }
     }
-  } catch {
-    /* ignore */
+  } catch (err: any) {
+    reason = '异常: ' + (err && err.message ? err.message : err);
   }
+  runnerLogger.warn(`定时任务图片发送群 ${gid} 失败: ${reason} url=${url}`);
 }
 
 // 播报文本渲染为图片发送：任务选择「图片」发送时使用；渲染/发送失败回退文字
@@ -398,6 +407,12 @@ function allGroupIds(): string[] {
 async function dispatch(t: ScheduleTask) {
   if (!switchEnabledFor(t)) {
     runnerLogger.info(`定时任务 ${t.id} 功能开关已关闭，跳过`);
+    // 面板「运行记录」每天提示一次，避免只看运行记录时误判为“定时任务不工作”
+    const sk = 'switchlog:' + t.id;
+    if (lastFire[sk] !== bjNow().ymd) {
+      lastFire[sk] = bjNow().ymd;
+      try { addSystemLog('warn', 'schedule', `定时任务 ${t.id} 已跳过：功能开关关闭`, `contentType=${t.contentType} switch=${SWITCH_BY_TYPE[t.contentType] || 'broadcast'}`, '', '', t.botId || ''); } catch { /* ignore */ }
+    }
     return;
   }
   let content = contentFor(t);
@@ -428,6 +443,11 @@ async function dispatch(t: ScheduleTask) {
     }
   }
   const { text, images } = extractImages(content);
+  if (t.contentType !== 'plugin' && !text && images.length === 0) {
+    runnerLogger.warn(`定时任务 ${t.id} 内容为空，跳过发送（contentType=${t.contentType} textLen=${String(t.text || '').length}）`);
+    try { addSystemLog('warn', 'schedule', `定时任务 ${t.id} 内容为空已跳过`, `contentType=${t.contentType} sendType=${t.sendType || '未设置'}`, '', '', t.botId || ''); } catch { /* ignore */ }
+    return;
+  }
   // 目标群：任务显式指定优先；为空则按任务绑定机器人名下群（避免混入其他机器人视角的群 OpenID 导致 11255）
   let groups: string[];
   if (t.botId) {
@@ -524,8 +544,13 @@ function tick() {
         dispatch(t);
       }
     }
-  } catch {
-    /* ignore */
+  } catch (e: any) {
+    const msg = e && e.message ? e.message : String(e);
+    if (msg !== lastTickErr) {
+      lastTickErr = msg;
+      runnerLogger.warn(`定时任务扫描异常（后续同错不再重复）: ${msg}`);
+      try { addSystemLog('error', 'schedule', '定时任务扫描异常', msg.slice(0, 200)); } catch { /* ignore */ }
+    }
   }
 }
 
@@ -534,6 +559,7 @@ export function startScheduleRunner(getEngine?: () => any) {
   if (timer) return;
   timer = setInterval(tick, 60 * 1000);
   if (typeof timer.unref === 'function') timer.unref();
+  runnerLogger.info('定时任务执行器已启动（每 60 秒扫描一次 schedule_tasks）');
   tick();
 }
 

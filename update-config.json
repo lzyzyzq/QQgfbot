@@ -1,6 +1,8 @@
 {
   "ok": true,
   "version": "4.2.100",
+  "frameworkVersion": "1.0.0",
+  "pluginVersion": "1.0.0",
   "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.100.zip",
   "fullUrl": "",
   "mirrors": [

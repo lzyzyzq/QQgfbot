@@ -20,7 +20,7 @@ import editorRoutes from './admin/routes/editor';
 import type { AdminConfig } from './admin/config';
 
 // ===== 业务 API imports =====
-import { initDb, closeDb, getConfig, setConfig, getDb } from './db/index';
+import { initDb, closeDb, getConfig, setConfig, getDb, addSystemLog } from './db/index';
 import { seedExamplePlugins } from './db/seed';
 import { EventBus, initAssignmentCache, migratePhpPyAssignments } from './core/event-bus';
 import { startScheduleRunner } from './core/schedule-runner';
@@ -938,6 +938,15 @@ async function main() {
   await pluginEngine.loadAllFromDb();
   // 一次性迁移：为已有分配记录的机器人补上 PHP/PY 插件分配，避免升级后突然不回复
   migratePhpPyAssignments();
+  // 插件读取/加载结果写入运行记录：无论新增插件还是框架修复，面板「运行记录」都能看到本次加载了哪些插件
+  try {
+    const rows = getDb().prepare("SELECT type, COUNT(*) AS c FROM plugins WHERE enabled = 1 GROUP BY type").all() as any[];
+    const total = rows.reduce((s: number, r: any) => s + Number(r.c || 0), 0);
+    const detail = rows.map((r: any) => r.type + ':' + r.c).join(' ');
+    addSystemLog('info', 'plugin', `插件加载完成：共 ${total} 个已启用`, detail || '无已启用插件');
+  } catch (e: any) {
+    serverLogger.warn(`插件加载统计写入运行记录失败：${e && e.message ? e.message : e}`);
+  }
 
   // 启动 PHP 插件桥（执行 plugins/ 下的 .php 插件，需环境安装 php-cli）
   try {

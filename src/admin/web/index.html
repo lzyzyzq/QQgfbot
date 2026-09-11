@@ -803,7 +803,7 @@ input[type="file"]{color:var(--text2)}
   <div class="action-bar">
     <button class="btn btn-outline" onclick="loadRunLogs()">刷新</button>
     <select id="runLogCategory" onchange="loadRunLogs()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:var(--radius)">
-      <option value="">全部</option><option value="auth">认证</option><option value="message">消息</option><option value="member">成员</option><option value="system">系统</option>
+      <option value="">全部</option><option value="message">消息</option><option value="auth">认证</option><option value="member">成员</option><option value="group">群组</option><option value="bot">机器人</option><option value="schedule">定时任务</option><option value="plugin">插件</option><option value="interaction">互动</option><option value="qqbind">QQ绑定</option><option value="napcat">NapCat</option><option value="editor">词库编辑</option><option value="system">系统</option>
     </select>
     <select id="runLogLevel" onchange="loadRunLogs()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:var(--radius)">
       <option value="">全部级别</option><option value="info">信息</option><option value="warn">警告</option><option value="error">错误</option>
@@ -1594,7 +1594,29 @@ function switchPage(name){
 let termHistory=[];
 let termHistIdx=-1;
 function termAppend(html){const out=docById('termOut');out.insertAdjacentHTML('beforeend',html);out.scrollTop=out.scrollHeight;}
-function termPrint(text,cls){termAppend('<div class="'+(cls||'')+'">'+esc(String(text==null?'':text))+'</div>');}
+// 服务端固定英文输出（PM2 启停/进程表/host metrics）转中文显示；仅命中已知格式，其余原样保留
+function zhServerLine(line){
+  let s=String(line==null?'':line);
+  if(/\[PM2\]/.test(s)){
+    s=s.replace(/(\[PM2\])\s*Starting\s+(.+?)\s+in\s+(\w+)_mode/gi,'$1 正在启动 $2（$3 模式）')
+       .replace(/(\[PM2\])\s*Done\./gi,'$1 完成。')
+       .replace(/(\[PM2\])\s*Applying action\s*(.*)$/gi,'$1 执行操作 $2')
+       .replace(/(\[PM2\])\s*Launching\s+in\s+(.+)$/gi,'$1 正在启动（$2）')
+       .replace(/(\[PM2\])\s*Killing/gi,'$1 正在结束')
+       .replace(/(\[PM2\])\s*Restarting/gi,'$1 正在重启');
+  }
+  if(/host metrics/i.test(s)){
+    s=s.replace(/host metrics/gi,'主机指标').replace(/\bcpu:/gi,'CPU：').replace(/ram usage:/gi,'内存占用：')
+       .replace(/⇓/g,'下行 ').replace(/⇑/g,'上行 ').replace(/\bdrop\b/gi,'丢包');
+    return s;
+  }
+  if(/^\s*│.*│\s*$/.test(s)){
+    const map={id:'编号',name:'名称',namespace:'命名空间',version:'版本',mode:'模式',pid:'PID',uptime:'运行时长',restarts:'重启次数',status:'状态',cpu:'CPU',mem:'内存',user:'用户',watching:'监听',online:'在线',stopped:'已停止',errored:'错误',launching:'启动中',stopping:'停止中',restarting:'重启中',waiting:'等待中'};
+    return s.split('│').map(function(p){const t=p.trim();const c=map[t.toLowerCase()];return c?' '+c+' ':p;}).join('│');
+  }
+  return s;
+}
+function termPrint(text,cls){termAppend('<div class="'+(cls||'')+'">'+esc(zhServerLine(String(text==null?'':text)))+'</div>');}
 function termSetCwd(cwd){
   cwd=cwd||'/var/www/php';
   docById('termCwd').textContent=cwd;
@@ -1675,7 +1697,7 @@ async function loadDashboard(){try{const stats=await api('/api/system/stats');
   if(ovState){ovState.className='tag '+(online>0?'tag-running':'tag-stopped');ovState.textContent=(online>0)?'运行中':'待机';}
   const hv=(stats.host||{});
   setTxt('ovBots',online+' / '+(stats.bots?stats.bots.total:0)+' 个机器人服务中');
-  setTxt('ovOs',(hv.hostname||'')+' · '+(hv.platform||'')+' '+(hv.arch||'')+' · 系统已运行 '+fmtTime(stats.osUptime||0));
+  setTxt('ovOs',(hv.hostname||'')+' · '+(hv.platform||'')+' '+(hv.arch||'')+' · 系统已运行 '+fmtUptimeCN(stats.osUptime||0));
   setTxt('ovMeta','进程 PID '+stats.pid+' · Node '+(stats.nodeVersion||'')+' · 融合 '+(fw.name||'NapCatQQ')+(fw.version?(' '+fw.version):''));
   const ev=stats.events24||[];
   let totIn=0,totOut=0;for(let i=0;i<ev.length;i++){totIn+=ev[i].in;totOut+=ev[i].out;}
@@ -1684,7 +1706,9 @@ async function loadDashboard(){try{const stats=await api('/api/system/stats');
     dashMiniCard('24h 出站回复',totOut,'green')+
     dashMiniCard('机器人在线',online+' / '+(stats.bots?stats.bots.total:0),'green')+
     dashMiniCard('插件数量',stats.pluginCount||0,'yellow')+
-    dashMiniCard('系统版本',stats.version||'-','blue')+
+    dashMiniCard('系统版本',stats.frameworkVersion||'1.0.0','blue')+
+    dashMiniCard('补丁版本',stats.version||'-','blue')+
+    dashMiniCard('插件版本',stats.pluginVersion||'-','blue')+
     dashMiniCard('进程已运行',fmtTime(stats.uptime||0),'green');
   const mem=stats.memory||{};
   let diskTxt='不可用',diskPct=0;
@@ -1741,6 +1765,11 @@ async function loadDashboard(){try{const stats=await api('/api/system/stats');
 }catch(e){}}
 
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h+'h '+m+'m'}
+function fmtUptimeCN(s){s=Math.max(0,Math.floor(Number(s)||0));const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);if(d>0)return d+'天'+h+'小时';if(h>0)return h+'小时'+m+'分';return m+'分'}
+const RUNLOG_LEVEL_CN={info:'信息',warn:'警告',error:'错误',debug:'调试'};
+const RUNLOG_CAT_CN={message:'消息',auth:'认证',member:'成员',system:'系统',schedule:'定时任务',plugin:'插件',plugins:'插件',bot:'机器人',group:'群组',napcat:'NapCat',editor:'词库编辑',interaction:'互动',qqbind:'QQ绑定',file:'文件',update:'更新'};
+function runLogLevelCN(v){return RUNLOG_LEVEL_CN[String(v||'').toLowerCase()]||String(v||'')}
+function runLogCatCN(v){return RUNLOG_CAT_CN[String(v||'').toLowerCase()]||String(v||'')}
 function dashMiniCard(label,val,cls){return '<div class="stat-card"><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(String(val))+'</div></div>'}
 function dashGauge(label,val,pct,color){
   const p=Math.max(0,Math.min(100,Number(pct)||0));
@@ -3675,8 +3704,8 @@ async function loadRunLogs(){
     window._runLogRows=data.logs||[];
     docById('runLogBody').innerHTML=(data.logs||[]).map(l=>
       '<tr><td><input type="checkbox" class="runlog-check" value="'+l.id+'" onchange="updateRunLogDelBtn()"></td>'+
-      '<td><span style="color:'+(colors[l.level]||'')+'">'+esc(l.level)+'</span></td>'+
-      '<td>'+esc(l.category)+'</td>'+
+      '<td><span style="color:'+(colors[l.level]||'')+'">'+esc(runLogLevelCN(l.level))+'</span></td>'+
+      '<td>'+esc(runLogCatCN(l.category))+'</td>'+
       '<td style="font-size:12px">'+renderRunLogBot(l)+'</td>'+
       '<td style="word-break:break-all">'+esc(l.message)+(l.detail?'<br><span style="color:var(--text2);font-size:12px;word-break:break-all">'+esc(l.detail)+'</span>':'')+'</td>'+
       '<td style="font-size:12px;word-break:break-all;color:var(--text2)">'+renderRunLogUser(l)+'</td>'+

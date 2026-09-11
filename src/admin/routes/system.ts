@@ -814,10 +814,20 @@ export function createSystemRoutes(
     // 版本兜底：面板配置可能为空/过时，回退读 package.json，避免仪表盘「系统版本」恒显 '-'
     let pkgVer = '';
     try { pkgVer = String(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')).version || ''); } catch {}
+    // 框架版本 / 插件版本：独立于补丁版本，记录在 update-config.json，由发布脚本按改动范围维护
+    let frameworkVersion = '1.0.0';
+    let pluginVersion = '';
+    try {
+      const uc = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'update-config.json'), 'utf-8'));
+      if (uc && uc.frameworkVersion) frameworkVersion = String(uc.frameworkVersion);
+      if (uc && uc.pluginVersion) pluginVersion = String(uc.pluginVersion);
+    } catch {}
 
     res.json({
       // 版本优先取实际安装版本（package.json，随补丁更新），避免面板配置过时导致仪表盘显示旧版本/-
       version: pkgVer || cfgSafe('update.version') || '',
+      frameworkVersion,
+      pluginVersion,
       uptime: process.uptime(),          // 进程运行时长（秒）
       osUptime: os.uptime(),             // 系统运行时长（秒）
       host: { platform: os.platform(), arch: os.arch(), hostname: os.hostname(), release: os.release() },
