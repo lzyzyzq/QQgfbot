@@ -8,15 +8,49 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "1.0.10",
-    "changeLog": "修复绑定管理：@提及与命令/QQ号紧贴时（绑定QQ 123@用户、解绑QQ@用户）无法识别；现已支持无空格@与@在前/在后两种顺序"
+    "version": "1.0.11",
+    "changeLog": "绑定QQ后自动补全QQ昵称；OpenID列表与用户管理展示昵称多级兜底"
   },
   "releases": [
+    {
+      "version": "1.0.11",
+      "tag": "v1.0.11",
+      "date": "2026-09-12",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-patch-1.0.11.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-patch-1.0.11.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-patch-1.0.11.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.11.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-1.0.11.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-1.0.11.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-1.0.11.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.11.zip"
+      }
+    },
     {
       "version": "1.0.10",
       "tag": "v1.0.10",
       "date": "2026-09-12",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.10/qqbot-card-editor-patch-1.0.10.zip",
         "mirrors": [
