@@ -237,6 +237,13 @@
   .dc-val { width: 100%; min-height: 36px; box-sizing: border-box; }
   .dc-cmt { flex: 1; min-width: 200px; }
   .dc-empty { color: #94a3b8; text-align: center; padding: 12px; }
+  .cat-chip { display: inline-block; padding: 1px 8px; margin: 1px 2px; border-radius: 10px; cursor: pointer; user-select: none; border: 1px solid transparent; }
+  .cat-cmd { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+  .cat-cmd:hover { background: #3730a3; color: #fff; }
+  .cat-var { background: #ecfdf5; color: #047857; border-color: #a7f3d0; font-family: monospace; }
+  .cat-var:hover { background: #047857; color: #fff; }
+  .cat-edit { display: inline-block; cursor: pointer; color: #0e7490; margin: 0 4px 0 0; }
+  .cat-edit:hover { color: #155e75; }
 </style>
 </head>
 <body>
@@ -388,7 +395,24 @@
         <textarea id="dcRaw" rows="8" style="width:100%;font-family:monospace;font-size:12px" readonly></textarea>
       </details>
     </div>
+    <details style="margin-top:10px" id="dcStatsCard">
+      <summary style="cursor:pointer;font-size:13px;color:#0e7490">📊 使用统计（各群指令访问次数）</summary>
+      <div class="hint" style="margin:6px 0">数据来自 <b>plugins/词库/使用统计.json</b>，由「娱乐群管」插件在每次命中规则时累加（整群总量 + 每条指令各自计数）。点「↻ 刷新统计」拉取最新数据。</div>
+      <div style="margin:6px 0"><button class="btn btn-sm" onclick="dcLoadStats()">↻ 刷新统计</button> <span id="dcStatsHint" style="font-size:12px;color:#94a3b8"></span></div>
+      <div id="dcStatsBox" style="font-size:12px"></div>
+    </details>
   </div>
+
+  <div class="card" id="catCard">
+    <h2>🧭 指令 / 变量 / 调用目录 <span style="color:#999;font-size:12px">（全插件 · 点击命令复制或直达编辑，变量可作占位符）</span></h2>
+    <div class="hint" style="margin-bottom:6px">聚合全部插件源码中的触发指令、ReplySpec 回复变量、lzyqzb 词库规则触发、引擎/机器人/天气等后端可用变量与官方平台开发文档变量。输入首字即可筛选；变量以 <code>{变量}</code>（回复模板）或 <code>%变量%</code>（lzyqzb 词库）形式引用。</div>
+    <div style="margin:4px 0;display:flex;gap:6px;flex-wrap:wrap">
+      <input type="text" id="catSearch" placeholder="输入命令 / 变量首字（如「菜单」「openid」「群号」）…" style="flex:1;min-width:180px" oninput="catRender()">
+      <button class="btn btn-sm" onclick="catLoad(true)">↻ 刷新目录</button>
+    </div>
+    <div id="catBody" style="font-size:12px"><div class="hint">加载中…</div></div>
+  </div>
+  <datalist id="catVarOptions"></datalist>
 
   <div class="card">
     <h2>📄 页面管理</h2>
@@ -2079,6 +2103,38 @@ function rsDictTab(which){
   if (tr) tr.className = 'rs-dict-tab' + (isReply ? ' active' : '');
   if (td) td.className = 'rs-dict-tab' + (isReply ? '' : ' active');
   if (!isReply && !dcState.loaded) dcLoad();
+  if (!isReply) dcLoadStats();
+}
+
+// 使用统计：/api/plugins/_dict/stats（娱乐群管按群 + 按指令计数）
+function dcEsc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function dcLoadStats(){
+  var box = $('dcStatsBox'), hint = $('dcStatsHint');
+  if (hint) hint.textContent = '加载中…';
+  api('/api/plugins/_dict/stats').then(function(r){
+    if (!r.ok || !r.data || !r.data.ok){
+      if (hint) hint.textContent = '加载失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status));
+      return;
+    }
+    var d = r.data;
+    if (hint) hint.textContent = '全局累计 ' + ((d.global && d.global.total) || 0) + ' 次';
+    var gs = d.groups || [];
+    if (!box) return;
+    if (!gs.length){ box.innerHTML = '<div class="hint">暂无使用记录（群内触发一次娱乐群管指令后再刷新）</div>'; return; }
+    var html = '';
+    gs.forEach(function(g){
+      html += '<div style="margin:8px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">';
+      html += '<div style="background:#f1f5f9;padding:4px 8px;font-weight:600">群 ' + dcEsc(g.id) + ' · 共 ' + (parseInt(g.total, 10) || 0) + ' 次' + (g.last ? ' · 最近 ' + new Date(g.last).toLocaleString() : '') + '</div>';
+      var rules = g.rules || [];
+      if (!rules.length){ html += '<div style="padding:6px 8px;color:#94a3b8">暂无指令</div>'; }
+      rules.slice(0, 10).forEach(function(it, i){
+        html += '<div style="padding:3px 8px;display:flex;justify-content:space-between;border-top:1px dashed #e2e8f0"><span>' + (i + 1) + '. ' + dcEsc(it.name) + '</span><span style="color:#0e7490">' + (parseInt(it.count, 10) || 0) + ' 次</span></div>';
+      });
+      if (rules.length > 10) html += '<div style="padding:3px 8px;color:#94a3b8;border-top:1px dashed #e2e8f0">… 其余 ' + (rules.length - 10) + ' 条已省略</div>';
+      html += '</div>';
+    });
+    box.innerHTML = html;
+  }).catch(function(e){ if (hint) hint.textContent = '加载失败：' + ((e && e.message) || e); });
 }
 
 function dcEntryCount(lines){ var n = 0; for (var i = 0; i < lines.length; i++) if (lines[i].t === 'e') n++; return n; }
@@ -2150,6 +2206,7 @@ function dcLoad(){
       dcFmtUI();
       dcRender();
       dcRenderRaw();
+      dcLoadStats();
       return;
     }
     toast('词库加载失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
@@ -2371,7 +2428,7 @@ function rsFieldsOf(ln, i){
 }
 function rsIn(field, ph, val, i){
   var fld = (field === 'text') ? 'v' : field;
-  return '<input type="text" class="rs-in' + (field==='text' ? ' rs-in-wide' : '') + '" placeholder="' + esc(ph) + '" value="' + escAttr(val || '') + '" oninput="rsPatch(' + i + ',{' + fld + ':this.value})">';
+  return '<input type="text" class="rs-in' + (field==='text' ? ' rs-in-wide' : '') + '" list="catVarOptions" placeholder="' + esc(ph) + '" value="' + escAttr(val || '') + '" oninput="rsPatch(' + i + ',{' + fld + ':this.value})">';
 }
 function rsKIn(i, ln){
   return '<select class="rs-in rs-key" onchange="rsPatch(' + i + ',{k:this.value})"><option value="">（选数据键）</option>' +
@@ -2599,6 +2656,107 @@ function gmSave(){
     else toast('保存失败：' + ((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)));
   });
 }
+
+// ===== 指令 / 变量 / 调用目录（/api/plugins/_catalog） =====
+var catState = { loaded: false, data: null };
+function catLoad(force){
+  if (catState.loaded && !force) return;
+  api('/api/plugins/_catalog').then(function(r){
+    if (!r.ok || !r.data || !r.data.ok){
+      $('catBody').innerHTML = '<div class="hint">目录加载失败：' + esc((r.data && (r.data.error || r.data.msg)) || ('HTTP ' + r.status)) + '</div>';
+      return;
+    }
+    catState.data = r.data;
+    catState.loaded = true;
+    catPopulateOptions();
+    catRender();
+  }).catch(function(e){ $('catBody').innerHTML = '<div class="hint">目录加载失败：' + esc(e && e.message || '') + '</div>'; });
+}
+function catAllVars(){
+  var d = catState.data || {};
+  var out = [];
+  var push = function(v){ if (v && v.name) out.push(v); };
+  (d.plugins || []).forEach(function(p){ (p.variables || []).forEach(push); });
+  (d.dictVariables || []).forEach(push);
+  (d.official || []).forEach(push);
+  var seen = {}, uniq = [];
+  out.forEach(function(v){ if (!seen[v.name]){ seen[v.name] = 1; uniq.push(v); } });
+  return uniq;
+}
+function catPopulateOptions(){
+  var dl = $('catVarOptions');
+  if (!dl) return;
+  dl.innerHTML = catAllVars().map(function(v){
+    var desc = (v.group ? '[' + v.group + '] ' : '') + (v.desc || '');
+    return '<option value="{'+escAttr(v.name)+'}" label="'+escAttr(desc)+'"></option>' +
+           '<option value="%'+escAttr(v.name)+'%" label="'+escAttr(desc)+'"></option>' +
+           '<option value="'+escAttr(v.name)+'" label="'+escAttr(desc)+'"></option>';
+  }).join('');
+}
+function catCopy(text){
+  var t = String(text || '');
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t);
+    else { var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+    toast('已复制：' + t);
+  } catch(e){ toast('复制失败：' + t); }
+}
+function catGotoDict(file, cmd){
+  if (file) dcState.fileName = file;
+  dcState.loaded = false;
+  var s = $('dcSearch'); if (s) s.value = cmd || '';
+  rsDictTab('dict');
+  setTimeout(function(){ var b=$('dictCard'); if(b) b.scrollIntoView({behavior:'smooth',block:'start'}); }, 150);
+}
+function catChip(text, cls, title){
+  return '<span class="cat-chip ' + cls + '" title="' + escAttr(title || '点击复制') + '" onclick="catCopy(\'' + escAttr(text).replace(/'/g, "\\'") + '\')">' + esc(text) + '</span>';
+}
+function catRender(){
+  var box = $('catBody');
+  if (!box || !catState.data) return;
+  var q = String(($('catSearch') && $('catSearch').value) || '').trim().toLowerCase();
+  var match = function(s){ return !q || String(s || '').toLowerCase().indexOf(q) >= 0; };
+  var d = catState.data;
+
+  var html = '';
+  var shownOfficial = (d.official || []).filter(function(v){ return match(v.name) || match(v.desc) || match(v.group); });
+  if (!q || shownOfficial.length){
+    var groups = {};
+    shownOfficial.forEach(function(v){ (groups[v.group] = groups[v.group] || []).push(v); });
+    html += '<details open style="margin:4px 0"><summary style="cursor:pointer;font-weight:600;color:#0e7490">🔌 后端 / 官方平台变量（' + shownOfficial.length + '）</summary>';
+    Object.keys(groups).forEach(function(g){
+      html += '<div style="margin:4px 0 2px;font-weight:600;color:#64748b">' + esc(g) + '</div>';
+      html += groups[g].map(function(v){ return catChip(v.name, 'cat-var', v.desc || ''); }).join(' ');
+    });
+    html += '</details>';
+  }
+
+  var plugins = (d.plugins || []).filter(function(p){
+    if (match(p.name) || match(p.file)) return true;
+    return (p.commands || []).some(function(c){ return match(c.text); }) || (p.variables || []).some(function(v){ return match(v.name); });
+  });
+  html += '<details open style="margin:4px 0"><summary style="cursor:pointer;font-weight:600;color:#0e7490">🧩 插件指令与变量（' + plugins.length + ' 个插件）</summary>';
+  plugins.forEach(function(p){
+    var isDict = p.type === 'dict';
+    var cmdHtml = (p.commands || []).filter(function(c){ return match(p.name)||match(p.file)||match(c.text); }).map(function(c){
+      var chip = catChip(c.text, 'cat-cmd', '点击复制命令：' + c.text);
+      if (isDict) chip += '<span class="cat-edit" title="跳转到词库编辑" onclick="catGotoDict(\'' + escAttr(p.file) + '\',\'' + escAttr(c.text).replace(/'/g,"\\'") + '\')">✎</span>';
+      return chip;
+    }).join(' ');
+    var varHtml = (p.variables || []).filter(function(v){ return match(p.name)||match(v.name); }).map(function(v){ return catChip('{'+v.name+'}', 'cat-var', v.desc || ''); }).join(' ');
+    html += '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:5px 8px;margin:4px 0">';
+    html += '<div style="font-weight:600">' + esc(p.name) + ' <span style="color:#94a3b8;font-weight:normal">' + esc(p.type) + ' · ' + esc(p.file) + (p.version ? ' · v' + esc(p.version) : '') + '</span>';
+    if (isDict) html += ' <button class="btn btn-sm" onclick="catGotoDict(\'' + escAttr(p.file) + '\',\'\')">编辑词库</button>';
+    html += '</div>';
+    if (p.desc) html += '<div style="color:#64748b;margin:1px 0">' + esc(p.desc) + '</div>';
+    if (cmdHtml) html += '<div style="margin:2px 0"><span style="color:#64748b">指令：</span>' + cmdHtml + '</div>';
+    if (varHtml) html += '<div style="margin:2px 0"><span style="color:#64748b">变量：</span>' + varHtml + '</div>';
+    html += '</div>';
+  });
+  html += '</details>';
+  box.innerHTML = html || '<div class="hint">没有匹配「' + esc(q) + '」的指令或变量。</div>';
+}
+catLoad();
 
 // 仅超级主人显示「插件工坊」入口
 api('/api/auth/me').then(function(r){

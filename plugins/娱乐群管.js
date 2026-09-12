@@ -115,6 +115,55 @@ module.exports = {
 
     var RULES = loadCorpus();
 
+    // ---------- 使用次数统计（按群 + 按指令，落盘 plugins/词库/使用统计.json） ----------
+    var STATS_PATH = path.join(DATA_DIR, '使用统计.json');
+    function emptyStats() { return { groups: {}, global: { total: 0, rules: {} } }; }
+    function loadStats() {
+      try {
+        var j = JSON.parse(fs.readFileSync(STATS_PATH, 'utf8'));
+        if (!j || typeof j !== 'object') return emptyStats();
+        if (!j.groups || typeof j.groups !== 'object') j.groups = {};
+        if (!j.global || typeof j.global !== 'object') j.global = { total: 0, rules: {} };
+        if (!j.global.rules || typeof j.global.rules !== 'object') j.global.rules = {};
+        return j;
+      } catch (e) { return emptyStats(); }
+    }
+    var STATS = loadStats();
+    function saveStats() {
+      try { fs.writeFileSync(STATS_PATH, JSON.stringify(STATS, null, 2), 'utf8'); } catch (e) {}
+    }
+    // 命中规则时累加：整群总次数 + 该指令次数 + 全局总次数，返回给 builtinVars 展示
+    function bumpStats(groupId, ruleName) {
+      groupId = String(groupId || '全局');
+      ruleName = String(ruleName || '未命名');
+      var g = STATS.groups[groupId];
+      if (!g || typeof g !== 'object') { g = { total: 0, rules: {} }; STATS.groups[groupId] = g; }
+      if (!g.rules || typeof g.rules !== 'object') g.rules = {};
+      g.total = (parseInt(g.total, 10) || 0) + 1;
+      g.rules[ruleName] = (parseInt(g.rules[ruleName], 10) || 0) + 1;
+      g.last = Date.now();
+      STATS.global.total = (parseInt(STATS.global.total, 10) || 0) + 1;
+      STATS.global.rules[ruleName] = (parseInt(STATS.global.rules[ruleName], 10) || 0) + 1;
+      saveStats();
+      return {
+        groupTotal: g.total,
+        ruleCount: g.rules[ruleName],
+        globalTotal: STATS.global.total,
+        ruleName: ruleName
+      };
+    }
+    // 供词库 $统计$ 命令输出本群使用排行
+    function statsText(groupId) {
+      var g = STATS.groups[String(groupId || '全局')] || { total: 0, rules: {} };
+      var arr = [];
+      Object.keys(g.rules || {}).forEach(function (k) { arr.push([k, g.rules[k]]); });
+      arr.sort(function (a, b) { return b[1] - a[1]; });
+      var lines = ['📊 本群使用统计', '总使用：' + (parseInt(g.total, 10) || 0) + ' 次', '──────────'];
+      if (!arr.length) lines.push('暂无记录');
+      for (var i = 0; i < arr.length && i < 10; i++) lines.push((i + 1) + '. ' + arr[i][0] + '：' + arr[i][1] + ' 次');
+      return lines.join('\n');
+    }
+
     // ---------- 触发匹配（支持 (.*) 捕获 → %括号1%..） ----------
     function matchTrigger(trigger, content) {
       var t = trigger;
@@ -144,7 +193,7 @@ module.exports = {
     }
 
     // ---------- 变量与表达式求值 ----------
-    function builtinVars(data, params) {
+    function builtinVars(data, params, statsInfo) {
       var groupId = data.groupId || '';
       var authorId = (data.author && data.author.id) || '';
       var nick = (data.author && (data.author.name || data.author.nickname)) || '';
@@ -162,6 +211,12 @@ module.exports = {
         '消息ID': data.id || '',
         '事件类型': data.type || 'message.group',
         '事件': (data.event || '') || '',
+        '使用次数': statsInfo ? String(statsInfo.groupTotal) : '0',
+        '访问次数': statsInfo ? String(statsInfo.groupTotal) : '0',
+        '指令次数': statsInfo ? String(statsInfo.ruleCount) : '0',
+        '当前指令次数': statsInfo ? String(statsInfo.ruleCount) : '0',
+        '全局次数': statsInfo ? String(statsInfo.globalTotal) : '0',
+        '当前指令': statsInfo ? String(statsInfo.ruleName || '') : '',
         '日期': now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()),
         '时间': pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()),
         '完整时间': now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes())
@@ -213,9 +268,10 @@ module.exports = {
       '单聊消息': 'c2cmsg', '私聊消息': 'c2cmsg', 'c2c_message': 'c2cmsg',
       '发送频道消息': 'channelmsg', '频道消息': 'channelmsg', 'channel_message': 'channelmsg',
       '艾特': 'at', 'At': 'at', 'at': 'at', '@': 'at',
+      '统计': 'stats', '使用统计': 'stats', '访问统计': 'stats', '使用排行': 'stats', '指令统计': 'stats', 'stats': 'stats',
       '记录': 'log', '互动结果': 'nop', 'on_interaction_result': 'nop'
     };
-    var CANON_CMDS = ['send', 'md', 'btn', 'img', 'quote', 'recall', 'randText', 'randInt', 'calc', 'read', 'write', 'http', 'call', 'stop', 'nop', 'term', 'delay', 'find', 'replace', 'length', 'substr', 'left', 'right', 'contains', 'starts', 'ends', 'splitGet', 'upper', 'lower', 'trim', 'me', 'mute', 'unmute', 'muteall', 'unmuteall', 'kick', 'batchmute', 'batchunmute', 'inline', 'resolve', 'groupmsg', 'c2cmsg', 'channelmsg', 'at', 'log'];
+    var CANON_CMDS = ['send', 'md', 'btn', 'img', 'quote', 'recall', 'randText', 'randInt', 'calc', 'read', 'write', 'http', 'call', 'stop', 'nop', 'term', 'delay', 'find', 'replace', 'length', 'substr', 'left', 'right', 'contains', 'starts', 'ends', 'splitGet', 'upper', 'lower', 'trim', 'me', 'mute', 'unmute', 'muteall', 'unmuteall', 'kick', 'batchmute', 'batchunmute', 'inline', 'resolve', 'groupmsg', 'c2cmsg', 'channelmsg', 'at', 'log', 'stats'];
     function isKnownCmdToken(w) {
       if (!w) return false;
       return !!CMD_ALIASES[w] || CANON_CMDS.indexOf(w) >= 0;
@@ -419,6 +475,10 @@ module.exports = {
       if (fn === 'term') { scope.term = true; scope.stop = true; return { value: '' }; }
       if (fn === 'nop') { return { value: '' }; }
       if (fn === 'log') { try { ctx.logger.info('[娱乐群管-记录] ' + interp(arg, scope)); } catch(e){} return { value: '' }; }
+      if (fn === 'stats') {
+        scope.outputs.push(statsText(scope.data.groupId || scope.data.channelId || ''));
+        return { value: '' };
+      }
       if (fn === 'me') {
         var me = (scope.bot && scope.bot.getStatus) ? '当前机器人已就绪' : '机器人信息不可用';
         scope.outputs.push(me);
@@ -694,11 +754,11 @@ module.exports = {
     }
 
     // ---------- 规则执行 ----------
-    function newScope(data, params) {
+    function newScope(data, params, statsInfo) {
       return {
         data: data,
         bot: ctx.bot,
-        builtin: builtinVars(data, params),
+        builtin: builtinVars(data, params, statsInfo),
         vars: {},
         outputs: [],
         stop: false,
@@ -795,44 +855,98 @@ module.exports = {
       }
       if (!hit) return false;
       try { ctx.logger.info('[娱乐群管] 命中规则「' + String(hit.rule.name).slice(0, 30) + '」 trigger="' + String(content).slice(0, 40) + '"'); } catch(e){}
-      var scope = newScope(data, hit.params);
+      var statsInfo = bumpStats(data.groupId || data.channelId || '', hit.rule.name);
+      var scope = newScope(data, hit.params, statsInfo);
       try { runLines(hit.rule, scope); } catch (e) { try { ctx.logger.error('[娱乐群管] 规则执行异常: ' + e.message); } catch(x){} }
       flushOutputs(scope);
       return true;
     }
 
+    // 词库中常用字面量 \r / \n 表示换行（部分词库作者习惯用 \r 分段），统一还原为真实换行
+    function normalizeOutput(s) {
+      return String(s == null ? '' : s).replace(/\\r\\n/g, '\n').replace(/\\r/g, '\n').replace(/\\n/g, '\n');
+    }
+
+    // 新增词库语法：行内标记 【显示文字】 或 【显示文字=>指令】 → 可点击外显链接。
+    // 只有显式写标记的词库行才会被渲染，不扫描普通文本中的 「」，避免全局自动识别误伤排版。
+    // 返回 { text, plain, changed, mode }；plain 为剥离标记后的纯文本（无 markdown 通道时回退用）。
+    function linkifyMarks(text) {
+      var mode = 'on';
+      try { if (ctx.link && ctx.link.mode) mode = ctx.link.mode(); } catch (e) {}
+      var changed = false;
+      var src = String(text == null ? '' : text);
+      function render(body) {
+        var i = body.indexOf('=>');
+        var label = (i >= 0 ? body.slice(0, i) : body).trim();
+        var cmd = (i >= 0 ? body.slice(i + 2) : body).trim();
+        if (!label) return '';
+        changed = true;
+        if (mode === 'off' || !cmd) return label;
+        try { if (ctx.link && ctx.link.linkify) return ctx.link.linkify(label, cmd); } catch (e) {}
+        return '[' + label + '](mqqapi://aio/%69nlinecmd?command=' + encodeURIComponent(cmd) + '&enter=false&reply=false)';
+      }
+      var plain = src.replace(/【([^】\n]{1,80})】/g, function (m, body) {
+        var i = body.indexOf('=>');
+        return (i >= 0 ? body.slice(0, i) : body).trim();
+      });
+      var formatted = src.replace(/【([^】\n]{1,80})】/g, function (m, body) { return render(body); });
+      return { text: formatted, plain: plain, changed: changed, mode: mode };
+    }
+
+    // 当前会话是否有 markdown 渲染通道（无则外显/标记退化为纯文本标签）
+    // 与 sendTo 的路由保持一致：群消息只看 sendMarkdownGroup，单聊只看 sendMarkdownPrivate
+    function supportsMarkdown(scope) {
+      var bot = (scope && scope.bot) || {};
+      var d = (scope && scope.data) || {};
+      if (d.groupId) return !!bot.sendMarkdownGroup;
+      if (d.author && d.author.id) return !!bot.sendMarkdownPrivate;
+      return false;
+    }
+
+    // 发送：asMd=true 优先 markdown，通道不支持时回退纯文本
+    function sendTo(scope, text, asMd) {
+      var msgId = scope.data.id;
+      var bot = scope.bot || {};
+      function safe(fn) { try { var p = fn(); if (p && p.catch) p.catch(function (e) { logSendFail('消息', e); }); } catch (e) { logSendFail('消息', e); } }
+      if (scope.data.groupId) {
+        if (asMd && bot.sendMarkdownGroup) { safe(function () { return bot.sendMarkdownGroup(scope.data.groupId, text, msgId); }); return; }
+        if (bot.sendGroupMessage) { safe(function () { return bot.sendGroupMessage(scope.data.groupId, text, msgId); }); return; }
+      }
+      if (scope.data.channelId && bot.sendMessage) { safe(function () { return bot.sendMessage(scope.data.channelId, text, msgId); }); return; }
+      if (scope.data.author && scope.data.author.id) {
+        if (asMd && bot.sendMarkdownPrivate) { safe(function () { return bot.sendMarkdownPrivate(scope.data.author.id, text, msgId); }); return; }
+        if (bot.sendPrivateMessage) { safe(function () { return bot.sendPrivateMessage(scope.data.author.id, text, msgId); }); return; }
+      }
+      try { ctx.logger.warn('[娱乐群管] 发送被跳过：无可用通道 group=' + (scope.data.groupId || '') + ' bot=' + !!(scope.bot)); } catch (e2) {}
+    }
+
+    // 统一收集输出：普通文本与 $外显/【标记】 链接合并为同一条消息（不拆分）。
+    // 仅当确有外显内容（$外显 的 md 输出或 【标记】）且通道支持 markdown 时才走 markdown，
+    // 其余普通回复保持纯文本发送，避免 markdown 误渲染历史词库文本。
     function flushOutputs(scope) {
       var out = scope.outputs || [];
-      var buf = [];
-      var msgId = scope.data.id;
-      function sendBuf() {
-        if (!buf.length) return;
-        var text = String(buf.join('\n')).replace(/\\n/g, '\n');
-        buf = [];
-        try {
-          if (scope.data.groupId && scope.bot && scope.bot.sendGroupMessage) scope.bot.sendGroupMessage(scope.data.groupId, text, msgId);
-          else if (scope.data.channelId && scope.bot && scope.bot.sendMessage) scope.bot.sendMessage(scope.data.channelId, text, msgId);
-          else if (scope.data.author && scope.data.author.id && scope.bot.sendPrivateMessage) scope.bot.sendPrivateMessage(scope.data.author.id, text, msgId);
-          else try { ctx.logger.warn('[娱乐群管] 发送被跳过：无可用通道 group=' + (scope.data.groupId || '') + ' bot=' + !!(scope.bot)); } catch(e2){}
-        } catch (e) { try { ctx.logger.error('[娱乐群管] 文本发送异常: ' + e.message); } catch(x){} }
-      }
+      var textParts = [];
+      var mdParts = [];
       for (var i = 0; i < out.length; i++) {
         var o = out[i];
         if (o == null) continue;
-        if (typeof o === 'object' && o.md) {
-          sendBuf();
-          try {
-            if (scope.data.groupId && scope.bot && scope.bot.sendMarkdownGroup) scope.bot.sendMarkdownGroup(scope.data.groupId, o.md, msgId);
-            else if (scope.data.author && scope.data.author.id && scope.bot && scope.bot.sendMarkdownPrivate) scope.bot.sendMarkdownPrivate(scope.data.author.id, o.md, msgId);
-            else try { ctx.logger.warn('[娱乐群管] 富媒体发送被跳过：无通道'); } catch(e2){}
-          } catch (e) { try { ctx.logger.error('[娱乐群管] 富媒体发送异常: ' + e.message); } catch(x){} }
-          continue;
-        }
+        if (typeof o === 'object' && o.md) { mdParts.push(String(o.md)); continue; }
         var s = String(o);
         if (s === '') continue;
-        buf.push(s);
+        textParts.push(s);
       }
-      sendBuf();
+      var text = normalizeOutput(textParts.join('\n'));
+      var canMd = supportsMarkdown(scope);
+      var mk = linkifyMarks(text);
+      var wantMd = canMd && mk.mode !== 'off' && (mdParts.length > 0 || mk.changed);
+      if (wantMd) {
+        var combined = mk.text;
+        if (mdParts.length) combined = combined ? combined + '\n' + normalizeOutput(mdParts.join('\n')) : normalizeOutput(mdParts.join('\n'));
+        combined = linkifyMarks(combined).text;
+        if (combined && combined.trim() !== '') sendTo(scope, combined, true);
+        return;
+      }
+      if (mk.plain && mk.plain.trim() !== '') sendTo(scope, mk.plain, false);
     }
 
     // 重新加载词库（管理页保存后触发 engine.reload 重跑 onEnable；另做 mtime 热侦测兜底）

@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generatePluginBlockCode, injectCodeSegment, hasUCardSegment, assertInjectableSourceFile } from '../plugin-codegen';
 import { findPluginIdFor as findMenuConfigPluginId, readAll as readMenuConfigAll, mergeConfig as mergeMenuConfig } from '../../api/menu-config';
 import { builtinReplySpec, cfgKeyFor, makePreviewData, renderBranch, type ReplySpec } from '../reply-editor';
+import { buildCatalog } from '../catalog';
 
 // ===================== 插件审批存储 =====================
 interface PluginApproval {
@@ -1734,6 +1735,40 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
       });
     } catch (e: any) {
       res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  // 词库使用统计：读取 plugins/词库/使用统计.json（娱乐群管插件按群/按规则累加）
+  router.get('/_dict/stats', (_req: Request, res: Response) => {
+    try {
+      const statsFile = path.join(pluginsDir, CID_DIR, '使用统计.json');
+      let raw: any = null;
+      if (fs.existsSync(statsFile)) {
+        try { raw = JSON.parse(fs.readFileSync(statsFile, 'utf-8')); } catch { raw = null; }
+      }
+      const global = (raw && raw.global && typeof raw.global === 'object') ? raw.global : { total: 0, rules: {} };
+      const groupsObj = (raw && raw.groups && typeof raw.groups === 'object') ? raw.groups : {};
+      const groups = Object.keys(groupsObj).map((id) => {
+        const g = groupsObj[id] || {};
+        const rulesObj = (g.rules && typeof g.rules === 'object') ? g.rules : {};
+        const rules = Object.keys(rulesObj)
+          .map((name) => ({ name, count: parseInt(rulesObj[name], 10) || 0 }))
+          .sort((a, b) => b.count - a.count);
+        return { id, total: parseInt(g.total, 10) || 0, last: parseInt(g.last, 10) || 0, rules };
+      }).sort((a, b) => b.total - a.total);
+      res.json({ ok: true, file: CID_DIR + '/使用统计.json', global, groups });
+    } catch (e: any) {
+      res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  // 全插件「指令 / 变量 / 调用」目录：聚合官方变量、lzyqzb 词库变量、各插件源码命令与 ReplySpec 变量
+  router.get('/_catalog', (_req: Request, res: Response) => {
+    try {
+      const catalog = buildCatalog(pluginsDir, (name) => readReplyCfg(name) || builtinReplySpec(name));
+      res.json({ ok: true, ...catalog });
+    } catch (e: any) {
+      res.status(500).json({ error: String((e && e.message) || e) });
     }
   });
 

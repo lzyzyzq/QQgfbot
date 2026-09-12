@@ -10,7 +10,7 @@ const deleted = [];
 const BOUND = '1234567890ABCDEF1234567890ABCDEF';
 const bot = {
   sendGroupMessage: async (g, c) => { sent.push({ g, c }); },
-  sendMarkdownGroup: async (g, m) => { sent.push({ g, m: 'md:' + m }); },
+  sendMarkdownGroup: async (g, m) => { sent.push({ g, c: m, m: 'md:' + m }); },
   sendKeyboardGroup: async (g, k) => { kb.push({ g, rows: k && k.rows }); },
   deleteMessage: async (g, m) => { deleted.push({ g, m }); },
   muteMember: async (g, m, d) => { sent.push({ act: 'mute', d }); },
@@ -165,6 +165,36 @@ function fire(content, authorId) {
   r = await fire('菜单');
   const kbActions = r.kb[0].rows.map((row) => row.map((b) => b.action)).flat();
   check('菜单含 url 链接按钮', kbActions.some((a) => a && a.type === 0 && a.data && a.data.url), kbActions);
+
+  // ---- 菜单外显合并 + 访问次数统计 ----
+  r = await fire('菜单');
+  const menuMsg = r.sent.map((x) => x.m || x.c).join('\n');
+  check('菜单为单条消息(文字与外显链接不拆分)', r.sent.length === 1 && r.sent[0].m && r.sent[0].m.indexOf('娱乐群管菜单') >= 0 && r.sent[0].m.indexOf('mqqapi://aio/') >= 0, r.sent);
+  check('菜单底部含本群使用次数', /本群累计使用 \d+ 次/.test(menuMsg), menuMsg);
+  check('菜单底部【使用统计】已外显成链接', /\[使用统计\]\(mqqapi:\/\/aio\//.test(menuMsg), menuMsg);
+
+  r = await fire('使用统计');
+  const statMsg = r.sent.map((x) => x.c || x.m).join('\n');
+  check('使用统计→本群排行与总量', statMsg.indexOf('本群使用统计') >= 0 && /总使用：\d+ 次/.test(statMsg), statMsg);
+  check('使用统计→逐指令计数含菜单', /菜单：\d+ 次/.test(statMsg), statMsg);
+  check('使用统计→当前指令各自计数', /当前指令：使用统计/.test(statMsg) && /本群已用 \d+ 次/.test(statMsg), statMsg);
+
+  r = await fire('每日任务');
+  const dtMsg = r.sent.map((x) => x.c || x.m).join('\n');
+  check('词库内联标记【…】外显为链接', dtMsg.indexOf('[领任务奖励](mqqapi://aio/') >= 0, dtMsg);
+
+  // 非菜单提示保留普通「」文本，不做全局自动外显
+  r = await fire('留言 @AABBCCDDEEFF001122334455667788 自动外显检查', 'CCDDEEFF00112233445566778899AABB');
+  const hintMsg = r.sent.map((x) => x.c || x.m).join('\n');
+  check('普通回复不做全局自动外显(无 mqqapi 泄漏)', hintMsg.indexOf('mqqapi://aio/') < 0, hintMsg);
+
+  // 外显关闭：菜单标记退化为纯文本，且无链接源码
+  const ctxLinkOn = ctx.link;
+  ctx.link = { mode: () => 'off', linkify: (t) => t };
+  r = await fire('菜单');
+  const offMsg = r.sent.map((x) => x.c || x.m).join('\n');
+  check('外显关闭→菜单纯文字无链接源码', offMsg.indexOf('mqqapi://') < 0 && offMsg.indexOf('娱乐群管菜单') >= 0, offMsg);
+  ctx.link = ctxLinkOn;
 
   const fsLib = require('fs');
   const rootTxt = fsLib.readFileSync(path.join(__dirname, '..', 'plugins', '娱乐群管.txt'), 'utf8');
