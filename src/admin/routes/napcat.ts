@@ -198,7 +198,7 @@ export function createNapcatRoutes(auth?: AdminAuth, eventBus?: EventBus): Route
           group_number: (g && g.group_number) || '',
           avatar: (g && g.avatar) || '',
           bot_id: gBotId,
-          member_count: memberCount,
+          member_count: (g && Number(g.member_count) > 0) ? String(g.member_count) : memberCount,
           today_active: pick('今日活跃成员'),
           today_msgs: pick('今日消息数'),
           robot_replies: pick('机器人回复'),
@@ -325,6 +325,26 @@ export function createNapcatRoutes(auth?: AdminAuth, eventBus?: EventBus): Route
       const groupId = String((req.body || {}).group_id || (req.query.group_id as string) || '').trim();
       removeMemberBinding(openid, groupId || undefined);
       res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 批量删除成员（需 canManageGroups 权限）：逐条等价于 DELETE /members/:openid
+  router.post('/members/batch-delete', (req: Request, res: Response) => {
+    try {
+      if (!canManageMembers(req)) { res.status(403).json({ error: '无权限管理成员（需超管授权 canManageGroups）' }); return; }
+      const items: any[] = Array.isArray((req.body || {}).items) ? req.body.items : [];
+      if (!items.length) { res.status(400).json({ error: 'items required' }); return; }
+      let deleted = 0;
+      for (const it of items) {
+        const oid = String((it && it.openid) || '').trim();
+        if (!oid) continue;
+        const gid = String((it && it.group_id) || '').trim();
+        removeMemberBinding(oid, gid || undefined);
+        deleted++;
+      }
+      res.json({ ok: true, deleted });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -733,6 +753,26 @@ export function createNapcatRoutes(auth?: AdminAuth, eventBus?: EventBus): Route
         db.prepare("UPDATE group_members SET qq_id = '' WHERE member_openid = ?").run(openid);
       }
       res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // 批量删除 OpenID 绑定：逐条等价于 DELETE /openids/:openid（不带 group_id）
+  router.post('/openids/batch-delete', (req: Request, res: Response) => {
+    try {
+      const openids: any[] = Array.isArray((req.body || {}).openids) ? req.body.openids : [];
+      if (!openids.length) { res.status(400).json({ ok: false, error: 'openids required' }); return; }
+      const db = getDb();
+      let deleted = 0;
+      for (const raw of openids) {
+        const oid = String(raw || '').trim();
+        if (!oid) continue;
+        db.prepare('DELETE FROM user_mappings WHERE openid = ?').run(oid);
+        db.prepare("UPDATE group_members SET qq_id = '' WHERE member_openid = ?").run(oid);
+        deleted++;
+      }
+      res.json({ ok: true, deleted });
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
     }

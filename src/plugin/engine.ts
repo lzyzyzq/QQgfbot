@@ -2218,29 +2218,44 @@ export class PluginEngine {
           return { ok: true };
         } catch (e: any) { return { ok: false, error: e.message }; }
       },
-      // 群 OpenID → 数字群号绑定（写入 groups.group_number，群不存在时自动收录）
-      bindGroupNumber: (groupOpenid: string, groupNumber: string, name?: string, botId?: string) => {
+      // 群 OpenID → 数字群号绑定（写入 groups.group_number，群不存在时自动收录；memberCount 设定群真实人数并锁定）
+      bindGroupNumber: (groupOpenid: string, groupNumber: string, name?: string, botId?: string, memberCount?: number) => {
         try {
           const db = getDb();
           if (!groupOpenid) return { ok: false, error: '群 OpenID 不能为空' };
           const num = String(groupNumber || '').trim();
           if (!/^\d{6,15}$/.test(num)) return { ok: false, error: 'QQ 群号应为 6-15 位数字' };
+          const mc = (memberCount === undefined || memberCount === null || (memberCount as any) === '') ? -1 : Number(memberCount);
+          if (mc >= 0 && (!Number.isInteger(mc) || mc > 100000)) return { ok: false, error: '群人数应为 0-100000 的整数' };
           const row = db.prepare('SELECT id FROM groups WHERE id = ?').get(groupOpenid) as any;
           const bid = String(botId || '').trim();
           if (row) {
-            db.prepare('UPDATE groups SET group_number = ?, name = CASE WHEN ? IS NOT NULL AND ? != \'\' THEN ? ELSE name END, bot_id = CASE WHEN ? != \'\' AND (bot_id IS NULL OR bot_id = \'\') THEN ? ELSE bot_id END, last_active = CURRENT_TIMESTAMP WHERE id = ?')
-              .run(num, name || null, name || null, name || null, bid, bid, groupOpenid);
+            if (mc >= 0) {
+              db.prepare('UPDATE groups SET group_number = ?, name = CASE WHEN ? IS NOT NULL AND ? != \'\' THEN ? ELSE name END, bot_id = CASE WHEN ? != \'\' AND (bot_id IS NULL OR bot_id = \'\') THEN ? ELSE bot_id END, member_count = ?, member_count_manual = 1, last_active = CURRENT_TIMESTAMP WHERE id = ?')
+                .run(num, name || null, name || null, name || null, bid, bid, mc, groupOpenid);
+            } else {
+              db.prepare('UPDATE groups SET group_number = ?, name = CASE WHEN ? IS NOT NULL AND ? != \'\' THEN ? ELSE name END, bot_id = CASE WHEN ? != \'\' AND (bot_id IS NULL OR bot_id = \'\') THEN ? ELSE bot_id END, last_active = CURRENT_TIMESTAMP WHERE id = ?')
+                .run(num, name || null, name || null, name || null, bid, bid, groupOpenid);
+            }
           } else {
-            db.prepare('INSERT INTO groups (id, name, group_number, bot_id, last_active) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)')
-              .run(groupOpenid, name || groupOpenid, num, bid);
+            db.prepare('INSERT INTO groups (id, name, group_number, bot_id, member_count, member_count_manual, last_active) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)')
+              .run(groupOpenid, name || groupOpenid, num, bid, mc >= 0 ? mc : 0, mc >= 0 ? 1 : 0);
           }
           return { ok: true };
         } catch (e: any) { return { ok: false, error: e.message }; }
       },
-      // 解绑 群 OpenID → 数字群号（清空 groups.group_number）
-      unbindGroupNumber: (groupOpenid: string) => {
+      // 解绑群号：传 groupNumber 时解绑该群号对应的群（可能非当前群）；否则解绑当前群
+      unbindGroupNumber: (groupOpenid: string, groupNumber?: string) => {
         try {
           const db = getDb();
+          const num = String(groupNumber || '').trim();
+          if (num) {
+            if (!/^\d{6,15}$/.test(num)) return { ok: false, error: 'QQ 群号应为 6-15 位数字' };
+            const rows = db.prepare('SELECT id FROM groups WHERE group_number = ?').all(num) as any[];
+            if (!rows.length) return { ok: false, error: '未找到群号对应的群' };
+            db.prepare("UPDATE groups SET group_number = '' WHERE group_number = ?").run(num);
+            return { ok: true };
+          }
           if (!groupOpenid) return { ok: false, error: '群 OpenID 不能为空' };
           const row = db.prepare('SELECT group_number FROM groups WHERE id = ?').get(groupOpenid) as any;
           if (!row) return { ok: false, error: '该群尚未收录' };

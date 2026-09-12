@@ -1,9 +1,11 @@
-// 绑定管理 v1.2.0 - 群内绑定QQ号 / 绑定QQ群号 / 群主绑定指定用户（@用户）
+// 绑定管理 v1.3.0 - 群内绑定QQ号 / 绑定QQ群号（含人数）/ 群主绑定指定用户（@用户）
 // 用法：
 //   群里发「绑定QQ 123456789」→ 把当前 OpenID 绑定到 QQ 号（跨机器人身份识别）
 //   群里发「绑定QQ 123456789 @用户」→ 群主/管理员把被 @ 用户的 OpenID 绑定到 QQ 号（可 @ 多个）
 //   群里发「绑定QQ群 123456789」→ 群主/管理员把当前群绑定到数字群号（成员行自动带群号）
+//   群里发「绑定QQ群 123456789 500」→ 绑定当前群群号并设置群真实人数（面板可再编辑）
 //   群里发「解绑QQ群」→ 群主/管理员解绑当前群的群号
+//   群里发「解绑QQ群 123456789」→ 群主/管理员按群号解绑对应群
 //   群里发「解绑QQ @用户」→ 群主/管理员解绑被 @ 用户的 OpenID→QQ（可 @ 多个）
 //   群里发「绑定用户 123456789 <OpenID>」→ 群主/管理员把指定 OpenID 绑定到 QQ 号（用户本人不便操作时用）
 //   私聊发「绑定QQ 123456789」→ 同样可绑定自己的 QQ 号
@@ -12,8 +14,8 @@
 /*__REPLY_SPEC_BEGIN__*/
 var REPLY_SPEC = {
   name: "绑定管理",
-  version: "1.2.0",
-  desc: "绑定QQ/解绑QQ（可 @他人）；绑定QQ群/解绑QQ群；绑定用户（QQ+OpenID）",
+  version: "1.3.0",
+  desc: "绑定QQ/解绑QQ（可 @他人）；绑定QQ群 群号 [人数]/解绑QQ群 [群号]；绑定用户（QQ+OpenID）",
   branches: [
     {
       key: "unbind-ok",
@@ -156,7 +158,18 @@ var REPLY_SPEC = {
         { "t": "text", "v": "👥 绑定QQ群" },
         { "t": "text", "v": "发送「绑定QQ群 群号」" },
         { "t": "text", "v": "例：绑定QQ群 123456789" },
-        { "t": "text", "v": "绑定后群成员行自动带群号" }
+        { "t": "text", "v": "可带人数：绑定QQ群 123456789 500" },
+        { "t": "text", "v": "绑定后群成员行自动带群号" },
+        { "t": "text", "v": "解绑发「解绑QQ群」或「解绑QQ群 群号」" }
+      ]
+    },
+    {
+      key: "bindGroup-badcount",
+      label: "绑定QQ群 · 人数格式错误",
+      scope: ["group"],
+      triggers: ["绑定QQ群 群号 人数"],
+      lines: [
+        { "t": "text", "v": "❌ 群人数应为 0-100000 的整数，请检查后重试" }
       ]
     },
     {
@@ -177,6 +190,7 @@ var REPLY_SPEC = {
         { "t": "text", "v": "✅ 群绑定成功" },
         { "t": "row", "pre": "群 OpenID：", "k": "gid" },
         { "t": "text", "v": "群号：{gnum}{botTag}" },
+        { "t": "row", "pre": "群人数：", "k": "gcount", "post": " 人", "hide": true },
         { "t": "text", "v": "群成员行已自动关联该群号" }
       ]
     },
@@ -193,16 +207,16 @@ var REPLY_SPEC = {
       key: "unbindGroup-ok",
       label: "解绑QQ群 · 成功",
       scope: ["group"],
-      triggers: ["解绑QQ群", "解绑qq群", "解绑群"],
+      triggers: ["解绑QQ群", "解绑qq群", "解绑群", "解绑QQ群 群号"],
       lines: [
-        { "t": "text", "v": "✅ 已解绑本群群号{bindNote}{botTag}" }
+        { "t": "text", "v": "✅ 已解绑群号{bindNote}{botTag}" }
       ]
     },
     {
       key: "unbindGroup-fail",
       label: "解绑QQ群 · 失败（无权限/未绑定）",
       scope: ["group"],
-      triggers: ["解绑QQ群", "解绑qq群", "解绑群"],
+      triggers: ["解绑QQ群", "解绑qq群", "解绑群", "解绑QQ群 群号"],
       lines: [
         { "t": "text", "v": "❌ 解绑失败：{err}" }
       ]
@@ -328,11 +342,11 @@ function _fbBindGroupHelp() {
 function _fbBindGroupDenied() {
   return '🔒 仅群主/管理员或机器人管理员可绑定QQ群';
 }
-function _fbBindGroupOk(gid, gnum, bt) {
-  return '✅ 群绑定成功\n群 OpenID：' + gid + '\n群号：' + gnum + (bt || '') + '\n群成员行已自动关联该群号';
+function _fbBindGroupOk(gid, gnum, bt, gcount) {
+  return '✅ 群绑定成功\n群 OpenID：' + gid + '\n群号：' + gnum + (bt || '') + (gcount ? ('\n群人数：' + gcount + ' 人') : '') + '\n群成员行已自动关联该群号';
 }
 function _fbUnbindGroupOk(bindNote, bt) {
-  return '✅ 已解绑本群群号' + (bindNote || '') + (bt || '');
+  return '✅ 已解绑群号' + (bindNote || '') + (bt || '');
 }
 function _fbUnbindGroupFail(err) {
   return '❌ 解绑失败：' + (err || '无解绑权限或未绑定');
@@ -394,14 +408,15 @@ module.exports = {
   manifest: {
     id: 'mod-bind-manage',
     name: '绑定管理',
-    version: '1.2.0',
-    description: '绑定QQ/解绑QQ（可 @他人）；绑定QQ群/解绑QQ群；绑定用户（QQ+OpenID）',
+    version: '1.3.0',
+    description: '绑定QQ/解绑QQ（可 @他人）；绑定QQ群 群号 [人数]/解绑QQ群 [群号]；绑定用户（QQ+OpenID）',
     author: '511742399'
   },
 
   methods: {
     handle: async function(ctx, data) {
-      var content = (data.content || '').trim().replace(/^\s*<@!?[A-Fa-f0-9]+>\s*/, '').trim();
+      // 去掉开头连续的 @ 提及（机器人被 @ 触发时前缀），放开字符集以覆盖含字母/-/_ 的 OpenID
+      var content = (data.content || '').trim().replace(/^(?:\s*<@!?[A-Za-z0-9_\-]{6,64}>\s*)+/, '').trim();
       var openid = (data.author && data.author.openid) || '';
       var nickname = (data.author && data.author.username) || '';
       var gid = data.groupId || '';
@@ -410,7 +425,7 @@ module.exports = {
 
       // 被 @ 的用户 OpenID（从剥离机器人前缀后的 content 提取，排除自己），用于群管理批量绑定/解绑他人
       var mentions = [];
-      var mre = /<@!?([A-Za-z0-9_\-]{16,64})>/g;
+      var mre = /<@!?([A-Za-z0-9_\-]{6,64})>/g;
       var mm;
       while ((mm = mre.exec(content)) !== null) {
         var mo = mm[1];
@@ -461,7 +476,7 @@ module.exports = {
       var mBindGroup = content === '绑定QQ群' || content === '绑定qq群';
       var mBindGroupPre = content.indexOf('绑定QQ群 ') === 0 || content.indexOf('绑定qq群 ') === 0;
       var mUnbind = content === '解绑QQ' || content === '解绑qq' || content === '解绑绑定' || content.indexOf('解绑QQ ') === 0 || content.indexOf('解绑qq ') === 0;
-      var mUnbindGroup = content === '解绑QQ群' || content === '解绑qq群' || content === '解绑群';
+      var mUnbindGroup = content === '解绑QQ群' || content === '解绑qq群' || content === '解绑群' || content.indexOf('解绑QQ群 ') === 0 || content.indexOf('解绑qq群 ') === 0;
       var mBindUserHelp = content === '绑定用户' || content === '绑定指定用户';
       var mBindUser = content.indexOf('绑定用户 ') === 0;
 
@@ -474,10 +489,17 @@ module.exports = {
           await replyTpl('unbindGroup-fail', { err: '仅群主/管理员或机器人管理员可解绑群号' }, function() { return _fbUnbindGroupFail('仅群主/管理员或机器人管理员可解绑群号'); });
           return true;
         }
-        var gr = ctx.engine.unbindGroupNumber ? ctx.engine.unbindGroupNumber(gid) : { ok: false, error: '引擎不支持解绑群' };
+        var unum = '';
+        if (content.indexOf('解绑QQ群 ') === 0) unum = content.substring(6).trim().split(/\s+/)[0] || '';
+        else if (content.indexOf('解绑qq群 ') === 0) unum = content.substring(6).trim().split(/\s+/)[0] || '';
+        if (unum && !/^\d{6,15}$/.test(unum)) {
+          await replyTpl('unbindGroup-fail', { err: 'QQ 群号应为 6-15 位数字' }, function() { return _fbUnbindGroupFail('QQ 群号应为 6-15 位数字'); });
+          return true;
+        }
+        var gr = ctx.engine.unbindGroupNumber ? ctx.engine.unbindGroupNumber(gid, unum) : { ok: false, error: '引擎不支持解绑群' };
         if (gr && gr.ok) {
           var gubt = botTag();
-          await replyTpl('unbindGroup-ok', { bindNote: '', botTag: gubt }, function() { return _fbUnbindGroupOk('', gubt); });
+          await replyTpl('unbindGroup-ok', { bindNote: unum ? ('（群号 ' + unum + '）') : '', botTag: gubt }, function() { return _fbUnbindGroupOk(unum ? ('（群号 ' + unum + '）') : '', gubt); });
         } else {
           var gverr = (gr && gr.error) || '无解绑权限或未绑定';
           await replyTpl('unbindGroup-fail', { err: gverr }, function() { return _fbUnbindGroupFail(gverr); });
@@ -595,13 +617,24 @@ module.exports = {
           await replyTpl('bindGroup-denied', {}, _fbBindGroupDenied);
           return true;
         }
-        var gnum = content.substring(6).trim();
+        var gparts = content.substring(6).trim().split(/\s+/);
+        var gnum = (gparts[0] || '').trim();
+        var gcountRaw = (gparts[1] || '').trim();
+        var gcount = 0;
+        if (gcountRaw !== '') {
+          var gcm = gcountRaw.match(/^\d{1,6}$/);
+          if (!gcm || Number(gcountRaw) > 100000) {
+            await replyTpl('bindGroup-badcount', {}, function() { return '❌ 群人数应为 0-100000 的整数，请检查后重试'; });
+            return true;
+          }
+          gcount = Number(gcountRaw);
+        }
         var gname = '';
         try { gname = ctx.engine.getGroupName ? ctx.engine.getGroupName(gid) : ''; } catch (e) {}
-        var res2 = ctx.engine.bindGroupNumber ? ctx.engine.bindGroupNumber(gid, gnum, gname, data.botId) : { ok: false, error: '引擎不支持绑定群' };
+        var res2 = ctx.engine.bindGroupNumber ? ctx.engine.bindGroupNumber(gid, gnum, gname, data.botId, gcountRaw === '' ? undefined : gcount) : { ok: false, error: '引擎不支持绑定群' };
         if (res2.ok) {
           var gbt = botTag();
-          await replyTpl('bindGroup-ok', { gid: gid, gnum: gnum, botTag: gbt }, function() { return _fbBindGroupOk(gid, gnum, gbt); });
+          await replyTpl('bindGroup-ok', { gid: gid, gnum: gnum, gcount: gcountRaw === '' ? '' : gcount, botTag: gbt }, function() { return _fbBindGroupOk(gid, gnum, gbt, gcountRaw === '' ? '' : gcount); });
         } else {
           var gerr = (res2 && res2.error) || '未知错误';
           await replyTpl('bindGroup-fail', { err: gerr }, function() { return _fbBindFail(gerr); });

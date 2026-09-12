@@ -351,6 +351,13 @@ input[type="file"]{color:var(--text2)}
   </div>
   <div class="card">
     <h3>所有群成员（QQ 号） <button class="btn btn-primary btn-sm" onclick="openAddMemberModal()" style="float:right">+ 新增成员</button></h3>
+    <div class="action-bar" style="margin-bottom:8px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:600;font-size:12px"><input type="checkbox" id="msMemberTbody_all" onchange="toggleSelAll('msMemberTbody',this)" style="width:15px;height:15px"> 全选</label>
+      <span id="msMemberTbody_cnt" style="font-size:12px;color:var(--text2)"></span>
+      <button class="btn btn-warn btn-sm" onclick="clearMembers('msMemberTbody',false)">清空所选</button>
+      <button class="btn btn-danger btn-sm" onclick="clearMembers('msMemberTbody',true)">清空全部</button>
+      <span style="font-size:12px;color:var(--text2)">清空后自动从「用户管理 / OpenID 列表」重新获取</span>
+    </div>
     <div class="form-row" style="align-items:flex-end">
       <div class="form-group" style="flex:1">
         <label>按机器人筛选</label>
@@ -377,8 +384,8 @@ input[type="file"]{color:var(--text2)}
     </div>
     <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群信息（头像/群名/群号/OpenID）</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">头像</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">昵称</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">QQ 号</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">来源</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">OpenID</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">授权码</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">权限</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">操作</th></tr></thead>
-        <tbody id="msMemberTbody"><tr><td colspan="9" style="color:var(--text2);text-align:center;padding:10px">加载中...</td></tr></tbody>
+        <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);width:34px">选</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群信息（头像/群名/群号/OpenID）</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">头像</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">昵称</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">QQ 号</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">来源</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">OpenID</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">授权码</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">权限</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">操作</th></tr></thead>
+        <tbody id="msMemberTbody"><tr><td colspan="10" style="color:var(--text2);text-align:center;padding:10px">加载中...</td></tr></tbody>
       </table>
     </div>
     <div id="msMemberCount" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
@@ -386,6 +393,13 @@ input[type="file"]{color:var(--text2)}
 
   <div class="card">
     <h3>群 OpenID 信息 <button class="btn btn-outline btn-sm" onclick="loadGroupOpenidInfo()" style="float:right">刷新</button></h3>
+    <div class="action-bar" style="margin-bottom:8px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:600;font-size:12px"><input type="checkbox" id="goiTbody_all" onchange="toggleSelAll('goiTbody',this)" style="width:15px;height:15px"> 全选</label>
+      <span id="goiTbody_cnt" style="font-size:12px;color:var(--text2)"></span>
+      <button class="btn btn-warn btn-sm" onclick="clearGroups('goiTbody',false)">清空所选</button>
+      <button class="btn btn-danger btn-sm" onclick="clearGroups('goiTbody',true)">清空全部</button>
+      <span style="font-size:12px;color:var(--text2)">删除群信息及其成员记录（再次发消息会重新收录）</span>
+    </div>
     <div class="form-row" style="align-items:flex-end">
       <div class="form-group" style="flex:1.6">
         <label>OpenID 绑定 QQ 群号（绑定后自动补全群头像，并映射到该群所有成员行）</label>
@@ -399,8 +413,8 @@ input[type="file"]{color:var(--text2)}
     </div>
     <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群头像</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">OpenID</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群号</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群名</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">人数</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">今日活跃</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">今日消息</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">机器人回复</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">本周消息</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">操作</th></tr></thead>
-        <tbody id="goiTbody"><tr><td colspan="10" style="color:var(--text2);text-align:center;padding:10px">加载中...</td></tr></tbody>
+        <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);width:34px">选</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群头像</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">OpenID</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群号</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群名</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">人数</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">今日活跃</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">今日消息</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">机器人回复</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">本周消息</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">操作</th></tr></thead>
+        <tbody id="goiTbody"><tr><td colspan="11" style="color:var(--text2);text-align:center;padding:10px">加载中...</td></tr></tbody>
       </table>
     </div>
     <div id="goiCount" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
@@ -754,12 +768,24 @@ input[type="file"]{color:var(--text2)}
     </div>
     <div class="form-group" style="margin-bottom:10px">
       <label>机器人所在的群（完整群信息，另起一行读取；行内直接修改群名/群号后保存）</label>
+      <div class="action-bar" style="margin-bottom:8px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:600;font-size:12px"><input type="checkbox" id="uGroupList_all" onchange="toggleSelAll('uGroupList',this)" style="width:15px;height:15px"> 全选</label>
+        <span id="uGroupList_cnt" style="font-size:12px;color:var(--text2)"></span>
+        <button class="btn btn-warn btn-sm" onclick="clearGroups('uGroupList',false)">清空所选</button>
+        <button class="btn btn-danger btn-sm" onclick="clearGroups('uGroupList',true)">清空全部</button>
+      </div>
       <div id="uGroupList" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);font-size:13px"><div style="padding:10px;color:var(--text2);text-align:center">加载中...</div></div>
+    </div>
+    <div class="action-bar" style="margin-bottom:8px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:600;font-size:12px"><input type="checkbox" id="uMemberTbody_all" onchange="toggleSelAll('uMemberTbody',this)" style="width:15px;height:15px"> 全选</label>
+      <span id="uMemberTbody_cnt" style="font-size:12px;color:var(--text2)"></span>
+      <button class="btn btn-warn btn-sm" onclick="clearMembers('uMemberTbody',false)">清空所选</button>
+      <button class="btn btn-danger btn-sm" onclick="clearMembers('uMemberTbody',true)">清空全部</button>
     </div>
     <div style="max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群信息（头像/群名/群号/OpenID）</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">头像</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">昵称</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">QQ 号</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">来源</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">OpenID</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">授权码</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">权限</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">操作</th></tr></thead>
-        <tbody id="uMemberTbody"><tr><td colspan="9" style="color:var(--text2);text-align:center;padding:10px">加载中...</td></tr></tbody>
+        <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);width:34px">选</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">群信息（头像/群名/群号/OpenID）</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">头像</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">昵称</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">QQ 号</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">来源</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">OpenID</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">授权码</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">权限</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">操作</th></tr></thead>
+        <tbody id="uMemberTbody"><tr><td colspan="10" style="color:var(--text2);text-align:center;padding:10px">加载中...</td></tr></tbody>
       </table>
     </div>
     <div id="uMemberCount" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
@@ -783,10 +809,17 @@ input[type="file"]{color:var(--text2)}
         </div>
       </div>
     </div>
+    <div class="action-bar" style="margin-bottom:8px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:600;font-size:12px"><input type="checkbox" id="oiTbody_all" onchange="toggleSelAll('oiTbody',this)" style="width:15px;height:15px"> 全选</label>
+      <span id="oiTbody_cnt" style="font-size:12px;color:var(--text2)"></span>
+      <button class="btn btn-warn btn-sm" onclick="clearOpenids(false)">清空所选</button>
+      <button class="btn btn-danger btn-sm" onclick="clearOpenids(true)">清空全部</button>
+      <span style="font-size:12px;color:var(--text2)">仅解除 OpenID 与 QQ 号的绑定，保留成员记录</span>
+    </div>
     <div style="max-height:560px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">头像</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">QQ 号</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">昵称</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">OpenID</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">来源机器人</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">所在群</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">更新时间</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">操作</th></tr></thead>
-        <tbody id="oiTbody"><tr><td colspan="8" style="color:var(--text2);text-align:center;padding:10px">加载中...</td></tr></tbody>
+        <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);width:34px">选</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">头像</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">QQ 号</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">昵称</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">OpenID</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">来源机器人</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">所在群</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">更新时间</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2)">操作</th></tr></thead>
+        <tbody id="oiTbody"><tr><td colspan="9" style="color:var(--text2);text-align:center;padding:10px">加载中...</td></tr></tbody>
       </table>
     </div>
     <div id="oiCount" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
@@ -913,6 +946,7 @@ input[type="file"]{color:var(--text2)}
     <div class="form-row" style="margin-top:10px">
       <div class="form-group"><label>群名</label><input id="gdName" placeholder="输入群名" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
       <div class="form-group"><label>群号（修改后自动生成群头像）</label><input id="gdNumber" placeholder="输入真实群号" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
+      <div class="form-group"><label>群人数（填写后锁定，不再自动覆盖）</label><input id="gdCount" type="number" min="0" placeholder="真实群人数" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
       <div class="form-group" style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-sm" onclick="saveGroupDetail()">保存群信息</button></div>
     </div>
     <div class="form-row" style="margin-top:8px">
@@ -1933,6 +1967,7 @@ async function showGroupDetail(botId,groupId){
     docById('gdInfo').innerHTML=rows.map(r=>'<tr><th style="width:90px;text-align:left;padding:4px 6px;color:var(--text2)">'+r[0]+'</th><td style="padding:4px 6px">'+(r[1]||'-')+'</td></tr>').join('');
     docById('gdName').value=g.name||'';
     docById('gdNumber').value=g.group_number||'';
+    docById('gdCount').value=(g.member_count||0);
     docById('gdLogs').innerHTML=(d.logs||[]).length?(''+(d.logs||[]).map(l=>'<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--text2)">'+esc((l.created_at||'').replace('T',' ').substring(0,19))+' ['+esc(l.level||'')+']</span> '+esc((l.message||'').substring(0,80))+'</div>').join('')):'<div style="padding:8px;color:var(--text2);font-size:12px">暂无运行日志</div>';
     docById('modalGroupDetail').classList.add('active');
   }catch(e){alert('加载群详情失败: '+e.message)}
@@ -1940,11 +1975,14 @@ async function showGroupDetail(botId,groupId){
 async function saveGroupDetail(){
   const name=(docById('gdName').value||'').trim();
   const num=(docById('gdNumber').value||'').trim();
+  const cnt=(docById('gdCount').value||'').trim();
   if(num&&!/^\d{6,15}$/.test(num)){alert('群号应为 6-15 位数字');return}
+  if(cnt!==''&&(!/^\d+$/.test(cnt)||Number(cnt)>100000)){alert('群人数应为 0-100000 的整数');return}
   const body={};
   if(name)body.name=name;
   if(num)body.group_number=num;
-  if(!body.name&&!body.group_number){alert('请填写群名或群号至少一项');return}
+  if(cnt!=='')body.member_count=Number(cnt);
+  if(!body.name&&!body.group_number&&cnt===''){alert('请填写群名、群号或群人数至少一项');return}
   try{
     const r=await api('/api/bots/'+currentGroupDetailBot+'/groups/'+encodeURIComponent(currentGroupDetailId),{method:'PUT',body});
     if(r&&r.ok===false){alert('保存失败：'+(r.error||''));return}
@@ -2427,10 +2465,10 @@ async function loadMsMembers(){
     const d=await api('/api/napcat/all-members?t='+Date.now()+qs+qk+qb);
     const rows=d.members||[];
     const tb=docById('msMemberTbody');
-    if(!rows.length){tb.innerHTML='<tr><td colspan="9" style="color:var(--text2);text-align:center;padding:10px">'+((keyword||groupOpenid)?'无匹配成员':'暂无成员数据（机器人加入群后会自动收录）')+'</td></tr>'}
+    if(!rows.length){tb.innerHTML='<tr><td colspan="10" style="color:var(--text2);text-align:center;padding:10px">'+((keyword||groupOpenid)?'无匹配成员':'暂无成员数据（机器人加入群后会自动收录）')+'</td></tr>'}
     else{tb.innerHTML=rows.map(buildMemberRowHtml).join('')}
     docById('msMemberCount').textContent='共 '+rows.length+' 条成员记录';
-  }catch(e){docById('msMemberTbody').innerHTML='<tr><td colspan="9" style="color:var(--danger);text-align:center;padding:10px">加载失败: '+esc(e.message)+'</td></tr>'}
+  }catch(e){docById('msMemberTbody').innerHTML='<tr><td colspan="10" style="color:var(--danger);text-align:center;padding:10px">加载失败: '+esc(e.message)+'</td></tr>'}
   loadGroupOpenidInfo();
 }
 
@@ -2442,12 +2480,14 @@ async function loadGroupOpenidInfo(){
     const groups=d.groups||[];
     const tb=docById('goiTbody');
     if(!tb)return;
-    if(!groups.length){tb.innerHTML='<tr><td colspan="10" style="color:var(--text2);text-align:center;padding:10px">暂无群数据（机器人加入群后自动收录）</td></tr>';}
+    if(!groups.length){tb.innerHTML='<tr><td colspan="11" style="color:var(--text2);text-align:center;padding:10px">暂无群数据（机器人加入群后自动收录）</td></tr>';}
     else{tb.innerHTML=groups.map(g=>{
       const av=g.avatar?'<img src="'+esc(g.avatar)+'" style="width:32px;height:32px;border-radius:6px;object-fit:cover" onerror="this.style.display=\'none\'">':'<span style="color:var(--text2)">无</span>';
       const oid=g.group_openid||'';
       const oidS=oid.length>16?oid.slice(0,16)+'...':oid;
-      return '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+av+'</td>'+
+      const gKeys=JSON.stringify([oid]).replace(/'/g,'&#39;');
+      return '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)"><input type="checkbox" class="sel-check" data-keys=\''+gKeys+'\' onchange="updSelCount(\'goiTbody\')"></td>'+
+        '<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+av+'</td>'+
         '<td style="padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-family:monospace;font-size:11px;word-break:break-all" title="'+esc(oid)+'">'+esc(oidS)+'</span></td>'+
         '<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+esc(g.group_number||'-')+'</td>'+
         '<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+esc(g.name||'(未命名)')+'</td>'+
@@ -2459,7 +2499,7 @@ async function loadGroupOpenidInfo(){
         '<td style="padding:6px 8px;border-bottom:1px solid var(--border)"><button class="btn btn-outline btn-xs" onclick="goiEdit(\''+esc(oid)+'\')">编辑</button> <button class="btn btn-outline btn-xs" onclick="goiBind(\''+esc(oid)+'\')">修改</button> <button class="btn btn-danger btn-xs" onclick="goiDel(\''+esc(oid)+'\')">删除</button></td></tr>';
     }).join('');}
     docById('goiCount').textContent='共 '+groups.length+' 个群（群号为空时可用上方「绑定并自动获取」补全，绑定后自动映射到该群所有成员行）';
-  }catch(e){const tb=docById('goiTbody');if(tb)tb.innerHTML='<tr><td colspan="10" style="color:var(--danger);text-align:center;padding:10px">加载失败: '+esc(e.message)+'</td></tr>';}
+  }catch(e){const tb=docById('goiTbody');if(tb)tb.innerHTML='<tr><td colspan="11" style="color:var(--danger);text-align:center;padding:10px">加载失败: '+esc(e.message)+'</td></tr>';}
 }
 
 async function bindGroupOpenid(){
@@ -2493,10 +2533,19 @@ async function goiBind(openid){
 async function goiEdit(openid){
   const name=prompt('修改群名（留空则不修改）','');
   if(name===null)return;
+  const cnt=prompt('修改群人数（留空则不修改，仅支持整数）','');
+  if(cnt===null)return;
+  const body={};
+  if(name.trim())body.name=name.trim();
+  if(cnt.trim()!==''){
+    if(!/^\d+$/.test(cnt.trim())||Number(cnt.trim())>100000){alert('群人数应为 0-100000 的整数');return}
+    body.member_count=Number(cnt.trim());
+  }
+  if(!Object.keys(body).length){alert('未做任何修改');return}
   try{
-    const r=await api('/api/system/groups/'+encodeURIComponent(openid),{method:'PUT',body:{name:name.trim()}});
+    const r=await api('/api/system/groups/'+encodeURIComponent(openid),{method:'PUT',body});
     if(r&&r.ok===false){alert('编辑失败：'+(r.error||''));return}
-    alert('✅ 已更新群名');
+    alert('✅ 已更新群信息');
     loadGroupOpenidInfo();loadMsMembers();
   }catch(e){alert('编辑失败: '+e.message)}
 }
@@ -2551,7 +2600,9 @@ function buildMemberRowHtml(m){
     return '<div style="margin:2px 0"><span style="font-family:monospace;font-size:11px;word-break:break-all" title="'+esc(oid)+'">'+esc(oid)+'</span>'+botTag+' <select data-gid="'+xGid+'" data-oid="'+oidEsc+'" data-cur="'+curRole+'" onchange="setMemberRole(this)" class="btn btn-xs role-sel" style="padding:1px 4px;font-size:11px" title="后台群角色（优先级最高；空=按实时群角色自动判定）">'+roleOpts+'</select> <button class="btn btn-outline btn-xs" onclick="copyText(\''+oidEsc+'\')">复制</button> <button class="btn btn-outline btn-xs" onclick="bindMemberQq(\''+oidEsc+'\',\''+nickEsc+'\')">扫码绑定</button> <button class="btn btn-outline btn-xs" onclick="editMemberQq(\''+oidEsc+'\',\''+nickEsc+'\')">改QQ</button> <button class="btn btn-outline btn-xs" onclick="editMember(\''+oidEsc+'\',\''+nickEsc+'\',\''+qqEsc+'\',\''+botEsc+'\',\''+gidEsc+'\')">编辑</button> <button class="btn btn-danger btn-xs" onclick="delMember(\''+oidEsc+'\',\''+nickEsc+'\')">删除</button></div>';
   }).join('');
   const actions=oids.length?oidHtml:'<span style="color:var(--text2);font-size:11px">-</span>';
-  return '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+groupCell+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+avatar+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+esc(nickname)+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent)"><strong>'+(m.qq_id?esc(m.qq_id):'<span style="color:var(--text2)">-</span>')+'</strong></td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+(srcMap[m.source]||srcMap.none)+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-family:monospace;font-size:11px;word-break:break-all">'+(mainOid?esc(mainOid):'')+'</span></td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+auth+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+perm+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+actions+'</td></tr>';
+  const selKeys=JSON.stringify(oids.map(x=>x.openid).filter(Boolean)).replace(/'/g,'&#39;');
+  const selCell='<td style="padding:6px 8px;border-bottom:1px solid var(--border)"><input type="checkbox" class="sel-check" data-keys=\''+selKeys+'\' data-gid="'+esc(String(mainGid||''))+'" onchange="updSelCount(this.closest(\'tbody\').id)"></td>';
+  return '<tr>'+selCell+'<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+groupCell+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+avatar+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+esc(nickname)+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent)"><strong>'+(m.qq_id?esc(m.qq_id):'<span style="color:var(--text2)">-</span>')+'</strong></td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+(srcMap[m.source]||srcMap.none)+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-family:monospace;font-size:11px;word-break:break-all">'+(mainOid?esc(mainOid):'')+'</span></td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+auth+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+perm+'</td><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+actions+'</td></tr>';
 }
 
 function openNapcatWebuiLogin(){docById('modalNapcatLogin').classList.add('active');docById('napcatWebuiFrame').src='/api/napcat/webui-proxy/?_t='+Date.now();loadAddBotNapcatStatus();}
@@ -3286,12 +3337,12 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
      const d=await api('/api/napcat/all-members?t='+Date.now()+qs+qk+qb);
       const rows=d.members||[];
       const tb=docById('uMemberTbody');
-      if(!rows.length){tb.innerHTML='<tr><td colspan="9" style="color:var(--text2);text-align:center;padding:10px">'+((keyword||groupOpenid)?'无匹配用户':'暂无用户数据（机器人加入群后会自动收录）')+'</td></tr>'}
+      if(!rows.length){tb.innerHTML='<tr><td colspan="10" style="color:var(--text2);text-align:center;padding:10px">'+((keyword||groupOpenid)?'无匹配用户':'暂无用户数据（机器人加入群后会自动收录）')+'</td></tr>'}
       else{tb.innerHTML=rows.map(buildMemberRowHtml).join('')}
       const groups=new Set(rows.map(m=>m.group_id||'')).size;
       docById('uMemberCount').textContent='共 '+rows.length+' 条成员记录'+(groups?('，覆盖 '+groups+' 个群'):'');
       loadUserGroupRows();
-    }catch(e){docById('uMemberTbody').innerHTML='<tr><td colspan="9" style="color:var(--danger);text-align:center;padding:10px">加载失败: '+esc(e.message)+'</td></tr>'}
+    }catch(e){docById('uMemberTbody').innerHTML='<tr><td colspan="10" style="color:var(--danger);text-align:center;padding:10px">加载失败: '+esc(e.message)+'</td></tr>'}
   }
 
   // ===== OpenID 列表：一个 QQ 号名下的所有 OpenID（来源机器人标注），编辑/删除实时写后端，与用户管理串联 =====
@@ -3309,11 +3360,11 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
       const d=await api('/api/napcat/openids'+qs);
       const rows=d.openids||[];
       const tb=docById('oiTbody');
-      if(!rows.length){tb.innerHTML='<tr><td colspan="8" style="color:var(--text2);text-align:center;padding:10px">无 OpenID 记录（用户绑定/发消息后自动收录）</td></tr>'}
+      if(!rows.length){tb.innerHTML='<tr><td colspan="9" style="color:var(--text2);text-align:center;padding:10px">无 OpenID 记录（用户绑定/发消息后自动收录）</td></tr>'}
       else{tb.innerHTML=rows.map(oiRowHtml).join('')}
       const qqSet=new Set(rows.map(r=>String(r.qq_number||'')).filter(Boolean));
       docById('oiCount').textContent='共 '+rows.length+' 条 OpenID 记录'+(qqSet.size?('，覆盖 '+qqSet.size+' 个 QQ 号'):'');
-    }catch(e){docById('oiTbody').innerHTML='<tr><td colspan="8" style="color:var(--danger);text-align:center;padding:10px">加载失败: '+esc(e.message)+'</td></tr>'}
+    }catch(e){docById('oiTbody').innerHTML='<tr><td colspan="9" style="color:var(--danger);text-align:center;padding:10px">加载失败: '+esc(e.message)+'</td></tr>'}
   }
   function oiBotName(appId){const b=_oiBots.find(x=>x.appId===appId);return b?b.name:appId}
   function oiRowHtml(r){
@@ -3325,7 +3376,9 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
     const groups=(r.groups||[]);
     const groupCell=groups.length?groups.map(g=>'<div style="font-size:12px;color:var(--text2)">'+esc(g.group_name||'(未命名群)')+(g.group_number?('（群号:'+esc(g.group_number)+'）'):'')+(g.group_bot_id?(' <span class="tag" style="background:rgba(139,92,246,.15);color:#a78bfa;font-size:10px">'+esc(oiBotName(g.group_bot_id))+'</span>'):'')+'</div>').join(''):'<span style="color:var(--text2);font-size:12px">-</span>';
     const actions='<button class="btn btn-outline btn-xs" onclick="editOpenidRow(\''+oidEsc+'\')">编辑</button> <button class="btn btn-danger btn-xs" onclick="delOpenid(\''+oidEsc+'\')">删除</button>';
-    return '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+avatar+'</td>'
+    const oiKeys=JSON.stringify([oid]).replace(/'/g,'&#39;');
+    return '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)"><input type="checkbox" class="sel-check" data-keys=\''+oiKeys+'\' onchange="updSelCount(\'oiTbody\')"></td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+avatar+'</td>'
       +'<td style="padding:6px 8px;border-bottom:1px solid var(--border);color:var(--accent)"><strong>'+(qq?esc(qq):'<span style="color:var(--text2)">未绑定</span>')+'</strong></td>'
       +'<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+esc(r.nickname||'-')+'</td>'
       +'<td style="padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-family:monospace;font-size:12px;word-break:break-all">'+esc(oid)+'</span> <button class="btn btn-outline btn-xs" onclick="copyText(\''+oidEsc+'\')">复制</button></td>'
@@ -3388,6 +3441,67 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
   }
   function copyText(t){try{navigator.clipboard.writeText(t).then(()=>alert('已复制：'+t)).catch(()=>alert('复制失败，请手动复制'))}catch(e){alert('复制失败，请手动复制')}}
 
+  // ===== 批量多选与清空（共用） =====
+  function selItems(scopeId,onlyChecked){
+    const box=docById(scopeId); if(!box)return [];
+    const out=[];
+    box.querySelectorAll('input.sel-check').forEach(c=>{
+      if(onlyChecked&&!c.checked)return;
+      let keys=[];try{keys=JSON.parse(c.dataset.keys||'[]')}catch(e){keys=[]}
+      (Array.isArray(keys)?keys:[]).forEach(k=>{if(k)out.push({key:String(k),gid:String(c.dataset.gid||'')})});
+    });
+    return out;
+  }
+  function toggleSelAll(scopeId,chk){
+    const box=docById(scopeId); if(!box)return;
+    box.querySelectorAll('input.sel-check').forEach(c=>{c.checked=chk.checked});
+    updSelCount(scopeId);
+  }
+  function updSelCount(scopeId){
+    const box=docById(scopeId); if(!box)return;
+    const all=box.querySelectorAll('input.sel-check'),sel=box.querySelectorAll('input.sel-check:checked');
+    const cnt=docById(scopeId+'_cnt'); if(cnt)cnt.textContent=sel.length?('已选 '+sel.length+' / '+all.length):'';
+    const master=docById(scopeId+'_all'); if(master)master.checked=all.length>0&&sel.length===all.length;
+  }
+  async function clearMembers(tbodyId,all){
+    const items=selItems(tbodyId,!all);
+    if(!items.length){alert(all?'当前列表暂无成员记录':'请先勾选要清空的成员');return}
+    const label=all?'全部 '+items.length+' 条':'所选 '+items.length+' 条';
+    if(!confirm('确认清空'+label+'成员记录？将解绑其 QQ 并移除群成员记录（再次发消息会重新收录）。'))return;
+    try{
+      const r=await api('/api/napcat/members/batch-delete',{method:'POST',body:{items:items.map(x=>({openid:x.key}))}});
+      alert('已清空 '+(r.deleted||0)+' 条成员记录');
+      if(tbodyId==='msMemberTbody'){loadMsMembers();loadGroupOpenidInfo();if(typeof loadUserGroups==='function')loadUserGroups();}
+      else{loadUserGroups();}
+      if(typeof loadOpenidList==='function')loadOpenidList();
+    }catch(e){alert('清空失败: '+e.message)}
+  }
+  async function clearOpenids(all){
+    const items=selItems('oiTbody',!all);
+    if(!items.length){alert(all?'当前列表暂无 OpenID 记录':'请先勾选要清空的 OpenID');return}
+    const label=all?'全部 '+items.length+' 条':'所选 '+items.length+' 条';
+    if(!confirm('确认清空'+label+'OpenID 绑定？将解除其与 QQ 号的绑定（成员记录保留，需重新绑定才能识别身份）。'))return;
+    try{
+      const r=await api('/api/napcat/openids/batch-delete',{method:'POST',body:{openids:items.map(x=>x.key)}});
+      alert('已清空 '+(r.deleted||0)+' 条 OpenID 绑定');
+      loadOpenidList();
+      if(typeof loadMsMembers==='function')loadMsMembers();
+      if(typeof loadUserGroups==='function')loadUserGroups();
+    }catch(e){alert('清空失败: '+e.message)}
+  }
+  async function clearGroups(scopeId,all){
+    const items=selItems(scopeId,!all);
+    if(!items.length){alert(all?'当前列表暂无群记录':'请先勾选要清空的群');return}
+    const label=all?'全部 '+items.length+' 个群':'所选 '+items.length+' 个群';
+    if(!confirm('确认清空'+label+'？将删除群信息与全部成员记录（成员再次发消息会重新收录）。'))return;
+    try{
+      const r=await api('/api/system/groups/batch-delete',{method:'POST',body:{ids:items.map(x=>x.key)}});
+      alert('已清空 '+(r.deleted||0)+' 个群');
+      if(scopeId==='uGroupList')loadUserGroups();
+      else{loadGroupOpenidInfo();loadMsMembers();}
+    }catch(e){alert('清空失败: '+e.message)}
+  }
+
   // 机器人所在的群：完整群信息独立成行，行内直接修改群名/群号后保存
   async function loadUserGroupRows(){
     try{
@@ -3403,13 +3517,17 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
         const gidEsc=gid.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         const gname=String(g.name||'').replace(/"/g,'&quot;');
         const gnum=String(g.group_number||'').replace(/"/g,'&quot;');
+        const gcount=String(Number(g.member_count)||0);
+        const active=Number(g.active_members)||0;
         const av=g.avatar?('<img src="'+esc(g.avatar)+'" alt="群头像" loading="lazy" style="width:26px;height:26px;border-radius:6px;object-fit:cover;vertical-align:middle;background:var(--bg3);flex-shrink:0" onerror="this.style.display=\'none\'">'):'<span style="width:26px;height:26px;border-radius:6px;background:var(--bg3);display:inline-block;flex-shrink:0"></span>';
         const botName=nameById[g.bot_id]||g.bot_id||'-';
+        const gKeys=JSON.stringify([gid]).replace(/'/g,'&#39;');
         return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+          +'<input type="checkbox" class="sel-check" data-keys=\''+gKeys+'\' onchange="updSelCount(\'uGroupList\')" style="width:15px;height:15px;flex-shrink:0">'
           +av
           +'<input id="ugName_'+gidEsc+'" value="'+gname+'" placeholder="群名" style="flex:1;min-width:120px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'
           +'<input id="ugNum_'+gidEsc+'" value="'+gnum+'" placeholder="群号" style="flex:1;min-width:90px;max-width:150px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px">'
-          +'<span style="color:var(--text2);font-size:12px;white-space:nowrap">成员 '+(g.member_count||0)+'</span>'
+          +'<span style="display:inline-flex;align-items:center;gap:4px;color:var(--text2);font-size:12px;white-space:nowrap">人数 <input id="ugCount_'+gidEsc+'" type="number" min="0" value="'+gcount+'" style="width:72px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:13px"> <span title="本地已收录成员数">已收录 '+active+'</span></span>'
           +'<span style="color:var(--text2);font-size:12px;white-space:nowrap">🤖 '+esc(botName)+'</span>'
           +'<button class="btn btn-success btn-xs" onclick="saveUserGroupRow(\''+gidEsc+'\')">保存</button>'
           +'<button class="btn btn-danger btn-xs" onclick="delUserGroupRow(\''+gidEsc+'\')">删除</button>'
@@ -3422,15 +3540,18 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
   async function saveUserGroupRow(gid){
     const name=(docById('ugName_'+gid).value||'').trim();
     const num=(docById('ugNum_'+gid).value||'').trim();
+    const cntRaw=(docById('ugCount_'+gid).value||'').trim();
     if(num&&!/^\d{6,15}$/.test(num)){alert('群号应为 6-15 位数字');return}
-    if(!name&&!num){alert('请填写群名或群号至少一项');return}
+    if(cntRaw&&(!/^\d+$/.test(cntRaw)||Number(cntRaw)>100000)){alert('群人数应为 0-100000 的整数');return}
+    if(!name&&!num&&cntRaw===''){alert('请填写群名、群号或群人数至少一项');return}
     const body={};
     if(name)body.name=name;
     if(num)body.group_number=num;
+    if(cntRaw!=='')body.member_count=Number(cntRaw);
     try{
       const r=await api('/api/system/groups/'+encodeURIComponent(gid),{method:'PUT',body});
       if(r&&r.ok===false){alert('保存失败：'+(r.error||''));return}
-      alert('✅ 已保存群信息'+(num?'（群号已更新，自动生成群头像）':''));
+      alert('✅ 已保存群信息');
       loadUserGroups();
     }catch(e){alert('保存失败: '+e.message)}
   }

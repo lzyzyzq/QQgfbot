@@ -10,6 +10,7 @@ function ensureGroupsTable() {
       id TEXT PRIMARY KEY,
       name TEXT,
       member_count INTEGER DEFAULT 0,
+      member_count_manual INTEGER DEFAULT 0,
       first_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_active DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -49,8 +50,9 @@ router.get('/groups', (_req, res) => {
     const db = getDb();
     const groups = db.prepare('SELECT * FROM groups ORDER BY last_active DESC').all() as any[];
     for (const g of groups) {
+      g.member_count = Number(g.member_count) || 0;
       const row = db.prepare('SELECT COUNT(*) as cnt FROM group_members WHERE group_id = ?').get(g.id) as any;
-      g.member_count = row?.cnt || 0;
+      g.active_members = row?.cnt || 0;
     }
     res.json({ groups });
   } catch (e: any) {

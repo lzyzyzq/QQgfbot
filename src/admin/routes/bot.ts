@@ -73,21 +73,28 @@ export function createBotRoutes(botManager: BotManager): Router {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  // 修改群信息（群名/群号/头像）
+  // 修改群信息（群名/群号/头像/群人数）
   router.put('/:id/groups/:groupId', (req: Request, res: Response) => {
     try {
-      const { name, group_number, avatar } = req.body || {};
+      const { name, group_number, avatar, member_count } = req.body || {};
       const db = getDb();
-      db.exec(`CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY, name TEXT, member_count INTEGER DEFAULT 0, last_active DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+      db.exec(`CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY, name TEXT, member_count INTEGER DEFAULT 0, member_count_manual INTEGER DEFAULT 0, last_active DATETIME DEFAULT CURRENT_TIMESTAMP)`);
       const g = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.groupId) as any;
-      const next = { name: g?.name || '', group_number: g?.group_number || '', avatar: g?.avatar || '' };
+      const next: any = { name: g?.name || '', group_number: g?.group_number || '', avatar: g?.avatar || '', member_count: Number(g?.member_count) || 0, member_count_manual: Number(g?.member_count_manual) || 0 };
       if (name !== undefined) next.name = String(name).trim();
       if (group_number !== undefined) {
         next.group_number = String(group_number).trim();
         if (/^\d{6,15}$/.test(next.group_number)) next.avatar = `https://p.qlogo.cn/gh/${next.group_number}/${next.group_number}/0`;
       }
       if (avatar !== undefined && avatar !== '') next.avatar = String(avatar).trim();
-      db.prepare('UPDATE groups SET name = ?, group_number = ?, avatar = ? WHERE id = ?').run(next.name, next.group_number, next.avatar, req.params.groupId);
+      if (member_count !== undefined && member_count !== null && String(member_count) !== '') {
+        const mc = parseInt(String(member_count), 10);
+        if (isNaN(mc) || mc < 0 || mc > 100000) { res.status(400).json({ ok: false, error: '群人数应为 0-100000 的整数' }); return; }
+        next.member_count = mc;
+        next.member_count_manual = 1;
+      }
+      db.prepare('UPDATE groups SET name = ?, group_number = ?, avatar = ?, member_count = ?, member_count_manual = ? WHERE id = ?')
+        .run(next.name, next.group_number, next.avatar, next.member_count, next.member_count_manual, req.params.groupId);
       res.json({ ok: true, group: { ...next, id: req.params.groupId } });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });

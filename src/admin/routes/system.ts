@@ -1073,10 +1073,13 @@ export function createSystemRoutes(
         ? db.prepare('SELECT * FROM groups WHERE bot_id = ? ORDER BY last_active DESC LIMIT 1000').all(botId)
         : db.prepare('SELECT * FROM groups ORDER BY last_active DESC LIMIT 1000').all()) as any[];
       for (const g of rows) {
+        // member_count 为群真实人数（群信息接口同步或后台手改），active_members 为本地已收录成员数。
+        // 不再用本地收录数覆盖真实人数，避免「群人数与实际不符」。
+        g.member_count = Number(g.member_count) || 0;
         try {
           const c = db.prepare('SELECT COUNT(*) AS c FROM group_members WHERE group_id = ?').get(g.id) as any;
-          g.member_count = c?.c || 0;
-        } catch { g.member_count = g.member_count || 0; }
+          g.active_members = c?.c || 0;
+        } catch { g.active_members = 0; }
       }
       res.json({ groups: rows });
     } catch (e: any) {
@@ -1092,15 +1095,43 @@ export function createSystemRoutes(
       const db = getDb();
       const g = db.prepare('SELECT * FROM groups WHERE id = ?').get(id) as any;
       if (!g) { res.json({ ok: false, error: '群不存在：' + id }); return; }
-      const next = { name: g.name, group_number: g.group_number, avatar: g.avatar };
+      const next: any = { name: g.name, group_number: g.group_number, avatar: g.avatar, member_count: Number(g.member_count) || 0, member_count_manual: Number(g.member_count_manual) || 0 };
       if (body.name !== undefined) next.name = String(body.name).trim();
       if (body.group_number !== undefined) {
         next.group_number = String(body.group_number).trim();
         if (/^\d{6,15}$/.test(next.group_number)) next.avatar = `https://p.qlogo.cn/gh/${next.group_number}/${next.group_number}/0`;
       }
       if (body.avatar !== undefined && body.avatar !== '') next.avatar = String(body.avatar).trim();
-      db.prepare('UPDATE groups SET name = ?, group_number = ?, avatar = ? WHERE id = ?').run(next.name, next.group_number, next.avatar, id);
+      // 群人数可编辑：后台填写后锁定，群信息接口不再自动覆盖
+      if (body.member_count !== undefined && body.member_count !== null && String(body.member_count) !== '') {
+        const mc = parseInt(String(body.member_count), 10);
+        if (isNaN(mc) || mc < 0 || mc > 100000) { res.json({ ok: false, error: '群人数应为 0-100000 的整数' }); return; }
+        next.member_count = mc;
+        next.member_count_manual = 1;
+      }
+      db.prepare('UPDATE groups SET name = ?, group_number = ?, avatar = ?, member_count = ?, member_count_manual = ? WHERE id = ?')
+        .run(next.name, next.group_number, next.avatar, next.member_count, next.member_count_manual, id);
       res.json({ ok: true, group: { ...next, id } });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 批量删除群（连带删除群成员记录）
+  router.post('/groups/batch-delete', requireSuperMaster, (req: Request, res: Response) => {
+    try {
+      const ids: any[] = Array.isArray((req.body || {}).ids) ? req.body.ids : [];
+      if (!ids.length) { res.json({ ok: false, error: 'ids required' }); return; }
+      const db = getDb();
+      let deleted = 0;
+      for (const raw of ids) {
+        const gid = String(raw || '').trim();
+        if (!gid) continue;
+        db.prepare('DELETE FROM groups WHERE id = ?').run(gid);
+        db.prepare('DELETE FROM group_members WHERE group_id = ?').run(gid);
+        deleted++;
+      }
+      res.json({ ok: true, deleted });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

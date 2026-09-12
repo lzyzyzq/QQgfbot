@@ -90,6 +90,17 @@ function createTables() {
       PRIMARY KEY (group_id, member_openid)
     );
 
+    CREATE TABLE IF NOT EXISTS groups (
+      id TEXT PRIMARY KEY,
+      name TEXT DEFAULT '',
+      group_number TEXT DEFAULT '',
+      avatar TEXT DEFAULT '',
+      bot_id TEXT DEFAULT '',
+      member_count INTEGER DEFAULT 0,
+      member_count_manual INTEGER DEFAULT 0,
+      last_active DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS user_mappings (
       openid TEXT PRIMARY KEY,
       qq_number TEXT NOT NULL,
@@ -186,6 +197,8 @@ function migrateSchema() {
   if (!gNames.has('group_number')) database.exec("ALTER TABLE groups ADD COLUMN group_number TEXT DEFAULT ''");
   if (!gNames.has('avatar')) database.exec("ALTER TABLE groups ADD COLUMN avatar TEXT DEFAULT ''");
   if (!gNames.has('bot_id')) database.exec("ALTER TABLE groups ADD COLUMN bot_id TEXT DEFAULT ''");
+  // 群人数是否被后台手改锁定：1=手动设置过，群信息接口不再自动覆盖；0=允许自动同步真实人数
+  if (!gNames.has('member_count_manual')) database.exec("ALTER TABLE groups ADD COLUMN member_count_manual INTEGER DEFAULT 0");
 
   const gmCols = database.prepare("PRAGMA table_info('group_members')").all() as any[];
   const gmNames = new Set(gmCols.map((c: any) => c.name));

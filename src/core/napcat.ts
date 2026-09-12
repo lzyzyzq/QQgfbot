@@ -479,13 +479,19 @@ export function updateMemberBinding(openid: string, qq: string, botId?: string, 
     const oldQq = getQQByOpenid(openid);
     if (oldQq && oldQq !== qq) updateQqNumber(oldQq, qq);
   } catch {}
+  const groupId = String(opts?.groupId || '').trim();
   const gRow = db.prepare("SELECT bot_id FROM group_members WHERE member_openid = ? AND bot_id != '' LIMIT 1").get(openid) as any;
-  const bid = (botId || (gRow && gRow.bot_id) || getMappingByOpenid(openid)?.bot_id || '').trim();
+  // 归属机器人优先级：显式 botId（绑定发生的机器人）> 该成员已收录机器人 > 所在群归属机器人 > 已有映射机器人。
+  // 显式传入时绝不被兜底覆盖，保证「绑定到对应机器人」。
+  let gBotId = '';
+  if (groupId) {
+    try { const gr = db.prepare('SELECT bot_id FROM groups WHERE id = ?').get(groupId) as any; gBotId = (gr && gr.bot_id) || ''; } catch {}
+  }
+  const bid = (botId || (gRow && gRow.bot_id) || gBotId || getMappingByOpenid(openid)?.bot_id || '').trim();
   setUserMapping(openid, qq, '', bid);
   db.prepare('UPDATE group_members SET qq_id = ? WHERE member_openid = ?').run(qq, openid);
   // 同步所在群（面板「用户管理 / OpenID 列表」按群串联）：确保 groups + group_members 记录存在。
   // 与 /api/bot/bind-qq 的行为对齐——群内插件绑定过去只写 user_mappings，导致面板里没有群归属。
-  const groupId = String(opts?.groupId || '').trim();
   if (groupId) {
     try {
       const nick = String(opts?.nickname || '').trim();
@@ -495,6 +501,7 @@ export function updateMemberBinding(openid: string, qq: string, botId?: string, 
       if (bid) {
         try { db.prepare("UPDATE groups SET bot_id = ? WHERE id = ? AND (bot_id IS NULL OR bot_id = '')").run(bid, groupId); } catch {}
       }
+      // 群内成员行归属到绑定发生的机器人，确保面板按机器人筛选/来源列正确
       db.prepare(`INSERT INTO group_members (group_id, member_openid, qq_id, nickname, bot_id, first_seen, last_seen)
         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT(group_id, member_openid) DO UPDATE SET qq_id=excluded.qq_id, nickname=CASE WHEN excluded.nickname<>'' THEN excluded.nickname ELSE nickname END, bot_id=CASE WHEN excluded.bot_id<>'' THEN excluded.bot_id ELSE bot_id END, last_seen=CURRENT_TIMESTAMP`)

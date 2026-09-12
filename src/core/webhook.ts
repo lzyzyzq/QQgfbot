@@ -360,24 +360,29 @@ export class WebhookManager {
     }
   }
 
-  // 群名缓存：groups 表 name 为空时，调用群信息接口获取真实群名并入库
+  // 群名/群人数缓存：群名缺失或人数未同步（且未被后台手改锁定）时，调用群信息接口补全
   private async refreshGroupName(groupOpenid: string): Promise<void> {
     if (!groupOpenid) return;
     try {
-      const row = getDb().prepare('SELECT name FROM groups WHERE id = ?').get(groupOpenid) as any;
-      // 已存在且不含乱码替换符（UTF-8 解码失败的 \uFFFD）时跳过，否则重新拉取真实群名
-      if (row && row.name && !String(row.name).includes('\uFFFD')) return;
+      const row = getDb().prepare('SELECT name, member_count, member_count_manual FROM groups WHERE id = ?').get(groupOpenid) as any;
+      const nameOk = !!(row && row.name && !String(row.name).includes('\uFFFD'));
+      const countOk = !!(row && (Number(row.member_count) > 0 || Number(row.member_count_manual) === 1));
+      if (nameOk && countOk) return;
       const { getBot } = await import('./bot');
       const info = await getBot(this.botId).getGroupInfo(groupOpenid);
-      const name = (info && info.group_name) || '';
-      if (!name) return;
-      getDb().prepare(`
-        INSERT INTO groups (id, name, last_active)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(id) DO UPDATE SET name = excluded.name
-      `).run(groupOpenid, name);
-      logger.info(`Group name cached: ${groupOpenid} = ${name}`);
-      try { addSystemLog('info', 'group', `群名已更新：${name}`, groupOpenid, '', groupOpenid, this.botId); } catch {}
+      const name = (info && (info.group_name || info.name)) || '';
+      const mc = Number((info && (info.member_count ?? info.group_member_number ?? info.member_number)) || 0);
+      if (!name && !(mc > 0)) return;
+      if (!row) {
+        getDb().prepare('INSERT INTO groups (id, name, member_count, last_active) VALUES (?, ?, ?, CURRENT_TIMESTAMP)').run(groupOpenid, name, mc > 0 ? mc : 0);
+      } else {
+        if (name) getDb().prepare('UPDATE groups SET name = ? WHERE id = ?').run(name, groupOpenid);
+        // 后台手改过的人数不覆盖；否则用群信息接口返回的真实人数刷新
+        if (mc > 0 && Number(row.member_count_manual) !== 1) getDb().prepare('UPDATE groups SET member_count = ? WHERE id = ?').run(mc, groupOpenid);
+      }
+      if (name) logger.info(`Group name cached: ${groupOpenid} = ${name}`);
+      if (mc > 0) logger.info(`Group member_count cached: ${groupOpenid} = ${mc}`);
+      try { if (name) addSystemLog('info', 'group', `群名已更新：${name}`, groupOpenid, '', groupOpenid, this.botId); } catch {}
     } catch (e: any) {
       logger.warn(`refreshGroupName error: ${e.message}`);
     }
