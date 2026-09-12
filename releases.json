@@ -8,8 +8,8 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "1.0.11",
-    "changeLog": "绑定QQ后自动补全QQ昵称；OpenID列表与用户管理展示昵称多级兜底"
+    "version": "1.0.12",
+    "changeLog": "新增 DIC管理.php（群内词库列表/测试/校验/切换等）；娱乐群管引擎兼容未闭合 $ 命令并支持 .dic_active 多词库；丰富版词库新增 24 条游戏规则；面板 DIC 入口支持 PHP 插件"
   },
   "releases": [
     {
@@ -1441,6 +1441,414 @@
       }
     },
     {
+      "version": "1.0.12",
+      "tag": "v1.0.12",
+      "date": "2026-09-12",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.12/qqbot-card-editor-patch-1.0.12.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.12/qqbot-card-editor-patch-1.0.12.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.12/qqbot-card-editor-patch-1.0.12.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.12.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.12/qqbot-card-editor-1.0.12.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.12/qqbot-card-editor-1.0.12.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.12/qqbot-card-editor-1.0.12.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.12.zip"
+      }
+    },
+    {
+      "version": "1.0.11",
+      "tag": "v1.0.11",
+      "date": "2026-09-12",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-patch-1.0.11.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-patch-1.0.11.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-patch-1.0.11.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.11.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-1.0.11.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-1.0.11.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.11/qqbot-card-editor-1.0.11.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.11.zip"
+      }
+    },
+    {
+      "version": "1.0.10",
+      "tag": "v1.0.10",
+      "date": "2026-09-12",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.10/qqbot-card-editor-patch-1.0.10.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.10/qqbot-card-editor-patch-1.0.10.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.10/qqbot-card-editor-patch-1.0.10.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.10.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.10/qqbot-card-editor-1.0.10.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.10/qqbot-card-editor-1.0.10.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.10/qqbot-card-editor-1.0.10.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.10.zip"
+      }
+    },
+    {
+      "version": "1.0.9",
+      "tag": "v1.0.9",
+      "date": "2026-09-12",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.9/qqbot-card-editor-patch-1.0.9.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.9/qqbot-card-editor-patch-1.0.9.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.9/qqbot-card-editor-patch-1.0.9.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.9.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.9/qqbot-card-editor-1.0.9.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.9/qqbot-card-editor-1.0.9.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.9/qqbot-card-editor-1.0.9.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.9.zip"
+      }
+    },
+    {
+      "version": "1.0.8",
+      "tag": "v1.0.8",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.8/qqbot-card-editor-patch-1.0.8.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.8/qqbot-card-editor-patch-1.0.8.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.8/qqbot-card-editor-patch-1.0.8.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.8.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.8/qqbot-card-editor-1.0.8.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.8/qqbot-card-editor-1.0.8.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.8/qqbot-card-editor-1.0.8.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.8.zip"
+      }
+    },
+    {
+      "version": "1.0.7",
+      "tag": "v1.0.7",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.7/qqbot-card-editor-patch-1.0.7.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.7/qqbot-card-editor-patch-1.0.7.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.7/qqbot-card-editor-patch-1.0.7.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.7.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.7/qqbot-card-editor-1.0.7.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.7/qqbot-card-editor-1.0.7.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.7/qqbot-card-editor-1.0.7.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.7.zip"
+      }
+    },
+    {
+      "version": "1.0.6",
+      "tag": "v1.0.6",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.6/qqbot-card-editor-patch-1.0.6.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.6/qqbot-card-editor-patch-1.0.6.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.6/qqbot-card-editor-patch-1.0.6.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.6.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.6/qqbot-card-editor-1.0.6.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.6/qqbot-card-editor-1.0.6.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.6/qqbot-card-editor-1.0.6.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.6.zip"
+      }
+    },
+    {
+      "version": "1.0.5",
+      "tag": "v1.0.5",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.5/qqbot-card-editor-patch-1.0.5.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.5/qqbot-card-editor-patch-1.0.5.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.5/qqbot-card-editor-patch-1.0.5.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.5.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.5/qqbot-card-editor-1.0.5.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.5/qqbot-card-editor-1.0.5.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.5/qqbot-card-editor-1.0.5.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.5.zip"
+      }
+    },
+    {
+      "version": "1.0.4",
+      "tag": "v1.0.4",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.4/qqbot-card-editor-patch-1.0.4.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.4/qqbot-card-editor-patch-1.0.4.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.4/qqbot-card-editor-patch-1.0.4.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.4.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.4/qqbot-card-editor-1.0.4.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.4/qqbot-card-editor-1.0.4.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.4/qqbot-card-editor-1.0.4.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.4.zip"
+      }
+    },
+    {
+      "version": "1.0.3",
+      "tag": "v1.0.3",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.3/qqbot-card-editor-patch-1.0.3.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.3/qqbot-card-editor-patch-1.0.3.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.3/qqbot-card-editor-patch-1.0.3.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.3.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.3/qqbot-card-editor-1.0.3.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.3/qqbot-card-editor-1.0.3.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.3/qqbot-card-editor-1.0.3.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.3.zip"
+      }
+    },
+    {
+      "version": "1.0.2",
+      "tag": "v1.0.2",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.2/qqbot-card-editor-patch-1.0.2.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.2/qqbot-card-editor-patch-1.0.2.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.2/qqbot-card-editor-patch-1.0.2.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.2.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.2/qqbot-card-editor-1.0.2.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.2/qqbot-card-editor-1.0.2.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.2/qqbot-card-editor-1.0.2.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.2.zip"
+      }
+    },
+    {
+      "version": "1.0.1",
+      "tag": "v1.0.1",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.1/qqbot-card-editor-patch-1.0.1.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.1/qqbot-card-editor-patch-1.0.1.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.1/qqbot-card-editor-patch-1.0.1.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.1.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.1/qqbot-card-editor-1.0.1.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.1/qqbot-card-editor-1.0.1.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.1/qqbot-card-editor-1.0.1.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.1.zip"
+      }
+    },
+    {
       "version": "1.0.0",
       "tag": "v1.0.0",
       "date": "2026-09-11",
@@ -1472,6 +1880,1434 @@
           }
         ],
         "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.0.zip"
+      }
+    },
+    {
+      "version": "0.0.42",
+      "tag": "v0.0.42",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.42/qqbot-card-editor-patch-0.0.42.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.42/qqbot-card-editor-patch-0.0.42.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.42/qqbot-card-editor-patch-0.0.42.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.42.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.42/qqbot-card-editor-0.0.42.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.42/qqbot-card-editor-0.0.42.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.42/qqbot-card-editor-0.0.42.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.42.zip"
+      }
+    },
+    {
+      "version": "0.0.41",
+      "tag": "v0.0.41",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.41/qqbot-card-editor-patch-0.0.41.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.41/qqbot-card-editor-patch-0.0.41.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.41/qqbot-card-editor-patch-0.0.41.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.41.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.41/qqbot-card-editor-0.0.41.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.41/qqbot-card-editor-0.0.41.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.41/qqbot-card-editor-0.0.41.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.41.zip"
+      }
+    },
+    {
+      "version": "0.0.40",
+      "tag": "v0.0.40",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.40/qqbot-card-editor-patch-0.0.40.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.40/qqbot-card-editor-patch-0.0.40.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.40/qqbot-card-editor-patch-0.0.40.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.40.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.40/qqbot-card-editor-0.0.40.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.40/qqbot-card-editor-0.0.40.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.40/qqbot-card-editor-0.0.40.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.40.zip"
+      }
+    },
+    {
+      "version": "0.0.39",
+      "tag": "v0.0.39",
+      "date": "2026-09-11",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.39/qqbot-card-editor-patch-0.0.39.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.39/qqbot-card-editor-patch-0.0.39.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.39/qqbot-card-editor-patch-0.0.39.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.39.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.39/qqbot-card-editor-0.0.39.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.39/qqbot-card-editor-0.0.39.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.39/qqbot-card-editor-0.0.39.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.39.zip"
+      }
+    },
+    {
+      "version": "0.0.38",
+      "tag": "v0.0.38",
+      "date": "2026-09-10",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.38/qqbot-card-editor-patch-0.0.38.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.38/qqbot-card-editor-patch-0.0.38.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.38/qqbot-card-editor-patch-0.0.38.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.38.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.38/qqbot-card-editor-0.0.38.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.38/qqbot-card-editor-0.0.38.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.38/qqbot-card-editor-0.0.38.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.38.zip"
+      }
+    },
+    {
+      "version": "0.0.37",
+      "tag": "v0.0.37",
+      "date": "2026-09-10",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.37/qqbot-card-editor-patch-0.0.37.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.37/qqbot-card-editor-patch-0.0.37.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.37/qqbot-card-editor-patch-0.0.37.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.37.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.37/qqbot-card-editor-0.0.37.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.37/qqbot-card-editor-0.0.37.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.37/qqbot-card-editor-0.0.37.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.37.zip"
+      }
+    },
+    {
+      "version": "0.0.36",
+      "tag": "v0.0.36",
+      "date": "2026-09-10",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.36/qqbot-card-editor-patch-0.0.36.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.36/qqbot-card-editor-patch-0.0.36.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.36/qqbot-card-editor-patch-0.0.36.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.36.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.36/qqbot-card-editor-0.0.36.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.36/qqbot-card-editor-0.0.36.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.36/qqbot-card-editor-0.0.36.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.36.zip"
+      }
+    },
+    {
+      "version": "0.0.35",
+      "tag": "v0.0.35",
+      "date": "2026-09-10",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.35/qqbot-card-editor-patch-0.0.35.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.35/qqbot-card-editor-patch-0.0.35.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.35/qqbot-card-editor-patch-0.0.35.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.35.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.35/qqbot-card-editor-0.0.35.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.35/qqbot-card-editor-0.0.35.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.35/qqbot-card-editor-0.0.35.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.35.zip"
+      }
+    },
+    {
+      "version": "0.0.34",
+      "tag": "v0.0.34",
+      "date": "2026-09-10",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.34/qqbot-card-editor-patch-0.0.34.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.34/qqbot-card-editor-patch-0.0.34.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.34/qqbot-card-editor-patch-0.0.34.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.34.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.34/qqbot-card-editor-0.0.34.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.34/qqbot-card-editor-0.0.34.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.34/qqbot-card-editor-0.0.34.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.34.zip"
+      }
+    },
+    {
+      "version": "0.0.33",
+      "tag": "v0.0.33",
+      "date": "2026-09-10",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.33/qqbot-card-editor-patch-0.0.33.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.33/qqbot-card-editor-patch-0.0.33.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.33/qqbot-card-editor-patch-0.0.33.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.33.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.33/qqbot-card-editor-0.0.33.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.33/qqbot-card-editor-0.0.33.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.33/qqbot-card-editor-0.0.33.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.33.zip"
+      }
+    },
+    {
+      "version": "0.0.32",
+      "tag": "v0.0.32",
+      "date": "2026-09-10",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.32/qqbot-card-editor-patch-0.0.32.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.32/qqbot-card-editor-patch-0.0.32.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.32/qqbot-card-editor-patch-0.0.32.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.32.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.32/qqbot-card-editor-0.0.32.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.32/qqbot-card-editor-0.0.32.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.32/qqbot-card-editor-0.0.32.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.32.zip"
+      }
+    },
+    {
+      "version": "0.0.31",
+      "tag": "v0.0.31",
+      "date": "2026-09-10",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.31/qqbot-card-editor-patch-0.0.31.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.31/qqbot-card-editor-patch-0.0.31.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.31/qqbot-card-editor-patch-0.0.31.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.31.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.31/qqbot-card-editor-0.0.31.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.31/qqbot-card-editor-0.0.31.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.31/qqbot-card-editor-0.0.31.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.31.zip"
+      }
+    },
+    {
+      "version": "0.0.30",
+      "tag": "v0.0.30",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.30/qqbot-card-editor-patch-0.0.30.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.30/qqbot-card-editor-patch-0.0.30.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.30/qqbot-card-editor-patch-0.0.30.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.30.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.30/qqbot-card-editor-0.0.30.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.30/qqbot-card-editor-0.0.30.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.30/qqbot-card-editor-0.0.30.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.30.zip"
+      }
+    },
+    {
+      "version": "0.0.29",
+      "tag": "v0.0.29",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.29/qqbot-card-editor-patch-0.0.29.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.29/qqbot-card-editor-patch-0.0.29.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.29/qqbot-card-editor-patch-0.0.29.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.29.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.29/qqbot-card-editor-0.0.29.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.29/qqbot-card-editor-0.0.29.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.29/qqbot-card-editor-0.0.29.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.29.zip"
+      }
+    },
+    {
+      "version": "0.0.28",
+      "tag": "v0.0.28",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.28/qqbot-card-editor-patch-0.0.28.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.28/qqbot-card-editor-patch-0.0.28.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.28/qqbot-card-editor-patch-0.0.28.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.28.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.28/qqbot-card-editor-0.0.28.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.28/qqbot-card-editor-0.0.28.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.28/qqbot-card-editor-0.0.28.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.28.zip"
+      }
+    },
+    {
+      "version": "0.0.27",
+      "tag": "v0.0.27",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.27/qqbot-card-editor-patch-0.0.27.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.27/qqbot-card-editor-patch-0.0.27.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.27/qqbot-card-editor-patch-0.0.27.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.27.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.27/qqbot-card-editor-0.0.27.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.27/qqbot-card-editor-0.0.27.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.27/qqbot-card-editor-0.0.27.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.27.zip"
+      }
+    },
+    {
+      "version": "0.0.26",
+      "tag": "v0.0.26",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.26/qqbot-card-editor-patch-0.0.26.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.26/qqbot-card-editor-patch-0.0.26.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.26/qqbot-card-editor-patch-0.0.26.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.26.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.26/qqbot-card-editor-0.0.26.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.26/qqbot-card-editor-0.0.26.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.26/qqbot-card-editor-0.0.26.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.26.zip"
+      }
+    },
+    {
+      "version": "0.0.25",
+      "tag": "v0.0.25",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.25/qqbot-card-editor-patch-0.0.25.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.25/qqbot-card-editor-patch-0.0.25.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.25/qqbot-card-editor-patch-0.0.25.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.25.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.25/qqbot-card-editor-0.0.25.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.25/qqbot-card-editor-0.0.25.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.25/qqbot-card-editor-0.0.25.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.25.zip"
+      }
+    },
+    {
+      "version": "0.0.24",
+      "tag": "v0.0.24",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.24/qqbot-card-editor-patch-0.0.24.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.24/qqbot-card-editor-patch-0.0.24.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.24/qqbot-card-editor-patch-0.0.24.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.24.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.24/qqbot-card-editor-0.0.24.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.24/qqbot-card-editor-0.0.24.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.24/qqbot-card-editor-0.0.24.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.24.zip"
+      }
+    },
+    {
+      "version": "0.0.23",
+      "tag": "v0.0.23",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.23/qqbot-card-editor-patch-0.0.23.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.23/qqbot-card-editor-patch-0.0.23.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.23/qqbot-card-editor-patch-0.0.23.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.23.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.23/qqbot-card-editor-0.0.23.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.23/qqbot-card-editor-0.0.23.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.23/qqbot-card-editor-0.0.23.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.23.zip"
+      }
+    },
+    {
+      "version": "0.0.22",
+      "tag": "v0.0.22",
+      "date": "2026-09-09",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.22/qqbot-card-editor-patch-0.0.22.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.22/qqbot-card-editor-patch-0.0.22.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.22/qqbot-card-editor-patch-0.0.22.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.22.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.22/qqbot-card-editor-0.0.22.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.22/qqbot-card-editor-0.0.22.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.22/qqbot-card-editor-0.0.22.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.22.zip"
+      }
+    },
+    {
+      "version": "0.0.21",
+      "tag": "v0.0.21",
+      "date": "2026-09-08",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.21/qqbot-card-editor-patch-0.0.21.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.21/qqbot-card-editor-patch-0.0.21.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.21/qqbot-card-editor-patch-0.0.21.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.21.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.21/qqbot-card-editor-0.0.21.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.21/qqbot-card-editor-0.0.21.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.21/qqbot-card-editor-0.0.21.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.21.zip"
+      }
+    },
+    {
+      "version": "0.0.20",
+      "tag": "v0.0.20",
+      "date": "2026-09-08",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.20/qqbot-card-editor-patch-0.0.20.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.20/qqbot-card-editor-patch-0.0.20.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.20/qqbot-card-editor-patch-0.0.20.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.20.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.20/qqbot-card-editor-0.0.20.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.20/qqbot-card-editor-0.0.20.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.20/qqbot-card-editor-0.0.20.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.20.zip"
+      }
+    },
+    {
+      "version": "0.0.19",
+      "tag": "v0.0.19",
+      "date": "2026-09-08",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.19/qqbot-card-editor-patch-0.0.19.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.19/qqbot-card-editor-patch-0.0.19.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.19/qqbot-card-editor-patch-0.0.19.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.19.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.19/qqbot-card-editor-0.0.19.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.19/qqbot-card-editor-0.0.19.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.19/qqbot-card-editor-0.0.19.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.19.zip"
+      }
+    },
+    {
+      "version": "0.0.18",
+      "tag": "v0.0.18",
+      "date": "2026-09-07",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.18/qqbot-card-editor-patch-0.0.18.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.18/qqbot-card-editor-patch-0.0.18.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.18/qqbot-card-editor-patch-0.0.18.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.18.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.18/qqbot-card-editor-0.0.18.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.18/qqbot-card-editor-0.0.18.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.18/qqbot-card-editor-0.0.18.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.18.zip"
+      }
+    },
+    {
+      "version": "0.0.17",
+      "tag": "v0.0.17",
+      "date": "2026-09-07",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.17/qqbot-card-editor-patch-0.0.17.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.17/qqbot-card-editor-patch-0.0.17.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.17/qqbot-card-editor-patch-0.0.17.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.17.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.17/qqbot-card-editor-0.0.17.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.17/qqbot-card-editor-0.0.17.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.17/qqbot-card-editor-0.0.17.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.17.zip"
+      }
+    },
+    {
+      "version": "0.0.16",
+      "tag": "v0.0.16",
+      "date": "2026-09-07",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.16/qqbot-card-editor-patch-0.0.16.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.16/qqbot-card-editor-patch-0.0.16.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.16/qqbot-card-editor-patch-0.0.16.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.16.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.16/qqbot-card-editor-0.0.16.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.16/qqbot-card-editor-0.0.16.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.16/qqbot-card-editor-0.0.16.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.16.zip"
+      }
+    },
+    {
+      "version": "0.0.15",
+      "tag": "v0.0.15",
+      "date": "2026-09-07",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.15/qqbot-card-editor-patch-0.0.15.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.15/qqbot-card-editor-patch-0.0.15.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.15/qqbot-card-editor-patch-0.0.15.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.15.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.15/qqbot-card-editor-0.0.15.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.15/qqbot-card-editor-0.0.15.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.15/qqbot-card-editor-0.0.15.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.15.zip"
+      }
+    },
+    {
+      "version": "0.0.14",
+      "tag": "v0.0.14",
+      "date": "2026-09-06",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.14/qqbot-card-editor-patch-0.0.14.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.14/qqbot-card-editor-patch-0.0.14.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.14/qqbot-card-editor-patch-0.0.14.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.14.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.14/qqbot-card-editor-0.0.14.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.14/qqbot-card-editor-0.0.14.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.14/qqbot-card-editor-0.0.14.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.14.zip"
+      }
+    },
+    {
+      "version": "0.0.13",
+      "tag": "v0.0.13",
+      "date": "2026-09-05",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.13/qqbot-card-editor-patch-0.0.13.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.13/qqbot-card-editor-patch-0.0.13.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.13/qqbot-card-editor-patch-0.0.13.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.13.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.13/qqbot-card-editor-0.0.13.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.13/qqbot-card-editor-0.0.13.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.13/qqbot-card-editor-0.0.13.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.13.zip"
+      }
+    },
+    {
+      "version": "0.0.12",
+      "tag": "v0.0.12",
+      "date": "2026-09-05",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.12/qqbot-card-editor-patch-0.0.12.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.12/qqbot-card-editor-patch-0.0.12.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.12/qqbot-card-editor-patch-0.0.12.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.12.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.12/qqbot-card-editor-0.0.12.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.12/qqbot-card-editor-0.0.12.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.12/qqbot-card-editor-0.0.12.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.12.zip"
+      }
+    },
+    {
+      "version": "0.0.11",
+      "tag": "v0.0.11",
+      "date": "2026-09-05",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.11/qqbot-card-editor-patch-0.0.11.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.11/qqbot-card-editor-patch-0.0.11.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.11/qqbot-card-editor-patch-0.0.11.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.11.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.11/qqbot-card-editor-0.0.11.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.11/qqbot-card-editor-0.0.11.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.11/qqbot-card-editor-0.0.11.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.11.zip"
+      }
+    },
+    {
+      "version": "0.0.10",
+      "tag": "v0.0.10",
+      "date": "2026-09-04",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.10/qqbot-card-editor-patch-0.0.10.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.10/qqbot-card-editor-patch-0.0.10.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.10/qqbot-card-editor-patch-0.0.10.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.10.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.10/qqbot-card-editor-0.0.10.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.10/qqbot-card-editor-0.0.10.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.10/qqbot-card-editor-0.0.10.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.10.zip"
+      }
+    },
+    {
+      "version": "0.0.9",
+      "tag": "v0.0.9",
+      "date": "2026-09-04",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.9/qqbot-card-editor-patch-0.0.9.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.9/qqbot-card-editor-patch-0.0.9.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.9/qqbot-card-editor-patch-0.0.9.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.9.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.9/qqbot-card-editor-0.0.9.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.9/qqbot-card-editor-0.0.9.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.9/qqbot-card-editor-0.0.9.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.9.zip"
+      }
+    },
+    {
+      "version": "0.0.8",
+      "tag": "v0.0.8",
+      "date": "2026-09-04",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.8/qqbot-card-editor-patch-0.0.8.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.8/qqbot-card-editor-patch-0.0.8.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.8/qqbot-card-editor-patch-0.0.8.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.8.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.8/qqbot-card-editor-0.0.8.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.8/qqbot-card-editor-0.0.8.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.8/qqbot-card-editor-0.0.8.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.8.zip"
+      }
+    },
+    {
+      "version": "0.0.7",
+      "tag": "v0.0.7",
+      "date": "2026-09-04",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.7/qqbot-card-editor-patch-0.0.7.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.7/qqbot-card-editor-patch-0.0.7.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.7/qqbot-card-editor-patch-0.0.7.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.7.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.7/qqbot-card-editor-0.0.7.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.7/qqbot-card-editor-0.0.7.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.7/qqbot-card-editor-0.0.7.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.7.zip"
+      }
+    },
+    {
+      "version": "0.0.6",
+      "tag": "v0.0.6",
+      "date": "2026-09-04",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.6/qqbot-card-editor-patch-0.0.6.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.6/qqbot-card-editor-patch-0.0.6.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.6/qqbot-card-editor-patch-0.0.6.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.6.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.6/qqbot-card-editor-0.0.6.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.6/qqbot-card-editor-0.0.6.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.6/qqbot-card-editor-0.0.6.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.6.zip"
+      }
+    },
+    {
+      "version": "0.0.5",
+      "tag": "v0.0.5",
+      "date": "2026-09-04",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.5/qqbot-card-editor-patch-0.0.5.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.5/qqbot-card-editor-patch-0.0.5.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.5/qqbot-card-editor-patch-0.0.5.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.5.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.5/qqbot-card-editor-0.0.5.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.5/qqbot-card-editor-0.0.5.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.5/qqbot-card-editor-0.0.5.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.5.zip"
+      }
+    },
+    {
+      "version": "0.0.4",
+      "tag": "v0.0.4",
+      "date": "2026-09-03",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.4/qqbot-card-editor-patch-0.0.4.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.4/qqbot-card-editor-patch-0.0.4.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.4/qqbot-card-editor-patch-0.0.4.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.4.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.4/qqbot-card-editor-0.0.4.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.4/qqbot-card-editor-0.0.4.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.4/qqbot-card-editor-0.0.4.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.4.zip"
+      }
+    },
+    {
+      "version": "0.0.3",
+      "tag": "v0.0.3",
+      "date": "2026-09-02",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.3/qqbot-card-editor-patch-0.0.3.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.3/qqbot-card-editor-patch-0.0.3.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.3/qqbot-card-editor-patch-0.0.3.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.3.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.3/qqbot-card-editor-0.0.3.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.3/qqbot-card-editor-0.0.3.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.3/qqbot-card-editor-0.0.3.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.3.zip"
+      }
+    },
+    {
+      "version": "0.0.2",
+      "tag": "v0.0.2",
+      "date": "2026-09-02",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.2/qqbot-card-editor-patch-0.0.2.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.2/qqbot-card-editor-patch-0.0.2.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.2/qqbot-card-editor-patch-0.0.2.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.2.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.2/qqbot-card-editor-0.0.2.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.2/qqbot-card-editor-0.0.2.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.2/qqbot-card-editor-0.0.2.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.2.zip"
+      }
+    },
+    {
+      "version": "0.0.1",
+      "tag": "v0.0.1",
+      "date": "2026-09-02",
+      "isCurrent": false,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.1/qqbot-card-editor-patch-0.0.1.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.1/qqbot-card-editor-patch-0.0.1.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.1/qqbot-card-editor-patch-0.0.1.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-0.0.1.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.1/qqbot-card-editor-0.0.1.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.1/qqbot-card-editor-0.0.1.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v0.0.1/qqbot-card-editor-0.0.1.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-0.0.1.zip"
       }
     }
   ],
