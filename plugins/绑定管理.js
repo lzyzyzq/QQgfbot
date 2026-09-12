@@ -1,4 +1,4 @@
-// 绑定管理 v1.3.0 - 群内绑定QQ号 / 绑定QQ群号（含人数）/ 群主绑定指定用户（@用户）
+// 绑定管理 v1.3.1 - 群内绑定QQ号 / 绑定QQ群号（含人数）/ 群主绑定指定用户（@用户）
 // 用法：
 //   群里发「绑定QQ 123456789」→ 把当前 OpenID 绑定到 QQ 号（跨机器人身份识别）
 //   群里发「绑定QQ 123456789 @用户」→ 群主/管理员把被 @ 用户的 OpenID 绑定到 QQ 号（可 @ 多个）
@@ -14,7 +14,7 @@
 /*__REPLY_SPEC_BEGIN__*/
 var REPLY_SPEC = {
   name: "绑定管理",
-  version: "1.3.0",
+  version: "1.3.1",
   desc: "绑定QQ/解绑QQ（可 @他人）；绑定QQ群 群号 [人数]/解绑QQ群 [群号]；绑定用户（QQ+OpenID）",
   branches: [
     {
@@ -408,7 +408,7 @@ module.exports = {
   manifest: {
     id: 'mod-bind-manage',
     name: '绑定管理',
-    version: '1.3.0',
+    version: '1.3.1',
     description: '绑定QQ/解绑QQ（可 @他人）；绑定QQ群 群号 [人数]/解绑QQ群 [群号]；绑定用户（QQ+OpenID）',
     author: '511742399'
   },
@@ -431,6 +431,18 @@ module.exports = {
         var mo = mm[1];
         if (mo && mo !== openid && mentions.indexOf(mo) < 0) mentions.push(mo);
       }
+
+      // 命令识别：命令后可接 空格 / @提及 <@...> / 行尾（@ 与命令之间可能无空格，如「解绑QQ<@用户>」）
+      var isCmdOnly = function(cmd) { return content === cmd; };
+      var isCmdArg = function(cmd) {
+        if (content.indexOf(cmd) !== 0 || content.length <= cmd.length) return false;
+        var r = content.charAt(cmd.length);
+        return r === '<' || /\s/.test(r);
+      };
+      // 取命令参数：先剥离内容中的 <@...> 提及，再 trim（避免「绑定QQ 123<@用户>」把提及并进 QQ）
+      var argAfter = function(cmd) {
+        return content.substring(cmd.length).replace(/<@!?[A-Za-z0-9_\-]{6,64}>/g, ' ').trim();
+      };
 
       var reply = async function(text) {
         try {
@@ -471,14 +483,14 @@ module.exports = {
         canManage = myRole === 'owner' || myRole === 'admin' || myRole === 'super' || myRole === 'master' || myRole === '' || !myRole;
       } catch (e) { canManage = true; }
 
-      var mBindQQ = content === '绑定QQ' || content === '绑定qq';
-      var mBindQQPre = content.indexOf('绑定QQ ') === 0 || content.indexOf('绑定qq ') === 0;
-      var mBindGroup = content === '绑定QQ群' || content === '绑定qq群';
-      var mBindGroupPre = content.indexOf('绑定QQ群 ') === 0 || content.indexOf('绑定qq群 ') === 0;
-      var mUnbind = content === '解绑QQ' || content === '解绑qq' || content === '解绑绑定' || content.indexOf('解绑QQ ') === 0 || content.indexOf('解绑qq ') === 0;
-      var mUnbindGroup = content === '解绑QQ群' || content === '解绑qq群' || content === '解绑群' || content.indexOf('解绑QQ群 ') === 0 || content.indexOf('解绑qq群 ') === 0;
-      var mBindUserHelp = content === '绑定用户' || content === '绑定指定用户';
-      var mBindUser = content.indexOf('绑定用户 ') === 0;
+      var mBindQQ = isCmdOnly('绑定QQ') || isCmdOnly('绑定qq');
+      var mBindQQPre = isCmdArg('绑定QQ') || isCmdArg('绑定qq');
+      var mBindGroup = isCmdOnly('绑定QQ群') || isCmdOnly('绑定qq群');
+      var mBindGroupPre = isCmdArg('绑定QQ群') || isCmdArg('绑定qq群');
+      var mUnbind = isCmdOnly('解绑QQ') || isCmdOnly('解绑qq') || isCmdOnly('解绑绑定') || isCmdArg('解绑QQ') || isCmdArg('解绑qq');
+      var mUnbindGroup = isCmdOnly('解绑QQ群') || isCmdOnly('解绑qq群') || isCmdOnly('解绑群') || isCmdArg('解绑QQ群') || isCmdArg('解绑qq群');
+      var mBindUserHelp = isCmdOnly('绑定用户') || isCmdOnly('绑定指定用户');
+      var mBindUser = isCmdArg('绑定用户');
 
       if (mUnbindGroup) {
         if (!gid) {
@@ -490,8 +502,8 @@ module.exports = {
           return true;
         }
         var unum = '';
-        if (content.indexOf('解绑QQ群 ') === 0) unum = content.substring(6).trim().split(/\s+/)[0] || '';
-        else if (content.indexOf('解绑qq群 ') === 0) unum = content.substring(6).trim().split(/\s+/)[0] || '';
+        if (isCmdArg('解绑QQ群')) unum = argAfter('解绑QQ群').split(/\s+/)[0] || '';
+        else if (isCmdArg('解绑qq群')) unum = argAfter('解绑qq群').split(/\s+/)[0] || '';
         if (unum && !/^\d{6,15}$/.test(unum)) {
           await replyTpl('unbindGroup-fail', { err: 'QQ 群号应为 6-15 位数字' }, function() { return _fbUnbindGroupFail('QQ 群号应为 6-15 位数字'); });
           return true;
@@ -543,9 +555,9 @@ module.exports = {
         return true;
       }
       if (mBindUser) {
-        var parts = content.substring(5).trim().split(/\s+/);
-        var uqq = (parts[0] || '').trim();
-        var uoid = (parts[1] || '').trim();
+        var uParts = argAfter('绑定用户').split(/\s+/);
+        var uqq = (uParts[0] || '').trim();
+        var uoid = (uParts[1] || '').trim();
         if (!/^\d{5,11}$/.test(uqq)) { await replyTpl('bindUser-badqq', {}, _fbBadqq); return true; }
         if (!/^[A-Za-z0-9_\-]+$/.test(uoid) || uoid.length < 6) { await replyTpl('bindUser-badoid', {}, _fbBadoid); return true; }
         if (gid) {
@@ -572,7 +584,8 @@ module.exports = {
         return true;
       }
       if (mBindQQPre) {
-        var qq = content.substring(5).trim().split(/\s+/)[0];
+        // QQ 可能紧跟 @提及（如「绑定QQ 4010208623<@用户>」），argAfter 已剥离 <@...> 再取首个参数
+        var qq = argAfter('绑定QQ').split(/\s+/)[0] || '';
         if (!/^\d{5,11}$/.test(qq)) { await replyTpl('bindQQ-badqq', {}, _fbBadqq); return true; }
         // 带 @用户：群管理把被 @ 用户的 OpenID 绑定到该 QQ（每人各自机器人下独立）
         if (mentions.length > 0) {
@@ -617,7 +630,7 @@ module.exports = {
           await replyTpl('bindGroup-denied', {}, _fbBindGroupDenied);
           return true;
         }
-        var gparts = content.substring(6).trim().split(/\s+/);
+        var gparts = argAfter('绑定QQ群').split(/\s+/);
         var gnum = (gparts[0] || '').trim();
         var gcountRaw = (gparts[1] || '').trim();
         var gcount = 0;
