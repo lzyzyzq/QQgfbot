@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import Database from 'better-sqlite3'
 import { initDb, getDb } from '../db/index'
-import { moveNapcatMember, renameNapcatMember, removeMemberBinding, addNapcatMember } from './napcat'
+import { moveNapcatMember, renameNapcatMember, removeMemberBinding, addNapcatMember, updateMemberBinding, resolveQqNickname, syncOpenidNicknames } from './napcat'
 
 describe('OpenID 修复后端能力', () => {
   let db: Database.Database
@@ -62,5 +62,54 @@ describe('OpenID 修复后端能力', () => {
     expect(db.prepare('SELECT 1 FROM group_members WHERE member_openid=? AND group_id=?').get('oidC', 'ga')).toBeUndefined()
     expect(db.prepare('SELECT 1 FROM group_members WHERE member_openid=? AND group_id=?').get('oidC', 'gb')).toBeDefined()
     expect(db.prepare('SELECT qq_number FROM user_mappings WHERE openid=?').get('oidC')).toBeDefined()
+  })
+})
+
+describe('绑定自动补全 QQ 昵称', () => {
+  let db: Database.Database
+
+  beforeAll(() => {
+    db = initDb()
+    db.exec(`DELETE FROM group_members; DELETE FROM user_mappings; DELETE FROM auth_codes; DELETE FROM groups;`)
+    db.exec(`CREATE TABLE IF NOT EXISTS napcat_members (group_openid TEXT DEFAULT '', group_id TEXT NOT NULL, group_name TEXT DEFAULT '', user_id TEXT NOT NULL, nickname TEXT DEFAULT '', card TEXT DEFAULT '', updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (group_id, user_id))`)
+    db.exec(`DELETE FROM napcat_members;`)
+  })
+
+  afterAll(() => {
+    try { db.exec(`DELETE FROM group_members; DELETE FROM user_mappings; DELETE FROM groups; DELETE FROM napcat_members;`) } catch {}
+  })
+
+  it('NapCat 同步昵称兜底：绑定后 user_mappings.nickname 自动填充', () => {
+    db.prepare(`INSERT INTO napcat_members (group_openid, group_id, group_name, user_id, nickname) VALUES ('g1','123456','群','4010208623','娱乐测试')`).run()
+    updateMemberBinding('oidNap1', '4010208623', 'bot1', { groupId: 'g1' })
+    const r = db.prepare('SELECT nickname FROM user_mappings WHERE openid=?').get('oidNap1') as any
+    expect(r.nickname).toBe('娱乐测试')
+  })
+
+  it('同 QQ 其他 OpenID 已有昵称时复用', () => {
+    db.prepare(`INSERT INTO user_mappings (openid, qq_number, nickname, bot_id) VALUES ('oidOther','22334455','跨机器人昵称','botX')`).run()
+    updateMemberBinding('oidSameQq', '22334455', 'bot1', { groupId: 'g2' })
+    const r = db.prepare('SELECT nickname FROM user_mappings WHERE openid=?').get('oidSameQq') as any
+    expect(r.nickname).toBe('跨机器人昵称')
+  })
+
+  it('显式传入昵称优先于自动解析', () => {
+    db.prepare(`INSERT INTO napcat_members (group_openid, group_id, group_name, user_id, nickname) VALUES ('g3','123457','群','55667788','QQ昵称')`).run()
+    updateMemberBinding('oidExplicit', '55667788', 'bot1', { groupId: 'g3', nickname: '显式昵称' })
+    const r = db.prepare('SELECT nickname FROM user_mappings WHERE openid=?').get('oidExplicit') as any
+    expect(r.nickname).toBe('显式昵称')
+  })
+
+  it('resolveQqNickname：无任何来源返回空', () => {
+    expect(resolveQqNickname('99999999', 'nobody')).toBe('')
+  })
+
+  it('syncOpenidNicknames：群昵称为空时用 NapCat 昵称回填', () => {
+    db.prepare(`INSERT INTO user_mappings (openid, qq_number, nickname, bot_id) VALUES ('oidSync','33445566','','bot1')`).run()
+    db.prepare(`INSERT INTO napcat_members (group_openid, group_id, group_name, user_id, nickname) VALUES ('g4','123458','群','33445566','同步昵称')`).run()
+    const n = syncOpenidNicknames(['oidSync'])
+    const r = db.prepare('SELECT nickname FROM user_mappings WHERE openid=?').get('oidSync') as any
+    expect(r.nickname).toBe('同步昵称')
+    expect(n).toBeGreaterThan(0)
   })
 })

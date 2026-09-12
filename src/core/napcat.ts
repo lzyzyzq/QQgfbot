@@ -376,7 +376,7 @@ export function getAllGroupMembers(keyword = '', groupOpenid = '', botId = '', g
     rows.push({
       group_id: r.group_id,
       member_openid: r.member_openid,
-      nickname: r.nickname || '',
+      nickname: r.nickname || resolveQqNickname(info.qq, r.member_openid) || '',
       qq_id: info.qq,
       role: r.role || '',
       source: info.qq ? (source === 'napcat' ? 'napcat' : 'mapped') : 'none',
@@ -488,13 +488,15 @@ export function updateMemberBinding(openid: string, qq: string, botId?: string, 
     try { const gr = db.prepare('SELECT bot_id FROM groups WHERE id = ?').get(groupId) as any; gBotId = (gr && gr.bot_id) || ''; } catch {}
   }
   const bid = (botId || (gRow && gRow.bot_id) || gBotId || getMappingByOpenid(openid)?.bot_id || '').trim();
-  setUserMapping(openid, qq, '', bid);
+  // 绑定即自动补全昵称：显式传入优先，否则按「该 OpenID 群昵称 / 同 QQ 已有昵称 / NapCat 同步昵称」解析
+  let nick = String(opts?.nickname || '').trim();
+  if (!nick) { try { nick = resolveQqNickname(qq, openid); } catch { /* 忽略 */ } }
+  setUserMapping(openid, qq, nick, bid);
   db.prepare('UPDATE group_members SET qq_id = ? WHERE member_openid = ?').run(qq, openid);
   // 同步所在群（面板「用户管理 / OpenID 列表」按群串联）：确保 groups + group_members 记录存在。
   // 与 /api/bot/bind-qq 的行为对齐——群内插件绑定过去只写 user_mappings，导致面板里没有群归属。
   if (groupId) {
     try {
-      const nick = String(opts?.nickname || '').trim();
       db.exec(`CREATE TABLE IF NOT EXISTS groups (id TEXT PRIMARY KEY, name TEXT, member_count INTEGER DEFAULT 0, last_active DATETIME DEFAULT CURRENT_TIMESTAMP)`);
       db.prepare(`INSERT INTO groups (id, name, member_count, last_active) VALUES (?, '', 0, CURRENT_TIMESTAMP)
         ON CONFLICT(id) DO UPDATE SET last_active=CURRENT_TIMESTAMP`).run(groupId);
@@ -788,19 +790,48 @@ export function syncOpenidsFromMembers(): { added: number; updated: number; skip
     if (!qq || !/^\d{5,12}$/.test(qq)) { skipped++; continue; }
     const existing = getMappingByOpenid(b.openid);
     if (existing) {
-      const nick = b.nickname || existing.nickname;
+      const nick = b.nickname || existing.nickname || resolveQqNickname(qq, b.openid);
       const bot = b.botId || existing.bot_id;
-      const changed = (b.nickname && b.nickname !== existing.nickname) || (qq !== existing.qq_number) || (b.botId && b.botId !== existing.bot_id);
+      const changed = (b.nickname && b.nickname !== existing.nickname) || (nick && nick !== existing.nickname) || (qq !== existing.qq_number) || (b.botId && b.botId !== existing.bot_id);
       if (changed) {
         setUserMapping(b.openid, qq, nick, bot);
         updated++;
       }
     } else {
-      setUserMapping(b.openid, qq, b.nickname || '', b.botId || '');
+      setUserMapping(b.openid, qq, b.nickname || resolveQqNickname(qq, b.openid), b.botId || '');
       added++;
     }
   }
   return { added, updated, skipped };
+}
+
+// 解析 QQ 号对应的昵称：优先该 OpenID 的群成员昵称 → 同 QQ 其他 OpenID 已有昵称
+// → group_members 中已绑定该 QQ 的昵称 → NapCat 同步的 QQ 昵称（napcat_members.user_id）。
+// 用于绑定/展示时自动补全「QQ 昵称」，避免只同步了头像、昵称留空。
+export function resolveQqNickname(qq: string, openid = ''): string {
+  const q = String(qq || '').trim();
+  const oid = String(openid || '').trim();
+  const db = getDb();
+  if (oid) {
+    try {
+      const r = db.prepare("SELECT nickname FROM group_members WHERE member_openid = ? AND nickname != '' ORDER BY last_seen DESC, rowid DESC LIMIT 1").get(oid) as any;
+      if (r && r.nickname) return String(r.nickname);
+    } catch { /* 忽略 */ }
+  }
+  if (!q) return '';
+  try {
+    const r = db.prepare("SELECT nickname FROM user_mappings WHERE qq_number = ? AND nickname != '' ORDER BY last_updated DESC LIMIT 1").get(q) as any;
+    if (r && r.nickname) return String(r.nickname);
+  } catch { /* 忽略 */ }
+  try {
+    const r = db.prepare("SELECT nickname FROM group_members WHERE qq_id = ? AND nickname != '' ORDER BY last_seen DESC, rowid DESC LIMIT 1").get(q) as any;
+    if (r && r.nickname) return String(r.nickname);
+  } catch { /* 忽略 */ }
+  try {
+    const r = db.prepare("SELECT nickname FROM napcat_members WHERE user_id = ? AND nickname != '' ORDER BY updated_at DESC LIMIT 1").get(q) as any;
+    if (r && r.nickname) return String(r.nickname);
+  } catch { /* 忽略 */ }
+  return '';
 }
 
 // 用群成员最新昵称刷新 user_mappings.nickname（群成员改名后 OpenID 列表同步更新）。
@@ -817,8 +848,15 @@ export function syncOpenidNicknames(openids: string[] = []): number {
     const latest = db.prepare(
       "SELECT nickname FROM group_members WHERE member_openid = ? AND nickname != '' ORDER BY last_seen DESC, rowid DESC LIMIT 1"
     ).get(oid) as any;
-    if (latest && latest.nickname) {
-      const r = upd.run(latest.nickname, oid, latest.nickname);
+    let next = latest && latest.nickname ? String(latest.nickname) : '';
+    if (!next) {
+      // 群成员暂无昵称时，用同 QQ 的其他记录 / NapCat 同步昵称兜底
+      const qqRow = db.prepare('SELECT qq_number FROM user_mappings WHERE openid = ?').get(oid) as any;
+      const qq = String((qqRow && qqRow.qq_number) || '');
+      if (qq) next = resolveQqNickname(qq, oid);
+    }
+    if (next) {
+      const r = upd.run(next, oid, next);
       if (r.changes > 0) updated++;
     }
   }

@@ -18,6 +18,7 @@ import {
   renameNapcatMember,
   syncOpenidsFromMembers,
   syncOpenidNicknames,
+  resolveQqNickname,
 } from '../../core/napcat';
 import { getDb, updateQqNumber, setUserMapping } from '../../db/index';
 import { collectGroupStats } from '../../core/group-stats';
@@ -818,7 +819,7 @@ function queryOpenidList(keyword: string, botId: string, qq: string): any[] {
     return {
       openid: r.openid,
       qq_number: qqNum,
-      nickname: r.nickname || '',
+      nickname: r.nickname || resolveQqNickname(qqNum, r.openid) || '',
       bot_id: sourceBot,
       last_updated: r.last_updated || '',
       avatar: qqNum ? `https://q1.qlogo.cn/g?b=qq&nk=${qqNum}&s=640` : '',
