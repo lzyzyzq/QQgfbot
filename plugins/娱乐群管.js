@@ -12,8 +12,16 @@ module.exports = {
     var path = require('path');
     var crypto = require('crypto');
 
-    var FILE_NAME = ctx.config.dictFile || '娱乐群管.txt';
+    var FILE_NAME = ctx.config.dictFile || '';
     var CWD = process.cwd();
+    // 多词库支持：plugins/词库/.dic_active 记录当前启用的 txt（由 DIC管理.php 写入）
+    if (!FILE_NAME) {
+      try {
+        var _act = fs.readFileSync(path.join(CWD, 'plugins', '词库', '.dic_active'), 'utf8').trim();
+        if (_act && /^[^\\/:*?"<>|]+\.txt$/i.test(_act)) FILE_NAME = _act;
+      } catch (e) {}
+    }
+    if (!FILE_NAME) FILE_NAME = '娱乐群管.txt';
     // 词库统一目录化：txt 词库与它运行时创建的文件/用户信息全部落在 plugins/词库/ 下
     // 文件：优先 plugins/词库/<name>.txt，兼容旧 plugins/<name>.txt
     var FILE_PATH = null;
@@ -165,6 +173,54 @@ module.exports = {
       return v;
     }
 
+    // 命令别名表：execCmd 与「未闭合 $ 命令」容错解析共用
+    var CMD_ALIASES = {
+      '发': 'send', '回复': 'send', '发送文本': 'send', '文本': 'send', 'send_text': 'send',
+      'Markdown': 'md', 'MD': 'md', '发送Markdown': 'md', '发送MD': 'md', 'send_markdown': 'md',
+      '按钮': 'btn', '键盘': 'btn', '菜单': 'btn', 'send_keyboard': 'btn', 'send_button': 'btn',
+      '图片': 'img', '发送图片': 'img', 'send_media': 'img', 'send_temp_image': 'img', 'send_file_image': 'img',
+      '引用回复': 'quote', '引用': 'quote', '发送引用': 'quote',
+      '撤回': 'recall', '撤回消息': 'recall', 'recall_message': 'recall',
+      '随机文本': 'randText', '随机数': 'randInt', '计算': 'calc',
+      '读': 'read', '写': 'write', '访问': 'http', '调用': 'call',
+      '停止': 'stop', '空动作': 'nop', '终止匹配': 'term',
+      '延时': 'delay', '延迟': 'delay',
+      '查找': 'find', '寻找': 'find', '寻找文本': 'find', '查找文本': 'find', 'find': 'find',
+      '替换': 'replace', '文本替换': 'replace', 'replace': 'replace',
+      '长度': 'length', '文本长度': 'length', 'length': 'length',
+      '取中间': 'substr', '截取': 'substr', '截取中间': 'substr', 'substring': 'substr',
+      '取左': 'left', '左截取': 'left', 'left': 'left',
+      '取右': 'right', '右截取': 'right', 'right': 'right',
+      '包含': 'contains', '是否包含': 'contains', 'contains': 'contains',
+      '开头': 'starts', '是否开头': 'starts', 'starts_with': 'starts',
+      '结尾': 'ends', '是否结尾': 'ends', 'ends_with': 'ends',
+      '分割取': 'splitGet', '取第': 'splitGet', 'split_get': 'splitGet',
+      '大写': 'upper', '转大写': 'upper', 'upper': 'upper', 'uppercase': 'upper',
+      '小写': 'lower', '转小写': 'lower', 'lower': 'lower', 'lowercase': 'lower',
+      '去空格': 'trim', '清除空格': 'trim', 'trim': 'trim',
+      '查询机器人': 'me', '机器人信息': 'me', 'me': 'me', '我的信息': 'me', 'get_me': 'me', '网关信息': 'me', 'get_ws_url': 'me',
+      '禁言': 'mute', '禁言成员': 'mute', 'mute_member': 'mute',
+      '取消禁言': 'unmute', '解除禁言': 'unmute', '取消禁言成员': 'unmute', '解禁': 'unmute', 'cancel_mute_member': 'unmute',
+      '全体禁言': 'muteall', '禁言全体': 'muteall', 'mute_all': 'muteall',
+      '取消全体禁言': 'unmuteall', '解除全禁': 'unmuteall', 'cancel_mute_all': 'unmuteall',
+      '踢出成员': 'kick', '删除成员': 'kick', '踢人': 'kick', 'kick_member': 'kick', 'delete_member': 'kick',
+      '批量禁言成员': 'batchmute', '批量禁言': 'batchmute', 'mute_members': 'batchmute',
+      '取消批量禁言成员': 'batchunmute', '取消批量禁言': 'batchunmute', 'unmute_members': 'batchunmute',
+      '撤回群消息': 'recall', '撤回频道消息': 'recall', '撤回单聊消息': 'recall', '撤回私信': 'recall', 'recall_message_by_id': 'recall',
+      '外显': 'inline', '外显文字': 'inline', '文字外显': 'inline', 'inline': 'inline',
+      '解析成员': 'resolve', '成员解析': 'resolve', 'resolve_member': 'resolve',
+      '群消息': 'groupmsg', '发送群消息': 'groupmsg', 'group_message': 'groupmsg',
+      '单聊消息': 'c2cmsg', '私聊消息': 'c2cmsg', 'c2c_message': 'c2cmsg',
+      '发送频道消息': 'channelmsg', '频道消息': 'channelmsg', 'channel_message': 'channelmsg',
+      '艾特': 'at', 'At': 'at', 'at': 'at', '@': 'at',
+      '记录': 'log', '互动结果': 'nop', 'on_interaction_result': 'nop'
+    };
+    var CANON_CMDS = ['send', 'md', 'btn', 'img', 'quote', 'recall', 'randText', 'randInt', 'calc', 'read', 'write', 'http', 'call', 'stop', 'nop', 'term', 'delay', 'find', 'replace', 'length', 'substr', 'left', 'right', 'contains', 'starts', 'ends', 'splitGet', 'upper', 'lower', 'trim', 'me', 'mute', 'unmute', 'muteall', 'unmuteall', 'kick', 'batchmute', 'batchunmute', 'inline', 'resolve', 'groupmsg', 'c2cmsg', 'channelmsg', 'at', 'log'];
+    function isKnownCmdToken(w) {
+      if (!w) return false;
+      return !!CMD_ALIASES[w] || CANON_CMDS.indexOf(w) >= 0;
+    }
+
     // 按调用栈解析 %变量%，vars 为规则级变量（新值覆盖内置）
     function interp(text, scope) {
       var s = String(text == null ? '' : text);
@@ -177,7 +233,19 @@ module.exports = {
         out += expand(rest.slice(0, oi), scope);
         rest = rest.slice(oi + 1);
         var ci = rest.indexOf('$');
-        if (ci < 0) { out += '$' + rest; rest = ''; break; }
+        if (ci < 0) {
+          // 容错：作者漏写结尾 $ 时，若行尾命中的是合法命令名，则按“到行尾闭合”执行；
+          // 否则仍按字面量输出（避免把正文里的单个 $ 误当命令）。
+          var head = rest.split(/\s+/)[0];
+          if (isKnownCmdToken(head)) {
+            var rr = execCmd(rest, scope);
+            if (rr != null && rr.value != null && rr.value !== '') out += rr.value;
+          } else {
+            out += '$' + rest;
+          }
+          rest = '';
+          break;
+        }
         var cmdBody = rest.slice(0, ci);
         rest = rest.slice(ci + 1);
         var r = execCmd(cmdBody, scope);
@@ -228,48 +296,7 @@ module.exports = {
       var sp = body.indexOf(' ');
       var name = (sp < 0 ? body : body.slice(0, sp)).trim();
       var arg = sp < 0 ? '' : body.slice(sp + 1).trim();
-      var aliases = {
-        '发': 'send', '回复': 'send', '发送文本': 'send', '文本': 'send', 'send_text': 'send',
-        'Markdown': 'md', 'MD': 'md', '发送Markdown': 'md', '发送MD': 'md', 'send_markdown': 'md',
-        '按钮': 'btn', '键盘': 'btn', '菜单': 'btn', 'send_keyboard': 'btn', 'send_button': 'btn',
-        '图片': 'img', '发送图片': 'img', 'send_media': 'img', 'send_temp_image': 'img', 'send_file_image': 'img',
-        '引用回复': 'quote', '引用': 'quote', '发送引用': 'quote',
-        '撤回': 'recall', '撤回消息': 'recall', 'recall_message': 'recall',
-        '随机文本': 'randText', '随机数': 'randInt', '计算': 'calc',
-        '读': 'read', '写': 'write', '访问': 'http', '调用': 'call',
-        '停止': 'stop', '空动作': 'nop', '终止匹配': 'term',
-        '延时': 'delay', '延迟': 'delay',
-        // 文本函数（v1.3 1.2 节）
-        '查找': 'find', '寻找': 'find', '寻找文本': 'find', '查找文本': 'find', 'find': 'find',
-        '替换': 'replace', '文本替换': 'replace', 'replace': 'replace',
-        '长度': 'length', '文本长度': 'length', 'length': 'length',
-        '取中间': 'substr', '截取': 'substr', '截取中间': 'substr', 'substring': 'substr',
-        '取左': 'left', '左截取': 'left', 'left': 'left',
-        '取右': 'right', '右截取': 'right', 'right': 'right',
-        '包含': 'contains', '是否包含': 'contains', 'contains': 'contains',
-        '开头': 'starts', '是否开头': 'starts', 'starts_with': 'starts',
-        '结尾': 'ends', '是否结尾': 'ends', 'ends_with': 'ends',
-        '分割取': 'splitGet', '取第': 'splitGet', 'split_get': 'splitGet',
-        '大写': 'upper', '转大写': 'upper', 'upper': 'upper', 'uppercase': 'upper',
-        '小写': 'lower', '转小写': 'lower', 'lower': 'lower', 'lowercase': 'lower',
-        '去空格': 'trim', '清除空格': 'trim', 'trim': 'trim',
-        '查询机器人': 'me', '机器人信息': 'me', 'me': 'me', '我的信息': 'me', 'get_me': 'me', '网关信息': 'me', 'get_ws_url': 'me',
-        '禁言': 'mute', '禁言成员': 'mute', 'mute_member': 'mute',
-        '取消禁言': 'unmute', '解除禁言': 'unmute', '取消禁言成员': 'unmute', '解禁': 'unmute', 'cancel_mute_member': 'unmute',
-        '全体禁言': 'muteall', '禁言全体': 'muteall', 'mute_all': 'muteall',
-        '取消全体禁言': 'unmuteall', '解除全禁': 'unmuteall', 'cancel_mute_all': 'unmuteall',
-        '踢出成员': 'kick', '删除成员': 'kick', '踢人': 'kick', 'kick_member': 'kick', 'delete_member': 'kick',
-        '批量禁言成员': 'batchmute', '批量禁言': 'batchmute', 'mute_members': 'batchmute',
-        '取消批量禁言成员': 'batchunmute', '取消批量禁言': 'batchunmute', 'unmute_members': 'batchunmute',
-        '撤回群消息': 'recall', '撤回频道消息': 'recall', '撤回单聊消息': 'recall', '撤回私信': 'recall', 'recall_message_by_id': 'recall',
-        '外显': 'inline', '外显文字': 'inline', '文字外显': 'inline', 'inline': 'inline',
-        '解析成员': 'resolve', '成员解析': 'resolve', 'resolve_member': 'resolve',
-        '群消息': 'groupmsg', '发送群消息': 'groupmsg', 'group_message': 'groupmsg',
-        '单聊消息': 'c2cmsg', '私聊消息': 'c2cmsg', 'c2c_message': 'c2cmsg',
-        '发送频道消息': 'channelmsg', '频道消息': 'channelmsg', 'channel_message': 'channelmsg',
-        '艾特': 'at', 'At': 'at', 'at': 'at', '@': 'at',
-        '记录': 'log', '互动结果': 'nop', 'on_interaction_result': 'nop'
-      };
+      var aliases = CMD_ALIASES;
       var fn = aliases[name] || name;
       if (fn === 'send') { scope.outputs.push(interp(arg, scope)); return { value: '' }; }
       if (fn === 'md') { scope.outputs.push({ md: interp(arg, scope) }); return { value: '' }; }
