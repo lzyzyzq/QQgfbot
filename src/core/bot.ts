@@ -82,6 +82,13 @@ function nextMsgSeq(botId?: string): number {
   return botMsgSeq[key];
 }
 
+// 被动回复额度耗尽（msg_id 失效或超出次数限制）：降级为主动发送（不带 msg_id）重试一次。
+// 同一命令触发多个插件回复（如「群信息」看板 + PHP 长图）时，后发消息易被 40034128 拒绝。
+function isPassiveReplyLimitError(err: any): boolean {
+  const m = String((err && err.message) || '');
+  return m.indexOf('40034128') !== -1 || m.indexOf('被动回复') !== -1;
+}
+
 // 生成 RFC3339 格式时间（如 2026-08-05T11:23:05+08:00），供禁言到期时间 mute_expire_at 使用
 function formatRfc3339(ms: number): string {
   const d = new Date(ms);
@@ -418,6 +425,19 @@ export class BotCore {
       noteSelfSend(`group:${this.getBotId()}:${groupOpenid}`, content);
       return result;
     } catch (err: any) {
+      // 被动回复额度耗尽 → 主动发送重试一次（不带 msg_id）
+      if (msgId && isPassiveReplyLimitError(err)) {
+        try {
+          const body2: any = { content, msg_type: 0, msg_seq: nextMsgSeq(this.getBotId()) };
+          const result2 = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body2));
+          logger.info(`GROUP SEND retry without msg_id OK`);
+          this.recordBotSend(groupOpenid, '群文本', content, true);
+          noteSelfSend(`group:${this.getBotId()}:${groupOpenid}`, content);
+          return result2;
+        } catch (err2: any) {
+          logger.error(`[机器人:${this.getBotId()} 群:${groupOpenid}] Send group msg retry failed: ${err2.message}`);
+        }
+      }
       logger.error(`[机器人:${this.getBotId()} 群:${groupOpenid}] Send group msg failed: ${err.message}`);
       this.recordBotSend(groupOpenid, '群文本', content, false, String(err.message || ''));
       return null;
@@ -507,6 +527,21 @@ export class BotCore {
       noteSelfSend(`group:${this.getBotId()}:${groupOpenid}`, markdown);
       return result;
     } catch (err: any) {
+      // 被动回复额度耗尽 → 主动发送重试一次（不带 msg_id）
+      if (msgId && isPassiveReplyLimitError(err)) {
+        try {
+          const body2: any = { msg_type: MSG_TYPE.MARKDOWN, markdown: { content: markdown }, msg_seq: nextMsgSeq(this.getBotId()) };
+          if (templateId) body2.markdown.custom_template_id = templateId;
+          if (params) body2.markdown.params = params;
+          const result2 = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body2));
+          logger.info(`Markdown GROUP retry without msg_id OK`);
+          this.recordBotSend(groupOpenid, '群Markdown', markdown, true);
+          noteSelfSend(`group:${this.getBotId()}:${groupOpenid}`, markdown);
+          return result2;
+        } catch (err2: any) {
+          logger.error(`Send markdown group retry failed: ${err2.message}`);
+        }
+      }
       logger.error(`Send markdown group failed: ${err.message}`);
       this.recordBotSend(groupOpenid, '群Markdown', markdown, false, String(err.message || ''));
       return null;
@@ -590,6 +625,18 @@ export class BotCore {
       this.recordBotSend(groupOpenid, '群图片', fileInfo.substring(0, 20), true);
       return result;
     } catch (err: any) {
+      // 被动回复额度耗尽 → 主动发送重试一次（不带 msg_id）
+      if (msgId && isPassiveReplyLimitError(err)) {
+        try {
+          const body2: any = { msg_type: MSG_TYPE.RICH_MEDIA, media: { file_info: fileInfo }, msg_seq: nextMsgSeq(this.getBotId()) };
+          const result2 = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body2));
+          logger.info(`Group image message retry without msg_id OK`);
+          this.recordBotSend(groupOpenid, '群图片', fileInfo.substring(0, 20), true);
+          return result2;
+        } catch (err2: any) {
+          logger.error(`Send group image message retry failed: ${err2.message}`);
+        }
+      }
       logger.error(`Send group image message failed: ${err.message}`);
       this.recordBotSend(groupOpenid, '群图片', fileInfo.substring(0, 20), false, String(err.message || ''));
       return null;

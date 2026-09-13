@@ -38,11 +38,18 @@ export interface GroupDashboardData {
   elapsedMs: number;
 }
 
+export interface GroupRankBot {
+  botId: string;
+  name: string;
+  count: number;
+}
+
 export interface GroupRankItem {
   groupId: string;
   name: string;
   groupNumber: string;
   count: number;
+  bots?: GroupRankBot[];
 }
 
 export interface GroupStatsFull {
@@ -181,25 +188,71 @@ export function collectGroupStats(groupOpenid: string): GroupDashboardData {
   }
 }
 
-// 跨群活跃排行：今日各群消息数 TopN（排除空 group_id）
+// 机器人 appId → 展示名（data/bots.json 由管理面板维护），取不到回退 appId
+function botNameMap(): Record<string, string> {
+  try {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const file = path.resolve(process.cwd(), 'data', 'bots.json');
+    const arr = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const map: Record<string, string> = {};
+    if (Array.isArray(arr)) {
+      for (const b of arr) {
+        if (b && b.appId) map[String(b.appId)] = String(b.name || '');
+      }
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+// 跨群活跃排行：今日各群消息数 TopN。
+// 同一物理群会因多机器人各持一个群 OpenID 而重复出现，这里按真实群号合并为一行，
+// 并保留各机器人自己的今日消息数（bots 字段）供对比，避免不同机器人重复计数被相加。
 export function collectGroupRanking(limit = 5): GroupRankItem[] {
   const db = getDb();
   try {
     const today = "date(created_at,'localtime') = date('now','localtime')";
     const rows = db.prepare(
-      `SELECT group_id, COUNT(*) c FROM system_logs
+      `SELECT group_id, bot_id, COUNT(*) c FROM system_logs
        WHERE category='message' AND group_id != '' AND group_id IS NOT NULL AND ${today}
-       GROUP BY group_id ORDER BY c DESC LIMIT ?`
-    ).all(limit) as any[];
-    return rows.map((r) => {
+       GROUP BY group_id, bot_id ORDER BY c DESC`
+    ).all() as any[];
+    const names = botNameMap();
+    const byKey = new Map<string, { groupId: string; name: string; groupNumber: string; count: number; bots: Map<string, number> }>();
+    for (const r of rows) {
+      const gid = String(r.group_id);
       let name = '';
       let groupNumber = '';
       try {
-        const g = db.prepare('SELECT name, group_number FROM groups WHERE id = ?').get(r.group_id) as any;
+        const g = db.prepare('SELECT name, group_number FROM groups WHERE id = ?').get(gid) as any;
         if (g) { name = g.name || ''; groupNumber = String(g.group_number || ''); }
       } catch {}
-      return { groupId: String(r.group_id), name, groupNumber, count: r.c || 0 };
-    });
+      const key = groupNumber || gid;
+      let item = byKey.get(key);
+      if (!item) {
+        item = { groupId: gid, name, groupNumber, count: 0, bots: new Map() };
+        byKey.set(key, item);
+      } else if (!item.name && name) {
+        item.name = name;
+      }
+      const botId = String(r.bot_id || '');
+      item.bots.set(botId, (item.bots.get(botId) || 0) + (r.c || 0));
+      item.count += r.c || 0;
+    }
+    return Array.from(byKey.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit)
+      .map((it) => ({
+        groupId: it.groupId,
+        name: it.name,
+        groupNumber: it.groupNumber,
+        count: it.count,
+        bots: Array.from(it.bots.entries())
+          .map(([botId, count]) => ({ botId, name: names[botId] || botId, count }))
+          .sort((a, b) => b.count - a.count),
+      }));
   } catch {
     return [];
   }

@@ -26,6 +26,9 @@ $用户 = (string)($in['userId'] ?? '');
 $appid = (string)($in['botId'] ?? '');
 $作者 = is_array($in['author'] ?? null) ? $in['author'] : array();
 $当前昵称 = (string)($作者['username'] ?? '');
+// 统一 @ 展示为真实昵称（取不到昵称回退 OpenID），不再输出 <@!openid> 原始富文本提及
+if ($当前昵称 === '') $当前昵称 = $用户;
+$艾特 = '@' . $当前昵称;
 
 $isGroup = ($消息来源 === 'group');
 if (!$isGroup) exit(0); // 仅群聊
@@ -114,7 +117,21 @@ function 群排行($stats, $当前群) {
     $name = $isSelf ? '本群' : (string)($g['name'] ?? '');
     if ($name === '') $name = '未命名群';
     if (!$isSelf && !empty($g['groupNumber'])) $name .= '(' . $g['groupNumber'] . ')';
-    $out[] = array('name' => $name, 'value' => (string)$c . '条',
+    // 同一物理群已按真实群号合并为一行；多机器人时展示各自今日消息数对比（不简单相加）
+    $bots = is_array($g['bots'] ?? null) ? $g['bots'] : array();
+    if (count($bots) > 1) {
+      $片段 = array();
+      foreach ($bots as $b) {
+        $bn = trim((string)($b['name'] ?? ''));
+        if ($bn === '') $bn = (string)($b['botId'] ?? '');
+        $bn = mb_substr($bn, 0, 4);
+        $片段[] = $bn . ':' . (int)($b['count'] ?? 0);
+      }
+      $value = implode(' ', $片段);
+    } else {
+      $value = (string)$c . '条';
+    }
+    $out[] = array('name' => $name, 'value' => $value,
       'score' => $最大 > 0 ? $c / $最大 : 0);
   }
   return $out;
@@ -266,7 +283,7 @@ if (前缀($消息, "群信息") || 前缀($消息, "活跃统计") || 前缀($�
     $topActive, $topRecent, 'QQ机器人 · 群活跃统计', $topGroups, $群描述, (float)($stats['elapsedMs'] ?? 0));
 
   if ($卡片 !== '') {
-    图片($卡片, "<@!" . $用户 . ">「" . $群名 . "」活跃统计", "群活跃统计.png");
+    图片($卡片, $艾特 . "「" . $群名 . "」活跃统计", "群活跃统计.png");
   } else {
     $文本 = "「" . $群名 . "」活跃统计（" . date("Y-m-d") . "）\n";
     foreach ($metrics as $m) $文本 .= $m[0] . "：" . $m[1] . "\n";
@@ -274,7 +291,7 @@ if (前缀($消息, "群信息") || 前缀($消息, "活跃统计") || 前缀($�
       $文本 .= "\n最活跃成员：";
       foreach ($topActive as $r) $文本 .= $r['name'] . "(" . $r['value'] . ") ";
     }
-    文字("<@!" . $用户 . ">\n" . $文本);
+    文字($艾特 . "\n" . $文本);
   }
   exit(0);
 }

@@ -196,7 +196,7 @@ module.exports = {
     function builtinVars(data, params, statsInfo) {
       var groupId = data.groupId || '';
       var authorId = (data.author && data.author.id) || '';
-      var nick = (data.author && (data.author.name || data.author.nickname)) || '';
+      var nick = (data.author && (data.author.name || data.author.nickname || data.author.username)) || '';
       var now = new Date();
       function pad(n) { return (n < 10 ? '0' : '') + n; }
       var v = {
@@ -421,7 +421,7 @@ module.exports = {
       }
       if (fn === 'at') {
         var atId = resolveMemberArg(interp(arg, scope), scope);
-        return { value: atId ? '<@' + atId + '>' : '' };
+        return { value: atId ? '@' + memberDisplayName(atId) : '' };
       }
       if (fn === 'groupmsg' || fn === 'c2cmsg' || fn === 'channelmsg') {
         var mk = {};
@@ -700,8 +700,22 @@ module.exports = {
           bot.kickMember(group, target).then(function(r){
             if (r && r.code !== undefined && r.code !== 0) logActionFail(fn, 'code=' + r.code + ' ' + (r.message || ''));
           }).catch(function(e){ logActionFail(fn, (e && e.message) || ''); });
-          return '';
+      return '';
+    }
+
+    // OpenID → 展示昵称（取不到昵称回退 OpenID）；统一 @用户 输出真实昵称
+    function memberDisplayName(openid) {
+      var id = String(openid || '').trim();
+      if (!id) return '';
+      try {
+        if (ctx.engine && typeof ctx.engine.getInfo === 'function') {
+          var info = ctx.engine.getInfo(id);
+          if (info && info.nickname) return String(info.nickname);
         }
+      } catch (e) {}
+      return id;
+    }
+
         return warnUnsupported(fn, fn === 'kick' ? '踢出成员' : fn === 'unmute' ? '取消禁言' : '禁言成员');
       }
       if (fn === 'batchmute' || fn === 'batchunmute') {

@@ -645,8 +645,8 @@ module.exports = {
       if (owner && (owner.openid || owner.qq_id || owner.nickname)) {
         var qq = owner.qq_id || '';
         var nick = owner.nickname || '群主';
-        var at = owner.openid ? '<@!' + owner.openid + '>' : '';
-        await this.reply(ctx, data, '👑 当前群群主：' + nick + (qq ? '（QQ: ' + qq + '）' : '') + (at ? '\n' + at + ' 点此 @TA' : '\n发送「联系群主」可获取，需要对接事务请直接 @TA。'));
+        var at = '@' + nick;
+        await this.reply(ctx, data, '👑 当前群群主：' + nick + (qq ? '（QQ: ' + qq + '）' : '') + '\n' + at + ' 需要对接事务请直接联系 TA。');
       } else {
         await this.reply(ctx, data, '👑 当前群暂未记录群主信息，请直接在群里 @群主 联系。');
       }

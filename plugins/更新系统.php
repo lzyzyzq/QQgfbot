@@ -39,7 +39,10 @@ $用户 = (string)($in['userId'] ?? '');
 if ($类型 !== 'group') exit(0); // 仅群聊
 if ($群 === '') exit(0);
 
-$at = "<@!" . $用户 . ">";
+$作者 = is_array($in['author'] ?? null) ? $in['author'] : array();
+$昵称 = trim((string)($作者['username'] ?? ''));
+if ($昵称 === '') $昵称 = $用户;
+$at = '@' . $昵称;
 
 // 「终端 / 执行」前缀统一交给「终端.php」插件执行任意命令（本插件不再抢答，
 // 即使后续内容是 cd/wget/unzip 等升级命令形态，也由终端插件原样 shell 执行）。
