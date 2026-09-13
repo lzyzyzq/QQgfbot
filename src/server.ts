@@ -17,6 +17,7 @@ import { createSystemRoutes } from './admin/routes/system';
 import { createBotRoutes } from './admin/routes/bot';
 import { createNapcatRoutes } from './admin/routes/napcat';
 import { createOpenPlatformRoutes } from './admin/routes/open-platform';
+import { createRealtimeRoutes } from './admin/routes/realtime';
 import editorRoutes from './admin/routes/editor';
 import type { AdminConfig } from './admin/config';
 
@@ -606,6 +607,7 @@ async function main() {
   app.use('/api/auth', createAuthRoutes(adminAuth));
   app.use('/api/bots', createBotRoutes(botManager));
   app.use('/api/open-platform', createOpenPlatformRoutes(botManager, adminAuth));
+  app.use('/api/realtime', createRealtimeRoutes(botManager));
   app.use('/api/napcat', createNapcatRoutes(adminAuth, eventBus));
   app.use('/api/editor', editorRoutes);
   app.use('/api/plugins', createPluginRoutes(PLUGINS_DIR, adminAuth));

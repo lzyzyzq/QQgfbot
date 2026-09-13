@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import type { BotManager } from '../manager';
 import { requireSuperMaster } from '../middleware';
+import { resolveMaxBots } from '../config';
 import { getBot, getBotInstance } from '../../core/bot';
 import { WebhookManager } from '../../core/webhook';
 import { getDb, setConfig, getConfig } from '../../db/index';
@@ -490,6 +491,19 @@ export function createBotRoutes(botManager: BotManager): Router {
       return;
     }
 
+    // 机器人额度校验：超主 5 个 / 其他有效用户 1 个，可在用户权限中单独覆盖
+    const maxBots = _maxBotsFor(req);
+    const owned = botManager.listBots(req.adminUser!.username).length;
+    if (maxBots > 0 && owned >= maxBots) {
+      res.status(403).json({
+        error: `已达到机器人数量上限（${maxBots} 个），无法继续添加`,
+        code: 'BOT_QUOTA_EXCEEDED',
+        maxBots,
+        owned,
+      });
+      return;
+    }
+
     const bot = botManager.addBot({
       name,
       appId,
@@ -678,6 +692,17 @@ export function createBotRoutes(botManager: BotManager): Router {
 function _checkAccess(req: Request, bot: { owner: string }): boolean {
   if (req.adminUser?.role === 'super_master') return true;
   return req.adminUser?.username === bot.owner;
+}
+
+// 当前用户的机器人额度：优先取用户权限中的 maxBots，否则回退角色默认值
+function _maxBotsFor(req: Request): number {
+  const role = req.adminUser?.role || 'user';
+  let perms: any = null;
+  try {
+    const admins = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'admin.json'), 'utf-8')) as any[];
+    perms = admins.find((a: any) => a.username === req.adminUser?.username)?.permissions || null;
+  } catch { /* ignore */ }
+  return resolveMaxBots(role, perms);
 }
 
 function _secretFor(req: Request, bot: { clientSecret: string; secretVisible?: boolean }): string {

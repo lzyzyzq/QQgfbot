@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import type { Logger } from '../logger';
 import { requireSuperMaster } from '../middleware';
+import { resolveMaxBots } from '../config';
 import type { AdminAuth } from '../auth';
 import type { BotRegistry } from '../registry';
 import { getBot, getBotInstance } from '../../core/bot';
@@ -734,6 +735,90 @@ export function createSystemRoutes(
     return out;
   }
 
+  // 词库统计：plugins 目录下 .txt/.cid 视为词库文件，非空非注释行计为词条
+  function dictStats(): { files: number; entries: number } {
+    let files = 0;
+    let entries = 0;
+    const walk = (dir: string, depth: number): void => {
+      if (depth > 5) return;
+      let list: string[] = [];
+      try { list = fs.readdirSync(dir); } catch { return; }
+      for (const name of list) {
+        if (name.startsWith('.')) continue;
+        const full = path.join(dir, name);
+        let st: fs.Stats | null = null;
+        try { st = fs.statSync(full); } catch { continue; }
+        if (st.isDirectory()) {
+          if (name === 'node_modules' || name === '__pycache__') continue;
+          walk(full, depth + 1);
+        } else {
+          const ext = path.extname(name).toLowerCase();
+          if (ext !== '.txt' && ext !== '.cid') continue;
+          files++;
+          let text = '';
+          try { text = fs.readFileSync(full, 'utf-8'); } catch { /* ignore */ }
+          for (const line of text.split(/\r?\n/)) {
+            const t = line.trim();
+            if (!t || t.startsWith('#') || t.startsWith('//')) continue;
+            entries++;
+          }
+        }
+      }
+    };
+    walk(path.resolve(process.cwd(), 'plugins'), 0);
+    return { files, entries };
+  }
+
+  // 消息收发统计：全量与今日（按北京时间归日）
+  function messageStats(): { in: number; out: number; todayIn: number; todayOut: number } {
+    const r = { in: 0, out: 0, todayIn: 0, todayOut: 0 };
+    try {
+      const db = getDb();
+      const total = (cat: string) => Number((db.prepare('SELECT COUNT(*) AS c FROM system_logs WHERE category = ?').get(cat) as any)?.c || 0);
+      const today = (cat: string) => Number((db.prepare("SELECT COUNT(*) AS c FROM system_logs WHERE category = ? AND date(created_at, '+8 hours') = date('now', '+8 hours')").get(cat) as any)?.c || 0);
+      r.in = total('message');
+      r.out = total('send');
+      r.todayIn = today('message');
+      r.todayOut = today('send');
+    } catch { /* ignore */ }
+    return r;
+  }
+
+  // 今日异常：error/fatal 级别日志数（按北京时间归日）
+  function errorsToday(): number {
+    try {
+      return Number((getDb().prepare("SELECT COUNT(*) AS c FROM system_logs WHERE level IN ('error','fatal') AND date(created_at, '+8 hours') = date('now', '+8 hours')").get() as any)?.c || 0);
+    } catch { return 0; }
+  }
+
+  // 近 14 天消息趋势（按北京时间归日，缺失日期补 0）
+  function eventTrend14(): { label: string; in: number; out: number }[] {
+    const out: { label: string; in: number; out: number }[] = [];
+    const map = new Map<string, { in: number; out: number }>();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() + 8 * 3600000 - i * 86400000);
+      const key = d.toISOString().slice(0, 10);
+      map.set(key, { in: 0, out: 0 });
+      out.push({ label: (d.getUTCMonth() + 1) + '/' + d.getUTCDate(), in: 0, out: 0 });
+    }
+    try {
+      const since = new Date(Date.now() - 14 * 86400000).toISOString().replace('T', ' ').slice(0, 19);
+      const rows = getDb().prepare(
+        "SELECT date(created_at, '+8 hours') AS d, category, COUNT(*) AS c FROM system_logs WHERE created_at >= ? AND category IN ('message','send') GROUP BY d, category"
+      ).all(since) as any[];
+      for (const r of rows) {
+        const b = map.get(String(r.d));
+        if (b) {
+          if (r.category === 'message') b.in += Number(r.c) || 0;
+          else b.out += Number(r.c) || 0;
+        }
+      }
+    } catch { /* ignore */ }
+    let i = 0;
+    for (const v of map.values()) { out[i].in = v.in; out[i].out = v.out; i++; }
+    return out;
+  }
+
   // PM2 进程状态（仪表盘「部署进程状态」）：pm2 jlist JSON，10s 缓存；未安装 pm2 时 available:false
   let pm2Cache: { at: number; data: any } = { at: 0, data: null };
   function pm2Status(): any {
@@ -860,6 +945,41 @@ export function createSystemRoutes(
       if (uc && uc.pluginVersion) pluginVersion = String(uc.pluginVersion);
     } catch {}
 
+    // 词库 / 消息 / 异常 / 趋势：仪表盘统计卡片与图表数据
+    const dict = dictStats();
+    const msgs = messageStats();
+    // 面板账号统计：总数 + 今日新增（createdAt 落在北京时间今日）
+    let usersTotal = 0;
+    let usersToday = 0;
+    try {
+      const admins = (adminAuth ? adminAuth.getAdmins() : []) as any[];
+      usersTotal = admins.length;
+      const todayKey = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+      for (const a of admins) {
+        if (!a.createdAt) continue;
+        const d = new Date(Number(a.createdAt) + 8 * 3600000).toISOString().slice(0, 10);
+        if (d === todayKey) usersToday++;
+      }
+    } catch {}
+    // 机器人状态分布（运行中 / 已停止 / 错误）
+    const botStates = {
+      running: botEntries.filter((b: any) => b && b.status === 'running').length,
+      stopped: botEntries.filter((b: any) => b && b.status === 'stopped').length,
+      error: botEntries.filter((b: any) => b && b.status === 'error').length,
+    };
+    // 当前登录用户的机器人额度（超主 5 / 其他有效用户 1，可在用户权限中单独覆盖）
+    let quota = { used: 0, total: 0, role: '' };
+    try {
+      const u = (_req as any).adminUser as { username?: string; role?: string } | undefined;
+      if (u && u.username) {
+        const owned = botEntries.filter((b: any) => b && b.owner === u.username).length;
+        const role = String(u.role || 'user');
+        const cfgUser = adminAuth ? adminAuth.getUser(u.username) : undefined;
+        const maxBots = resolveMaxBots(role, cfgUser?.permissions);
+        quota = { used: owned, total: maxBots, role };
+      }
+    } catch {}
+
     res.json({
       // 版本优先取实际安装版本（package.json，随补丁更新），避免面板配置过时导致仪表盘显示旧版本/-
       version: pkgVer || cfgSafe('update.version') || '',
@@ -884,6 +1004,13 @@ export function createSystemRoutes(
       },
       disk: disk ? { root: disk } : null,
       bots: { total: botsTotal, online: botsOnline },
+      users: { total: usersTotal, today_new: usersToday },
+      lexicons: { total: dict.files, entries: dict.entries },
+      messages: { in: msgs.in, out: msgs.out, todayIn: msgs.todayIn, todayOut: msgs.todayOut, today: msgs.todayIn + msgs.todayOut },
+      errorsToday: errorsToday(),
+      trend14: eventTrend14(),
+      botStates,
+      quota,
       events24: eventTrend24(),
       recent,
       nodeVersion: process.version,

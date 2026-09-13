@@ -109,6 +109,7 @@ export class AdminAuth {
     if (exists) {
       Object.assign(exists, user);
     } else {
+      if (!user.createdAt) user.createdAt = Date.now();
       this.config.admins.push(user);
     }
     saveAdmins(this.config.admins);
@@ -144,6 +145,7 @@ export class AdminAuth {
       loginAble: a.loginAble,
       expireAt: a.expireAt,
       permissions: a.permissions,
+      createdAt: a.createdAt,
     }));
   }
 }

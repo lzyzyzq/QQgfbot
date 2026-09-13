@@ -191,6 +191,8 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       nickname: a.nickname || '', openid: a.openid || '', avatar: a.avatar || '',
       loginAble: a.loginAble, expireAt: a.expireAt,
       permissions: a.permissions,
+      createdAt: a.createdAt,
+      createdBy: a.createdBy,
     })));
   });
 

@@ -19,6 +19,7 @@ export interface AdminUser {
   expireAt?: number;
   permissions?: UserPermission;
   createdBy?: string;
+  createdAt?: number;
   passwordChangedAt?: string;
 }
 
@@ -37,12 +38,12 @@ export interface UserPermission {
 
 export const ROLE_PERMISSIONS: Record<string, UserPermission> = {
   super_master: {
-    canAddBot: true, maxBots: 999, canEditBot: true, canDeleteBot: true,
+    canAddBot: true, maxBots: 5, canEditBot: true, canDeleteBot: true,
     canUploadPlugin: true, canManageOwnPlugins: true, canUseAllPlugins: true,
     canEditPluginCode: true, canManageGroups: true, canTestPlugin: true,
   },
   master: {
-    canAddBot: true, maxBots: 5, canEditBot: true, canDeleteBot: true,
+    canAddBot: true, maxBots: 1, canEditBot: true, canDeleteBot: true,
     canUploadPlugin: true, canManageOwnPlugins: true, canUseAllPlugins: true,
     canEditPluginCode: true, canManageGroups: true, canTestPlugin: true,
   },
@@ -57,6 +58,15 @@ export const ROLE_PERMISSIONS: Record<string, UserPermission> = {
     canEditPluginCode: false, canManageGroups: false, canTestPlugin: false,
   },
 };
+
+// 解析用户可建机器人上限：超级主人固定为角色上限（避免历史遗留的 999 生效），
+// 其他角色优先取用户自定义权限，其次角色默认值
+export function resolveMaxBots(role: string, permissions?: UserPermission | null): number {
+  if (role === 'super_master') return ROLE_PERMISSIONS.super_master ? ROLE_PERMISSIONS.super_master.maxBots : 5;
+  const def = ROLE_PERMISSIONS[role] ? ROLE_PERMISSIONS[role].maxBots : 0;
+  if (permissions && typeof permissions.maxBots === 'number') return permissions.maxBots;
+  return def;
+}
 
 export interface BotEntry {
   id: string;

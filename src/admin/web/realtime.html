@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>消息工作台 - QQ Bot 管理面板</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f1419;--bg2:#1a1f2e;--bg3:#222840;--text:#d9e0e8;--text2:#8892a4;--accent:#3b82f6;--accent2:#2563eb;--danger:#ef4444;--success:#22c55e;--warn:#f59e0b;--border:#2a3040;--radius:8px}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+.rt-app{display:flex;flex-direction:column;height:100vh}
+.rt-topbar{display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0}
+.rt-title{font-size:16px;font-weight:700;color:var(--accent);white-space:nowrap}
+.rt-bot{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);flex-wrap:wrap}
+.rt-bot select{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:13px;outline:none;max-width:230px}
+.rt-appid{font-size:12px;color:var(--text2)}
+.rt-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:8px;padding:3px}
+.rt-tab{padding:5px 14px;font-size:13px;border-radius:6px;cursor:pointer;color:var(--text2);user-select:none;transition:.15s}
+.rt-tab:hover{color:var(--text)}
+.rt-tab.active{background:var(--accent);color:#fff}
+.rt-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.rt-conn{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
+.rt-dot{width:8px;height:8px;border-radius:50%;background:var(--text2);flex:none}
+.rt-dot.on{background:var(--success);box-shadow:0 0 6px var(--success)}
+.rt-dot.off{background:var(--danger)}
+.rt-body{flex:1;display:flex;min-height:0}
+.rt-side{width:290px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.rt-side-head{padding:12px 16px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.rt-convs{flex:1;overflow-y:auto;overscroll-behavior:contain}
+.rt-conv{display:flex;gap:10px;padding:11px 16px;cursor:pointer;border-bottom:1px solid rgba(127,127,127,.08);transition:.15s}
+.rt-conv:hover{background:var(--bg3)}
+.rt-conv.active{background:var(--bg3);border-left:3px solid var(--accent);padding-left:13px}
+.rt-avatar{width:38px;height:38px;border-radius:8px;background:var(--bg3);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none;overflow:hidden}
+.rt-conv.active .rt-avatar{background:var(--accent);color:#fff}
+.rt-conv-main{flex:1;min-width:0}
+.rt-conv-top{display:flex;align-items:baseline;gap:6px}
+.rt-conv-name{font-size:13.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt-conv-time{font-size:10.5px;color:var(--text2);flex:none}
+.rt-conv-sub{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
+.rt-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;background:var(--bg3);color:var(--text2);margin-right:5px;vertical-align:1px}
+.rt-badge.g{color:#93c5fd;background:rgba(59,130,246,.15)}
+.rt-badge.c{color:#86efac;background:rgba(34,197,94,.15)}
+.rt-empty{padding:40px 20px;text-align:center;color:var(--text2);font-size:13px;line-height:1.9}
+.rt-chat{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+.rt-chat-head{padding:12px 18px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.rt-back{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0 4px}
+.rt-chat-name{font-size:15px;font-weight:700}
+.rt-chat-meta{font-size:12px;color:var(--text2);margin-top:3px;word-break:break-all}
+.rt-chat-meta code{background:rgba(127,127,127,.12);padding:1px 5px;border-radius:4px;font-size:11px}
+.rt-msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.rt-msg{display:flex;gap:10px;max-width:76%}
+.rt-msg.out{align-self:flex-end;flex-direction:row-reverse}
+.rt-msg .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;font-size:13.5px;line-height:1.6;word-break:break-word;white-space:pre-wrap}
+.rt-msg.out .bubble{background:var(--accent);border-color:var(--accent);color:#fff}
+.rt-msg .who{font-size:11px;color:var(--text2);margin-bottom:4px;word-break:break-all}
+.rt-msg.out .who{text-align:right}
+.rt-msg .bubble a{color:inherit;text-decoration:underline}
+.rt-msg .mtime{font-size:10.5px;color:var(--text2);align-self:flex-end;flex:none;margin-bottom:2px}
+.rt-editor{border-top:1px solid var(--border);background:var(--bg2);padding:12px 16px;display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
+.rt-editor textarea{flex:1;resize:none;height:70px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none}
+.rt-editor textarea:focus{border-color:var(--accent)}
+.rt-send{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:0 24px;height:44px;font-size:14px;cursor:pointer;white-space:nowrap}
+.rt-send:hover{background:var(--accent2)}
+.rt-send:disabled{opacity:.5;cursor:not-allowed}
+.rt-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;z-index:99;opacity:0;pointer-events:none;transition:.2s}
+.rt-toast.show{opacity:1}
+.rt-toast.err{border-color:var(--danger);color:#fca5a5}
+.rt-placeholder{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:14px;text-align:center;padding:30px}
+@media(max-width:820px){
+  .rt-side{width:100%;border-right:none}
+  .rt-chat{display:none}
+  .rt-app[data-view="chat"] .rt-side{display:none}
+  .rt-app[data-view="chat"] .rt-chat{display:flex}
+  .rt-back{display:block}
+  .rt-msg{max-width:88%}
+}
+</style>
+</head>
+<body>
+<div class="rt-app" id="rtApp" data-view="list">
+  <header class="rt-topbar">
+    <div class="rt-title">消息工作台</div>
+    <div class="rt-bot">
+      <select id="rtBotSel" onchange="rtOnBot()"></select>
+      <span class="rt-appid" id="rtAppId"></span>
+    </div>
+    <div class="rt-tabs" id="rtTabs">
+      <div class="rt-tab active" data-scope="all" onclick="rtSetScope('all')">全部</div>
+      <div class="rt-tab" data-scope="group" onclick="rtSetScope('group')">群聊</div>
+      <div class="rt-tab" data-scope="c2c" onclick="rtSetScope('c2c')">私聊</div>
+    </div>
+    <div class="rt-right">
+      <button class="rt-tab" onclick="rtLoadConvs(true)" style="background:var(--bg3)">刷新</button>
+      <span class="rt-conn"><span class="rt-dot" id="rtDot"></span><span id="rtConnText">未连接</span></span>
+    </div>
+  </header>
+  <div class="rt-body">
+    <aside class="rt-side">
+      <div class="rt-side-head"><span>会话列表</span><span id="rtConvCount">0</span></div>
+      <div class="rt-convs" id="rtConvs"><div class="rt-empty">加载中...</div></div>
+    </aside>
+    <section class="rt-chat">
+      <div class="rt-chat-head" id="rtChatHead">
+        <button class="rt-back" onclick="rtBackToList()">&#8592;</button>
+        <div>
+          <div class="rt-chat-name" id="rtChatName">未选择会话</div>
+          <div class="rt-chat-meta" id="rtChatMeta">从左侧选择群聊或私聊开始</div>
+        </div>
+      </div>
+      <div class="rt-msgs" id="rtMsgs"><div class="rt-placeholder">选择左侧任一会话，即可查看历史消息并实时预览新消息</div></div>
+      <div class="rt-editor">
+        <textarea id="rtInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行" disabled></textarea>
+        <button class="rt-send" id="rtSend" onclick="rtSend()" disabled>发送</button>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="rt-toast" id="rtToast"></div>
+<script>
+var rtState={bots:[],bot:null,scope:'all',convs:[],active:null,es:null,lastId:0,sending:false};
+
+function rtEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function rtCookie(n){var m=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)'));return m?decodeURIComponent(m[1]):''}
+function rtToken(){return rtCookie('admin_token')||localStorage.getItem('admin_token')||''}
+function rtToast(msg,isErr){var t=document.getElementById('rtToast');t.textContent=msg;t.className='rt-toast show'+(isErr?' err':'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='rt-toast'},2600)}
+function rtApi(path,opts){opts=opts||{};var h=opts.headers||{};var tk=rtToken();if(tk)h['Authorization']='Bearer '+tk;if(opts.body&&typeof opts.body!=='string'){h['Content-Type']='application/json';opts.body=JSON.stringify(opts.body)}opts.headers=h;opts.credentials='same-origin';return fetch(path,opts).then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})})}
+function rtFmtTime(s){if(!s)return '';var d=new Date(String(s).replace(' ','T'));if(isNaN(d.getTime()))return String(s).slice(5,16);var now=new Date();var sameDay=d.toDateString()===now.toDateString();var hm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);return sameDay?hm:(d.getMonth()+1)+'/'+d.getDate()+' '+hm}
+function rtShort(s,n){s=String(s==null?'':s);return s.length>n?s.slice(0,n)+'…':s}
+
+function rtInit(){
+  if(!rtToken()){location.href='/';return}
+  var qs=new URLSearchParams(location.search);
+  var wantBot=qs.get('bot')||'';
+  rtApi('/api/bots').then(function(bots){
+    rtState.bots=bots||[];
+    if(!rtState.bots.length){document.getElementById('rtConvs').innerHTML='<div class="rt-empty">暂无机器人</div>';return}
+    var sel=document.getElementById('rtBotSel');
+    sel.innerHTML=rtState.bots.map(function(b){return '<option value="'+rtEsc(b.appId)+'">'+rtEsc(b.name||b.appId)+'</option>'}).join('');
+    var pick=null;
+    if(wantBot){pick=rtState.bots.filter(function(b){return String(b.appId)===wantBot||String(b.id)===wantBot})[0]}
+    if(!pick)pick=rtState.bots[0];
+    sel.value=pick.appId;
+    rtState.bot=pick;
+    document.getElementById('rtAppId').textContent='APP_ID: '+pick.appId;
+    rtLoadConvs();
+  }).catch(function(e){rtToast('加载机器人失败：'+e.message,true);document.getElementById('rtConvs').innerHTML='<div class="rt-empty">加载失败：'+rtEsc(e.message)+'</div>'});
+}
+
+function rtOnBot(){
+  var v=document.getElementById('rtBotSel').value;
+  rtState.bot=rtState.bots.filter(function(b){return String(b.appId)===v})[0]||null;
+  document.getElementById('rtAppId').textContent=rtState.bot?('APP_ID: '+rtState.bot.appId):'';
+  rtCloseStream();
+  rtState.active=null;
+  rtResetChat();
+  rtLoadConvs();
+  history.replaceState(null,'','/realtime.html?bot='+encodeURIComponent(v));
+}
+
+function rtSetScope(s){
+  rtState.scope=s;
+  var tabs=document.querySelectorAll('#rtTabs .rt-tab');
+  for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-scope')===s);
+  rtCloseStream();
+  rtState.active=null;
+  rtResetChat();
+  rtLoadConvs();
+}
+
+function rtLoadConvs(manual){
+  if(!rtState.bot)return;
+  var box=document.getElementById('rtConvs');
+  if(!manual&&!rtState.convs.length)box.innerHTML='<div class="rt-empty">加载中...</div>';
+  rtApi('/api/realtime/conversations?botId='+encodeURIComponent(rtState.bot.appId)+'&scope='+encodeURIComponent(rtState.scope)).then(function(data){
+    rtState.convs=data.conversations||[];
+    document.getElementById('rtConvCount').textContent=rtState.convs.length;
+    rtRenderConvs();
+    if(manual&&rtState.active){
+      var still=rtState.convs.filter(function(c){return c.id===rtState.active.id&&c.type===rtState.active.type})[0];
+      if(!still)rtResetChat();
+    }
+  }).catch(function(e){box.innerHTML='<div class="rt-empty">加载失败：'+rtEsc(e.message)+'</div>'});
+}
+
+function rtRenderConvs(){
+  var box=document.getElementById('rtConvs');
+  if(!rtState.convs.length){box.innerHTML='<div class="rt-empty">'+rtEmptyText()+'</div>';return}
+  box.innerHTML=rtState.convs.map(function(c){
+    var isG=c.type==='group';
+    var name=c.name||(isG?(c.group_number?('群 '+c.group_number):'群聊'):(c.qq?('QQ '+c.qq):'私聊用户'));
+    var initial=isG?'群':'人';
+    var active=rtState.active&&rtState.active.id===c.id&&rtState.active.type===c.type?' active':'';
+    var meta=isG?('ID: '+c.openid):(c.qq?('QQ: '+c.qq):('OpenID: '+(c.openid||'')));
+    return '<div class="rt-conv'+active+'" onclick="rtOpenConv(\''+c.type+'\',\''+rtEsc(c.id)+'\')">'
+      +'<div class="rt-avatar">'+initial+'</div>'
+      +'<div class="rt-conv-main"><div class="rt-conv-top"><span class="rt-conv-name">'+rtEsc(name)+'</span>'
+      +(c.msg_count?'<span class="rt-badge">'+c.msg_count+'</span>':'')
+      +'<span class="rt-conv-time">'+rtFmtTime(c.last_time)+'</span></div>'
+      +'<div class="rt-conv-sub">'+rtEsc(rtShort(c.last_text||meta,42))+'</div></div></div>';
+  }).join('');
+}
+
+function rtEmptyText(){
+  if(rtState.scope==='group')return '该机器人暂无群聊会话';
+  if(rtState.scope==='c2c')return '该机器人暂无私聊会话';
+  return '该机器人暂无会话记录';
+}
+
+function rtResetChat(){
+  rtCloseStream();
+  document.getElementById('rtChatName').textContent='未选择会话';
+  document.getElementById('rtChatMeta').textContent='从左侧选择群聊或私聊开始';
+  document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">选择左侧任一会话，即可查看历史消息并实时预览新消息</div>';
+  var ta=document.getElementById('rtInput');ta.value='';ta.disabled=true;
+  document.getElementById('rtSend').disabled=true;
+  document.getElementById('rtApp').setAttribute('data-view','list');
+  rtSetConn('off','未连接');
+}
+
+function rtOpenConv(type,id){
+  var c=rtState.convs.filter(function(x){return x.id===id&&x.type===type})[0];
+  if(!c)return;
+  rtState.active=c;
+  rtRenderConvs();
+  document.getElementById('rtApp').setAttribute('data-view','chat');
+  var isG=type==='group';
+  var name=c.name||(isG?(c.group_number?('群 '+c.group_number):'群聊'):(c.qq?('QQ '+c.qq):'私聊用户'));
+  document.getElementById('rtChatName').textContent=(isG?'群聊 · ':'私聊 · ')+name;
+  var meta=isG?('群号 <code>'+(c.group_number||'未绑定')+'</code> · OpenID <code>'+rtEsc(c.openid)+'</code>')
+               :('QQ <code>'+(c.qq||'未知')+'</code> · OpenID <code>'+rtEsc(c.openid)+'</code>');
+  document.getElementById('rtChatMeta').innerHTML=meta;
+  document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">正在加载历史消息...</div>';
+  var ta=document.getElementById('rtInput');ta.disabled=false;
+  document.getElementById('rtSend').disabled=false;
+  rtLoadHistory(type,id);
+  rtOpenStream(type,id);
+}
+
+function rtLoadHistory(type,id){
+  rtApi('/api/realtime/messages?botId='+encodeURIComponent(rtState.bot.appId)+'&type='+type+'&target='+encodeURIComponent(id)+'&limit=120')
+    .then(function(data){
+      if(!rtState.active||rtState.active.id!==id)return;
+      var msgs=data.messages||[];
+      var box=document.getElementById('rtMsgs');
+      if(!msgs.length){box.innerHTML='<div class="rt-placeholder">暂无历史消息，等待新消息...</div>';return}
+      box.innerHTML='';
+      msgs.forEach(function(m){box.appendChild(rtMsgNode(m));rtState.lastId=Math.max(rtState.lastId,m.id||0)});
+      rtScrollBottom();
+    }).catch(function(e){document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">历史消息加载失败：'+rtEsc(e.message)+'</div>'});
+}
+
+function rtOpenStream(type,id){
+  rtCloseStream();
+  var url='/api/realtime/stream?botId='+encodeURIComponent(rtState.bot.appId)+'&type='+type+'&target='+encodeURIComponent(id);
+  try{
+    var es=new EventSource(url,{withCredentials:true});
+    rtState.es=es;
+    es.onopen=function(){rtSetConn('on','实时同步中')};
+    es.onmessage=function(ev){
+      try{
+        var m=JSON.parse(ev.data);
+        if(!rtState.active||rtState.active.id!==id)return;
+        if(m.id&&m.id<=rtState.lastId)return;
+        rtState.lastId=Math.max(rtState.lastId,m.id||0);
+        var box=document.getElementById('rtMsgs');
+        var ph=box.querySelector('.rt-placeholder');if(ph)ph.remove();
+        var near=box.scrollHeight-box.scrollTop-box.clientHeight<120;
+        box.appendChild(rtMsgNode(m));
+        if(near)rtScrollBottom();
+      }catch(e){}
+    };
+    es.onerror=function(){rtSetConn('off','连接中断，重连中')};
+  }catch(e){rtSetConn('off','无法建立实时连接')}
+}
+
+function rtCloseStream(){
+  if(rtState.es){try{rtState.es.close()}catch(e){}rtState.es=null}
+  rtSetConn('off','未连接');
+}
+
+function rtSetConn(state,text){
+  var d=document.getElementById('rtDot');
+  d.className='rt-dot'+(state==='on'?' on':(state==='off'?' off':''));
+  document.getElementById('rtConnText').textContent=text;
+}
+
+function rtMsgNode(m){
+  var div=document.createElement('div');
+  div.className='rt-msg '+(m.dir==='out'?'out':'in');
+  var who=m.dir==='out'?'机器人':(m.user_id?(rtState.active&&rtState.active.type==='c2c'?'用户':'成员')+' '+m.user_id:'用户');
+  var content=String(m.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if(!content)content='<span style="opacity:.6">[无文本内容]</span>';
+  content=content.replace(/(https?:\/\/[^\s]+|mqqapi:\/\/[^\s]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+  div.innerHTML='<div><div class="who">'+rtEsc(who)+'</div><div class="bubble">'+content+'</div></div>'
+    +'<div class="mtime">'+rtEsc(rtFmtTime(m.created_at))+'</div>';
+  return div;
+}
+
+function rtScrollBottom(){var b=document.getElementById('rtMsgs');b.scrollTop=b.scrollHeight}
+
+function rtSend(){
+  if(!rtState.active||rtState.sending)return;
+  var ta=document.getElementById('rtInput');
+  var content=ta.value.trim();
+  if(!content)return;
+  rtState.sending=true;
+  document.getElementById('rtSend').disabled=true;
+  rtApi('/api/realtime/send',{method:'POST',body:{botId:rtState.bot.appId,type:rtState.active.type,target:rtState.active.id,content:content}})
+    .then(function(){ta.value='';})
+    .catch(function(e){rtToast('发送失败：'+e.message,true)})
+    .then(function(){rtState.sending=false;if(rtState.active)document.getElementById('rtSend').disabled=false});
+}
+
+function rtBackToList(){document.getElementById('rtApp').setAttribute('data-view','list')}
+
+document.getElementById('rtInput').addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();rtSend()}
+});
+
+rtInit();
+</script>
+</body>
+</html>
