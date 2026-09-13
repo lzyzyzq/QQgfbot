@@ -19,6 +19,19 @@ export interface UpstreamEndpoint {
   path: string;
   query?: string[];
   timeout?: number;
+  // 会话字段注入 body/query（模板 {uin}/{developerId}/{ticket}），用于上游要求会话放 body 的后端
+  sessionBody?: Record<string, string>;
+}
+
+export interface UpstreamConfig {
+  baseUrl?: string;
+  endpoints?: Record<string, UpstreamEndpoint>;
+  sessionHeaders?: Record<string, string>;
+  // appId → 上游自有机器人 ID（如走第三方代理后端时二者不同）
+  botMap?: Record<string, string>;
+  // 聚合代理：未单独映射的动作统一走此端点（如第三方后端的 /open-platform/cgi）
+  proxy?: ProxyConfig;
+  login?: LoginConfig;
 }
 
 // 开发者登录态来源：
@@ -47,11 +60,13 @@ export interface LoginConfig {
   note?: string;
 }
 
-export interface UpstreamConfig {
-  baseUrl?: string;
-  endpoints?: Record<string, UpstreamEndpoint>;
-  sessionHeaders?: Record<string, string>;
-  login?: LoginConfig;
+export interface ProxyConfig {
+  method?: string;
+  path: string;
+  actionField?: string;
+  paramsField?: string;
+  sessionBody?: Record<string, string>;
+  timeout?: number;
 }
 
 export interface OpResult {
@@ -186,19 +201,24 @@ async function runWithEndpoint(
   const needSession = forceSession || (!action.startsWith('qrcode.') && !(ep as any).noSession);
   if (needSession && !s) return { ok: false, error: '未登录开发者账号' };
 
+  const vars: Record<string, string> = {
+    uin: s?.uin || '', developerId: s?.developerId || '', ticket: s?.ticket || '',
+    botId: cfg.botMap?.[String(params.app_id)] || String(params.app_id || ''),
+  };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  for (const [k, v] of Object.entries(cfg.sessionHeaders || {})) headers[k] = applyTemplate(v, vars);
+
   let url: URL;
   try {
-    url = new URL(ep.path, cfg.baseUrl);
+    url = new URL(applyTemplate(ep.path, vars), cfg.baseUrl);
   } catch {
     return { ok: false, error: '上游地址无效：' + ep.path };
   }
 
-  const vars: Record<string, string> = { uin: s?.uin || '', developerId: s?.developerId || '', ticket: s?.ticket || '' };
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  for (const [k, v] of Object.entries(cfg.sessionHeaders || {})) headers[k] = applyTemplate(v, vars);
-
   const method = String(ep.method || 'GET').toUpperCase();
   const payload: Record<string, any> = { ...params };
+  // 会话字段注入：模板值渲染后写入 body(POST) 或 query(GET)
+  const sessionBody = ep.sessionBody || {};
   let body: string | undefined;
   if (method === 'GET') {
     for (const key of ep.query || []) {
@@ -206,12 +226,26 @@ async function runWithEndpoint(
         url.searchParams.set(key, String(payload[key]));
       }
     }
+    for (const [key, tpl] of Object.entries(sessionBody)) url.searchParams.set(key, applyTemplate(tpl, vars));
   } else {
+    for (const [key, tpl] of Object.entries(sessionBody)) payload[key] = applyTemplate(tpl, vars);
     body = JSON.stringify(payload);
   }
 
+  return doFetch(action, url, method, headers, body, ep.timeout);
+}
+
+/** 请求发送：统一超时、JSON 解析与错误归一化。 */
+async function doFetch(
+  action: string,
+  url: URL,
+  method: string,
+  headers: Record<string, string>,
+  body: string | undefined,
+  timeout?: number,
+): Promise<OpResult> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), Math.max(3000, Math.min(60000, ep.timeout || 15000)));
+  const timer = setTimeout(() => ctrl.abort(), Math.max(3000, Math.min(60000, timeout || 15000)));
   try {
     const res = await fetch(url.toString(), { method, headers, body, signal: ctrl.signal });
     const text = await res.text();
@@ -227,13 +261,47 @@ async function runWithEndpoint(
   }
 }
 
+/** 聚合代理：把动作名与参数打包发给一个统一端点（第三方后端常见形态）。 */
+async function runProxy(
+  cfg: UpstreamConfig,
+  action: string,
+  params: Record<string, any>,
+  session: OpenSession | null,
+): Promise<OpResult> {
+  const p = cfg.proxy!;
+  const vars: Record<string, string> = {
+    uin: session?.uin || '', developerId: session?.developerId || '', ticket: session?.ticket || '',
+    botId: cfg.botMap?.[String(params.app_id)] || String(params.app_id || ''),
+  };
+  if (!session) return { ok: false, error: '未登录开发者账号' };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  for (const [k, v] of Object.entries(cfg.sessionHeaders || {})) headers[k] = applyTemplate(v, vars);
+  let url: URL;
+  try {
+    url = new URL(applyTemplate(p.path, vars), cfg.baseUrl);
+  } catch {
+    return { ok: false, error: '代理地址无效：' + p.path };
+  }
+  const method = String(p.method || 'POST').toUpperCase();
+  const payload: Record<string, any> = {
+    [p.actionField || 'action']: action,
+    [p.paramsField || 'params']: params,
+  };
+  for (const [key, tpl] of Object.entries(p.sessionBody || {})) payload[key] = applyTemplate(tpl, vars);
+  let body: string | undefined;
+  if (method === 'GET') for (const [k, v] of Object.entries(payload)) url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+  else body = JSON.stringify(payload);
+  return doFetch(action, url, method, headers, body, p.timeout);
+}
+
 /** 调用单个上游动作；未配置端点时返回明确错误，不抛异常。 */
 export async function runAction(action: string, params: Record<string, any> = {}, session?: OpenSession | null): Promise<OpResult> {
   const cfg = getUpstreamConfig();
+  if (!cfg.baseUrl) return notConfigured(action);
   const ep = cfg.endpoints?.[action];
-  if (!cfg.baseUrl || !ep || !ep.path) return notConfigured(action);
-  const s = session ?? getSession();
-  return runWithEndpoint(cfg, action, ep, params, s);
+  if (ep && ep.path) return runWithEndpoint(cfg, action, ep, params, session ?? getSession());
+  if (cfg.proxy && cfg.proxy.path) return runProxy(cfg, action, params, session ?? getSession());
+  return notConfigured(action);
 }
 
 function loginEndpoint(cfg: UpstreamConfig, kind: 'create' | 'check'): UpstreamEndpoint | undefined {

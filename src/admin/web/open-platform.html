@@ -141,6 +141,7 @@
     <div class="hint" style="margin-bottom:8px">配置 baseUrl、各动作的端点映射与登录态请求头模板。未配置的动作不可用。</div>
     <textarea id="upstreamJson" style="min-height:260px;font-family:monospace"></textarea>
     <div class="actions">
+      <button class="btn" onclick="genTemplate()">生成模板</button>
       <button class="btn" onclick="document.getElementById('upstreamMask').classList.remove('show')">取消</button>
       <button class="btn primary" onclick="saveUpstream()">保存</button>
     </div>
@@ -164,6 +165,7 @@ var bots = [];
 var botId = '';
 var currentTab = 'info';
 var sessionMask = { loggedIn: false };
+var upstreamCount = 0;
 
 var TABS = [
   { key: 'info', label: '基础信息', actions: [{ action: 'info', label: '查询基础信息', mode: 'read', special: 'info' }] },
@@ -266,6 +268,7 @@ function loadBots() {
 function loadUpstreamHint() {
   return api('/api/open-platform/cgi-actions').then(function (r) {
     var n = (r && r.actions) ? r.actions.length : 0;
+    upstreamCount = n;
     var modeText = {
       manual: '登录态来源：手动填写（粘贴 q.qq.com 控制台 Cookie）',
       panel: '登录态来源：复用面板 QQ 登录（确认 QQ 号后补票据）',
@@ -296,6 +299,16 @@ function reloadTab() { loadTab(); }
 
 function loadTab() {
   var tab = currentTabDef();
+  if (!upstreamCount) {
+    $('content').innerHTML =
+      '<div class="hint" style="line-height:1.9">' +
+      '<b>上游接口尚未配置，功能暂不可用。</b><br>' +
+      '本页是管理前端 + 适配器，实际请求由「上游配置」决定。请点击右上角 <b>上游配置 → 生成模板</b>，' +
+      '把 q.qq.com 控制台里抓到的真实接口地址（或你此前那套扫码后端的接口）填进 <code>endpoints</code> 与 <code>login</code> 后保存。<br>' +
+      '在此之前，可先用 <b>手动填写</b> 保存开发者登录态，并继续使用「基础信息 / 成员列表」以外的动作。' +
+      '</div>';
+    return;
+  }
   $('content').innerHTML = '<div class="hint">加载中...</div>';
   var readActions = tab.actions.filter(function (a) { return a.mode === 'read'; });
   var html = '<div class="row" style="justify-content:space-between"><h2 style="font-size:14px;color:#1e3a8a">' + esc(tab.label) + '</h2></div>';
@@ -606,9 +619,39 @@ function saveUpstream() {
   var obj;
   try { obj = JSON.parse(raw || '{}'); } catch (e) { alert('JSON 格式错误'); return; }
   api('/api/open-platform/config', { method: 'PUT', body: JSON.stringify(obj) }).then(function (r) {
-    if (r && r.ok) { $('upstreamMask').classList.remove('show'); loadUpstreamHint(); }
+    if (r && r.ok) { $('upstreamMask').classList.remove('show'); loadUpstreamHint(); loadTab(); }
     else { alert((r && r.error) || '保存失败'); }
   });
+}
+// 生成所有动作的配置骨架，把抓到的真实 path 填进去即可
+function genTemplate() {
+  var actions = {};
+  TABS.forEach(function (t) {
+    t.actions.forEach(function (a) {
+      if (!a.action) return;
+      actions[a.action] = {
+        method: a.mode === 'read' ? 'GET' : 'POST',
+        path: '',
+        query: a.mode === 'read' ? ['app_id'] : undefined
+      };
+    });
+  });
+  var tpl = {
+    baseUrl: 'https://q.qq.com',
+    sessionHeaders: { Cookie: 'quin={uin}; quid={developerId}; qticket={ticket}' },
+    botMap: {},
+    proxy: { method: 'POST', path: '', actionField: 'action', paramsField: 'params', sessionBody: { uin: '{uin}', developerId: '{developerId}', ticket: '{ticket}' } },
+    endpoints: actions,
+    login: {
+      mode: 'manual',
+      create: { method: 'POST', path: '' },
+      check: { method: 'POST', path: '' },
+      qrcodeMap: { url: '', token: '', status: '', done: '' },
+      sessionMap: { uin: '', developerId: '', ticket: '' }
+    }
+  };
+  $('upstreamJson').value = JSON.stringify(tpl, null, 2)
+    .replace(/"path": ""/g, '"path": "【填真实接口路径】"');
 }
 
 // ---- 初始化 ----
