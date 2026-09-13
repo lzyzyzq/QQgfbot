@@ -644,14 +644,15 @@ export class BotCore {
   }
 
   // 分片上传本地媒体：upload_prepare → PUT 分片到预签名地址 → upload_part_finish → /files 合并获取 file_info
-  async uploadGroupBuffer(groupOpenid: string, buffer: Buffer, filename: string, fileType: number): Promise<{ file_info?: string } | null> {
+  // collection: groups（群）/ users（单聊）；两者接口路径一致，仅前缀不同
+  private async uploadBufferTo(collection: 'groups' | 'users', id: string, buffer: Buffer, filename: string, fileType: number): Promise<{ file_info?: string } | null> {
     try {
-      const token = await this.ensureToken();
       const crypto = await import('crypto');
       const md5 = crypto.createHash('md5').update(buffer).digest('hex');
       const sha1 = crypto.createHash('sha1').update(buffer).digest('hex');
+      const base = `/v2/${collection}/${id}`;
       const prepBody = JSON.stringify({ file_type: fileType, file_name: filename, file_size: String(buffer.length), md5, sha1 });
-      const prep = await this.apiCall('POST', `/v2/groups/${groupOpenid}/upload_prepare`, prepBody);
+      const prep = await this.apiCall('POST', `${base}/upload_prepare`, prepBody);
       const uploadId = prep.upload_id;
       const parts: any[] = prep.parts || [];
       if (!uploadId || !parts.length) { logger.error(`upload_prepare invalid: ${JSON.stringify(prep).substring(0, 200)}`); return null; }
@@ -663,17 +664,26 @@ export class BotCore {
         const putOk = await this.putToPresigned(part.presigned_url, chunk);
         if (!putOk) { logger.error(`chunk PUT failed for part ${part.index}`); return null; }
         const chunkMd5 = crypto.createHash('md5').update(chunk).digest('hex');
-        await this.apiCall('POST', `/v2/groups/${groupOpenid}/upload_part_finish`,
+        await this.apiCall('POST', `${base}/upload_part_finish`,
           JSON.stringify({ upload_id: uploadId, part_index: part.index, block_size: String(chunk.length), md5: chunkMd5 }));
       }
-      const fin = await this.apiCall('POST', `/v2/groups/${groupOpenid}/files`, JSON.stringify({ upload_id: uploadId, file_type: fileType }));
+      const fin = await this.apiCall('POST', `${base}/files`, JSON.stringify({ upload_id: uploadId, file_type: fileType }));
       if (!fin.file_info) { logger.error(`files merge no file_info: ${JSON.stringify(fin).substring(0, 200)}`); return null; }
-      logger.info(`Group buffer upload OK type=${fileType} file_info=${String(fin.file_info).substring(0, 40)}`);
+      logger.info(`${collection} buffer upload OK type=${fileType} file_info=${String(fin.file_info).substring(0, 40)}`);
       return { file_info: fin.file_info };
     } catch (err: any) {
-      logger.error(`Upload group buffer failed: ${err.message}`);
+      logger.error(`Upload buffer to ${collection} failed: ${err.message}`);
       return null;
     }
+  }
+
+  async uploadGroupBuffer(groupOpenid: string, buffer: Buffer, filename: string, fileType: number): Promise<{ file_info?: string } | null> {
+    return this.uploadBufferTo('groups', groupOpenid, buffer, filename, fileType);
+  }
+
+  // 分片上传本地媒体到单聊（C2C）
+  async uploadUserBuffer(openid: string, buffer: Buffer, filename: string, fileType: number): Promise<{ file_info?: string } | null> {
+    return this.uploadBufferTo('users', openid, buffer, filename, fileType);
   }
 
   // 分片上传本地图片
@@ -724,6 +734,38 @@ export class BotCore {
     } catch (err: any) {
       logger.error(`Send group voice message failed: ${err.message}`);
       this.recordBotSend(groupOpenid, '群语音', fileInfo.substring(0, 20), false, String(err.message || ''));
+      return null;
+    }
+  }
+
+  // 发送群富媒体消息（msg_type=7，file_info 可来自图片/视频/文件上传）
+  async sendGroupMediaMessage(groupOpenid: string, fileInfo: string, msgId?: string, label = '群媒体'): Promise<any> {
+    try {
+      const body: any = { msg_type: MSG_TYPE.RICH_MEDIA, media: { file_info: fileInfo } };
+      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(this.getBotId()); }
+      const result = await this.apiCall('POST', `/v2/groups/${groupOpenid}/messages`, JSON.stringify(body));
+      logger.info(`Group media message OK`);
+      this.recordBotSend(groupOpenid, label, fileInfo.substring(0, 20), true);
+      return result;
+    } catch (err: any) {
+      logger.error(`Send group media message failed: ${err.message}`);
+      this.recordBotSend(groupOpenid, label, fileInfo.substring(0, 20), false, String(err.message || ''));
+      return null;
+    }
+  }
+
+  // 发送单聊富媒体消息（msg_type=7）
+  async sendUserMediaMessage(openid: string, fileInfo: string, msgId?: string, label = '私聊媒体'): Promise<any> {
+    try {
+      const body: any = { msg_type: MSG_TYPE.RICH_MEDIA, media: { file_info: fileInfo } };
+      if (msgId) { body.msg_id = msgId; body.msg_seq = nextMsgSeq(this.getBotId()); }
+      const result = await this.apiCall('POST', `/v2/users/${openid}/messages`, JSON.stringify(body));
+      logger.info(`User media message OK`);
+      this.recordBotSend(openid, label, fileInfo.substring(0, 20), true);
+      return result;
+    } catch (err: any) {
+      logger.error(`Send user media message failed: ${err.message}`);
+      this.recordBotSend(openid, label, fileInfo.substring(0, 20), false, String(err.message || ''));
       return null;
     }
   }

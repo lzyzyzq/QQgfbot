@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import multer from 'multer';
 import type { BotManager } from '../manager';
 import { getDb } from '../../db/index';
 import { getBotInstance } from '../../core/bot';
@@ -33,10 +34,39 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
     return stripped || raw.trim();
   }
 
+  // 群头像：仅当绑定了真实群号时可用
+  function groupAvatar(groupNumber: any): string {
+    const n = String(groupNumber || '');
+    return /^\d{6,15}$/.test(n) ? `https://p.qlogo.cn/gh/${n}/${n}/0` : '';
+  }
+
+  // 用户头像/昵称：按 openid 关联 user_mappings 的 QQ 号取头像
+  const userCache = new Map<string, { avatar: string; name: string; qq: string }>();
+  function userInfo(openid: string): { avatar: string; name: string; qq: string } {
+    const key = String(openid || '');
+    if (!key) return { avatar: '', name: '', qq: '' };
+    const hit = userCache.get(key);
+    if (hit) return hit;
+    let info = { avatar: '', name: '', qq: '' };
+    try {
+      const um = getDb().prepare('SELECT qq_number, nickname FROM user_mappings WHERE openid=?').get(key) as any;
+      const qq = String(um?.qq_number || '');
+      info = {
+        avatar: /^\d{5,12}$/.test(qq) ? `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100` : '',
+        name: um?.nickname || '',
+        qq,
+      };
+    } catch { /* ignore */ }
+    if (userCache.size > 800) userCache.clear();
+    userCache.set(key, info);
+    return info;
+  }
+
   // 日志行归一化：区分入站/出站
   function normRow(r: any) {
     const cat = String(r.category || '');
     const dir = cat === 'send' ? 'out' : 'in';
+    const u = dir === 'in' ? userInfo(String(r.user_id || '')) : { avatar: '', name: '', qq: '' };
     return {
       id: Number(r.id) || 0,
       dir,
@@ -47,6 +77,9 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
       user_id: r.user_id || '',
       group_id: r.group_id || '',
       created_at: r.created_at || '',
+      sender_name: u.name,
+      sender_qq: u.qq,
+      sender_avatar: u.avatar,
     };
   }
 
@@ -109,6 +142,7 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
           name: g.name || '',
           openid: String(g.id),
           group_number: g.group_number || '',
+          avatar: groupAvatar(g.group_number),
           member_count: g.member_count || 0,
           last_active: g.last_active || '',
           msg_count: cnt,
@@ -138,13 +172,15 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
           um = db.prepare('SELECT qq_number, nickname FROM user_mappings WHERE openid=?').get(uid);
           last = db.prepare("SELECT message, detail, created_at FROM system_logs WHERE bot_id=? AND ((category='message' AND user_id=? AND (group_id='' OR group_id IS NULL)) OR (category='send' AND group_id=?)) ORDER BY id DESC LIMIT 1").get(appId, uid, uid);
         } catch { /* ignore */ }
+        const u = userInfo(uid);
         out.push({
           type: 'c2c',
           id: uid,
-          name: (um && um.nickname) || '',
+          name: (um && um.nickname) || u.name || '',
           openid: uid,
           group_number: '',
-          qq: (um && um.qq_number) || '',
+          qq: (um && um.qq_number) || u.qq || '',
+          avatar: u.avatar,
           last_active: '',
           msg_count: info.count,
           last_text: last ? deriveContent(last.message, last.detail) : '',
@@ -253,6 +289,75 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
       res.json({ ok: true, result: result || null });
     } catch (e: any) {
       res.status(500).json({ error: e.message || '发送失败' });
+    }
+  });
+
+  // SSE 全机器人实时流：不绑定具体会话，页面加载即可连上，用于状态灯与列表/会话增量
+  router.get('/live', (req: Request, res: Response) => {
+    const rb = resolveBot(req);
+    if (!rb) { res.status(403).json({ error: '无权访问或机器人不存在' }); return; }
+    const appId = rb.appId;
+    const db = getDb();
+
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (typeof (res as any).flushHeaders === 'function') (res as any).flushHeaders();
+    res.write(': connected\n\n');
+
+    const query = (sinceId: number): any[] =>
+      db.prepare("SELECT * FROM system_logs WHERE bot_id=? AND category IN ('message','send') AND id>? ORDER BY id ASC LIMIT 100").all(appId, sinceId) as any[];
+
+    let lastId = Number(req.query.sinceId) || 0;
+    if (!lastId) {
+      try { lastId = Number((db.prepare('SELECT MAX(id) m FROM system_logs').get() as any)?.m || 0); } catch { lastId = 0; }
+    }
+
+    const timer = setInterval(() => {
+      try {
+        for (const r of query(lastId)) {
+          lastId = Math.max(lastId, Number(r.id) || 0);
+          res.write('event: message\ndata: ' + JSON.stringify(normRow(r)) + '\n\n');
+        }
+        res.write(': ping\n\n');
+      } catch { /* ignore */ }
+    }, 1200);
+
+    req.on('close', () => { clearInterval(timer); try { res.end(); } catch { /* ignore */ } });
+  });
+
+  // 发送媒体（图片/视频/语音/文件，含表情包 GIF）：multipart 上传 → 转 QQ 富媒体 → msg_type=7
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } });
+  router.post('/send-media', (req: Request, res: Response, next: any) => {
+    upload.single('file')(req as any, res as any, (err: any) => {
+      if (err) { res.status(400).json({ error: '文件上传失败：' + (err.message || '') }); return; }
+      next();
+    });
+  }, async (req: Request, res: Response) => {
+    const rb = resolveBot(req);
+    if (!rb) { res.status(403).json({ error: '无权访问或机器人不存在' }); return; }
+    const type = String(req.body?.type || 'group');
+    const target = String(req.body?.target || '').trim();
+    const mediaType = String(req.body?.mediaType || 'image');
+    const file = (req as any).file as { buffer: Buffer; originalname?: string; mimetype?: string } | undefined;
+    if (!target || !file) { res.status(400).json({ error: 'target / file 不能为空' }); return; }
+    const inst = getBotInstance(rb.appId);
+    if (!inst) { res.status(409).json({ error: '该机器人当前未运行，无法发送消息' }); return; }
+    const fileType = mediaType === 'video' ? 2 : mediaType === 'voice' ? 3 : mediaType === 'file' ? 4 : 1;
+    const label = mediaType === 'video' ? '视频' : mediaType === 'voice' ? '语音' : mediaType === 'file' ? '文件' : '图片';
+    const filename = file.originalname || 'media.bin';
+    try {
+      const up = type === 'c2c'
+        ? await inst.uploadUserBuffer(target, file.buffer, filename, fileType)
+        : await inst.uploadGroupBuffer(target, file.buffer, filename, fileType);
+      if (!up || !up.file_info) { res.status(502).json({ error: '上传媒体到 QQ 失败' }); return; }
+      const result = type === 'c2c'
+        ? await inst.sendUserMediaMessage(target, up.file_info)
+        : await inst.sendGroupMediaMessage(target, up.file_info, undefined, '群' + label);
+      res.json({ ok: true, result: result || null });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || '发送媒体失败' });
     }
   });
 

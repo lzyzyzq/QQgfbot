@@ -5,74 +5,100 @@
 <title>消息工作台 - QQ Bot 管理面板</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f1419;--bg2:#1a1f2e;--bg3:#222840;--text:#d9e0e8;--text2:#8892a4;--accent:#3b82f6;--accent2:#2563eb;--danger:#ef4444;--success:#22c55e;--warn:#f59e0b;--border:#2a3040;--radius:8px}
+:root{--bg:#0f1419;--bg2:#1a1f2e;--bg3:#222840;--text:#d9e0e8;--text2:#8892a4;--accent:#3b82f6;--accent2:#2563eb;--danger:#ef4444;--success:#22c55e;--warn:#f59e0b;--border:#2a3040;--radius:10px}
 html,body{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:rgba(127,127,127,.28);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(127,127,127,.45)}
+::-webkit-scrollbar-track{background:transparent}
 .rt-app{display:flex;flex-direction:column;height:100vh}
-.rt-topbar{display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0}
-.rt-title{font-size:16px;font-weight:700;color:var(--accent);white-space:nowrap}
+.rt-topbar{display:flex;align-items:center;gap:14px;padding:11px 20px;background:linear-gradient(180deg,#1d2436,#171d2b);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,.25);z-index:5}
+.rt-title{font-size:16px;font-weight:700;color:var(--accent);white-space:nowrap;letter-spacing:.5px}
 .rt-bot{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);flex-wrap:wrap}
-.rt-bot select{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:13px;outline:none;max-width:230px}
-.rt-appid{font-size:12px;color:var(--text2)}
-.rt-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:8px;padding:3px}
-.rt-tab{padding:5px 14px;font-size:13px;border-radius:6px;cursor:pointer;color:var(--text2);user-select:none;transition:.15s}
+.rt-bot select{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 12px;font-size:13px;outline:none;max-width:240px;cursor:pointer}
+.rt-bot select:focus{border-color:var(--accent)}
+.rt-appid{font-size:11.5px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
+.rt-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:9px;padding:4px}
+.rt-tab{padding:6px 15px;font-size:13px;border-radius:7px;cursor:pointer;color:var(--text2);user-select:none;transition:.15s}
 .rt-tab:hover{color:var(--text)}
-.rt-tab.active{background:var(--accent);color:#fff}
+.rt-tab.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.4)}
 .rt-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-.rt-conn{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
-.rt-dot{width:8px;height:8px;border-radius:50%;background:var(--text2);flex:none}
-.rt-dot.on{background:var(--success);box-shadow:0 0 6px var(--success)}
-.rt-dot.off{background:var(--danger)}
+.rt-mini{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 14px;font-size:12.5px;cursor:pointer;transition:.15s}
+.rt-mini:hover{color:var(--text);border-color:var(--accent)}
+.rt-conn{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.rt-dot{width:8px;height:8px;border-radius:50%;background:var(--text2);flex:none;transition:.3s}
+.rt-dot.on{background:var(--success);box-shadow:0 0 8px var(--success)}
+.rt-dot.off{background:var(--danger);box-shadow:0 0 8px rgba(239,68,68,.6)}
 .rt-body{flex:1;display:flex;min-height:0}
-.rt-side{width:290px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
-.rt-side-head{padding:12px 16px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.rt-side{width:300px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.rt-side-head{padding:13px 16px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:600;letter-spacing:.3px}
 .rt-convs{flex:1;overflow-y:auto;overscroll-behavior:contain}
-.rt-conv{display:flex;gap:10px;padding:11px 16px;cursor:pointer;border-bottom:1px solid rgba(127,127,127,.08);transition:.15s}
+.rt-conv{display:flex;gap:11px;padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(127,127,127,.07);transition:.15s}
 .rt-conv:hover{background:var(--bg3)}
-.rt-conv.active{background:var(--bg3);border-left:3px solid var(--accent);padding-left:13px}
-.rt-avatar{width:38px;height:38px;border-radius:8px;background:var(--bg3);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none;overflow:hidden}
-.rt-conv.active .rt-avatar{background:var(--accent);color:#fff}
+.rt-conv.active{background:linear-gradient(90deg,rgba(59,130,246,.18),transparent);border-left:3px solid var(--accent);padding-left:13px}
+.rt-avatar{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#2b3550,#232b40);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none;position:relative;overflow:hidden;user-select:none}
+.rt-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.rt-avatar.sm{width:34px;height:34px;border-radius:9px;font-size:13px}
+.rt-conv.active .rt-avatar{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
 .rt-conv-main{flex:1;min-width:0}
 .rt-conv-top{display:flex;align-items:baseline;gap:6px}
 .rt-conv-name{font-size:13.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rt-conv-time{font-size:10.5px;color:var(--text2);flex:none}
 .rt-conv-sub{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
-.rt-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;background:var(--bg3);color:var(--text2);margin-right:5px;vertical-align:1px}
-.rt-badge.g{color:#93c5fd;background:rgba(59,130,246,.15)}
-.rt-badge.c{color:#86efac;background:rgba(34,197,94,.15)}
-.rt-empty{padding:40px 20px;text-align:center;color:var(--text2);font-size:13px;line-height:1.9}
-.rt-chat{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
-.rt-chat-head{padding:12px 18px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.rt-badge{display:inline-block;font-size:10px;padding:1px 7px;border-radius:9px;background:rgba(59,130,246,.18);color:#93c5fd;margin-right:5px;vertical-align:1px}
+.rt-empty{padding:44px 22px;text-align:center;color:var(--text2);font-size:13px;line-height:1.9}
+.rt-chat{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:radial-gradient(1200px 500px at 80% -10%,rgba(59,130,246,.06),transparent)}
+.rt-chat-head{padding:12px 20px;background:rgba(26,31,46,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0}
 .rt-back{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0 4px}
+.rt-chat-title{flex:1;min-width:0}
 .rt-chat-name{font-size:15px;font-weight:700}
-.rt-chat-meta{font-size:12px;color:var(--text2);margin-top:3px;word-break:break-all}
-.rt-chat-meta code{background:rgba(127,127,127,.12);padding:1px 5px;border-radius:4px;font-size:11px}
-.rt-msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:0}
-.rt-msg{display:flex;gap:10px;max-width:76%}
+.rt-chat-meta{font-size:11.5px;color:var(--text2);margin-top:4px;word-break:break-all;line-height:1.7}
+.rt-chat-meta code{background:rgba(127,127,127,.14);padding:1px 6px;border-radius:5px;font-size:11px;cursor:pointer;color:var(--text)}
+.rt-chat-meta code:hover{background:rgba(59,130,246,.25)}
+.rt-head-actions{display:flex;gap:8px;align-items:center}
+.rt-hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 13px;font-size:12.5px;cursor:pointer;white-space:nowrap;transition:.15s}
+.rt-hbtn:hover{color:#fff;border-color:var(--accent);background:rgba(59,130,246,.2)}
+.rt-msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;min-height:0}
+.rt-msg{display:flex;gap:10px;max-width:78%;align-items:flex-start}
 .rt-msg.out{align-self:flex-end;flex-direction:row-reverse}
-.rt-msg .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;font-size:13.5px;line-height:1.6;word-break:break-word;white-space:pre-wrap}
-.rt-msg.out .bubble{background:var(--accent);border-color:var(--accent);color:#fff}
-.rt-msg .who{font-size:11px;color:var(--text2);margin-bottom:4px;word-break:break-all}
-.rt-msg.out .who{text-align:right}
-.rt-msg .bubble a{color:inherit;text-decoration:underline}
-.rt-msg .mtime{font-size:10.5px;color:var(--text2);align-self:flex-end;flex:none;margin-bottom:2px}
-.rt-editor{border-top:1px solid var(--border);background:var(--bg2);padding:12px 16px;display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
-.rt-editor textarea{flex:1;resize:none;height:70px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none}
-.rt-editor textarea:focus{border-color:var(--accent)}
-.rt-send{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:0 24px;height:44px;font-size:14px;cursor:pointer;white-space:nowrap}
-.rt-send:hover{background:var(--accent2)}
-.rt-send:disabled{opacity:.5;cursor:not-allowed}
-.rt-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;z-index:99;opacity:0;pointer-events:none;transition:.2s}
-.rt-toast.show{opacity:1}
+.rt-msg-body{min-width:0}
+.rt-msg.out .rt-msg-body{display:flex;flex-direction:column;align-items:flex-end}
+.rt-msg .who{font-size:11px;color:var(--text2);margin:0 4px 5px;word-break:break-all;display:flex;gap:6px;align-items:center}
+.rt-msg.out .who{flex-direction:row-reverse}
+.rt-who-qq{color:var(--accent);font-size:10px;background:rgba(59,130,246,.14);padding:0 5px;border-radius:6px}
+.rt-msg .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:13px;border-top-left-radius:4px;padding:10px 14px;font-size:13.5px;line-height:1.65;word-break:break-word;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.rt-msg.out .bubble{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;border-top-left-radius:13px;border-top-right-radius:4px}
+.rt-msg.pending .bubble{opacity:.65}
+.rt-msg .bubble a{color:inherit;text-decoration:underline;word-break:break-all}
+.rt-msg .bubble img.rt-img{max-width:260px;max-height:260px;border-radius:10px;display:block;margin:2px 0;cursor:zoom-in}
+.rt-msg .bubble audio{height:34px;max-width:250px;margin-top:4px}
+.rt-msg .mtime{font-size:10px;color:var(--text2);margin:5px 4px 0}
+.rt-msg.out .mtime{text-align:right}
+.rt-editor{border-top:1px solid var(--border);background:var(--bg2);padding:12px 18px;display:flex;gap:12px;align-items:flex-end;flex-shrink:0}
+.rt-editor-main{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0}
+.rt-tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.rt-tool{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:5px 13px;font-size:12.5px;cursor:pointer;transition:.15s}
+.rt-tool:hover{color:var(--text);border-color:var(--accent);background:rgba(59,130,246,.12)}
+.rt-hint{font-size:11px;color:var(--text2);margin-left:auto}
+.rt-editor textarea{flex:1;resize:none;height:66px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;width:100%;transition:.15s}
+.rt-editor textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.rt-send{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:10px;padding:0 26px;height:46px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:0 3px 12px rgba(59,130,246,.35)}
+.rt-send:hover{filter:brightness(1.08)}
+.rt-send:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.rt-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-8px);background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 20px;font-size:13px;z-index:99;opacity:0;pointer-events:none;transition:.2s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.rt-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .rt-toast.err{border-color:var(--danger);color:#fca5a5}
-.rt-placeholder{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:14px;text-align:center;padding:30px}
-@media(max-width:820px){
+.rt-placeholder{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:14px;text-align:center;padding:30px;line-height:1.9}
+@media(max-width:860px){
   .rt-side{width:100%;border-right:none}
   .rt-chat{display:none}
   .rt-app[data-view="chat"] .rt-side{display:none}
   .rt-app[data-view="chat"] .rt-chat{display:flex}
   .rt-back{display:block}
-  .rt-msg{max-width:88%}
+  .rt-msg{max-width:90%}
+  .rt-hint{display:none}
+  .rt-head-actions .rt-hbtn span{display:none}
 }
 </style>
 </head>
@@ -90,7 +116,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <div class="rt-tab" data-scope="c2c" onclick="rtSetScope('c2c')">私聊</div>
     </div>
     <div class="rt-right">
-      <button class="rt-tab" onclick="rtLoadConvs(true)" style="background:var(--bg3)">刷新</button>
+      <button class="rt-mini" onclick="rtLoadConvs(true)">刷新</button>
       <span class="rt-conn"><span class="rt-dot" id="rtDot"></span><span id="rtConnText">未连接</span></span>
     </div>
   </header>
@@ -102,14 +128,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <section class="rt-chat">
       <div class="rt-chat-head" id="rtChatHead">
         <button class="rt-back" onclick="rtBackToList()">&#8592;</button>
-        <div>
+        <span class="rt-avatar sm" id="rtChatAvatar">?</span>
+        <div class="rt-chat-title">
           <div class="rt-chat-name" id="rtChatName">未选择会话</div>
           <div class="rt-chat-meta" id="rtChatMeta">从左侧选择群聊或私聊开始</div>
+        </div>
+        <div class="rt-head-actions">
+          <button class="rt-hbtn" id="rtGroupMgrBtn" style="display:none" onclick="rtOpenGroupMgr()">群管理</button>
+          <button class="rt-hbtn" id="rtReloadBtn" style="display:none" onclick="rtReloadActive()">刷新</button>
         </div>
       </div>
       <div class="rt-msgs" id="rtMsgs"><div class="rt-placeholder">选择左侧任一会话，即可查看历史消息并实时预览新消息</div></div>
       <div class="rt-editor">
-        <textarea id="rtInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行" disabled></textarea>
+        <div class="rt-editor-main">
+          <div class="rt-tools">
+            <button class="rt-tool" onclick="rtPickMedia('image')" title="发送图片">图片</button>
+            <button class="rt-tool" onclick="rtPickMedia('emoji')" title="发送表情包（GIF）">表情</button>
+            <button class="rt-tool" onclick="rtPickMedia('video')" title="发送视频">视频</button>
+            <span class="rt-hint">支持链接、表情、@；Enter 发送，Shift+Enter 换行</span>
+            <input type="file" id="rtMedia" style="display:none" onchange="rtUploadMedia(this)">
+          </div>
+          <textarea id="rtInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行" disabled></textarea>
+        </div>
         <button class="rt-send" id="rtSend" onclick="rtSend()" disabled>发送</button>
       </div>
     </section>
@@ -117,15 +157,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 <div class="rt-toast" id="rtToast"></div>
 <script>
-var rtState={bots:[],bot:null,scope:'all',convs:[],active:null,es:null,lastId:0,sending:false};
+var rtState={bots:[],bot:null,scope:'all',convs:[],active:null,es:null,lastId:0,sending:false,fallbackTimer:null};
 
 function rtEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function rtCookie(n){var m=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)'));return m?decodeURIComponent(m[1]):''}
 function rtToken(){return rtCookie('admin_token')||localStorage.getItem('admin_token')||''}
 function rtToast(msg,isErr){var t=document.getElementById('rtToast');t.textContent=msg;t.className='rt-toast show'+(isErr?' err':'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='rt-toast'},2600)}
-function rtApi(path,opts){opts=opts||{};var h=opts.headers||{};var tk=rtToken();if(tk)h['Authorization']='Bearer '+tk;if(opts.body&&typeof opts.body!=='string'){h['Content-Type']='application/json';opts.body=JSON.stringify(opts.body)}opts.headers=h;opts.credentials='same-origin';return fetch(path,opts).then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})})}
+function rtApi(path,opts){opts=opts||{};var h=opts.headers||{};var tk=rtToken();if(tk)h['Authorization']='Bearer '+tk;if(opts.body&&typeof opts.body!=='string'){if(typeof FormData!=='undefined'&&opts.body instanceof FormData){/* multipart */}else{h['Content-Type']='application/json';opts.body=JSON.stringify(opts.body)}}opts.headers=h;opts.credentials='same-origin';return fetch(path,opts).then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})})}
 function rtFmtTime(s){if(!s)return '';var d=new Date(String(s).replace(' ','T'));if(isNaN(d.getTime()))return String(s).slice(5,16);var now=new Date();var sameDay=d.toDateString()===now.toDateString();var hm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);return sameDay?hm:(d.getMonth()+1)+'/'+d.getDate()+' '+hm}
 function rtShort(s,n){s=String(s==null?'':s);return s.length>n?s.slice(0,n)+'…':s}
+function rtInitial(o){var n=String(o&&o.name||'').trim();return n?n.slice(0,1):(o&&o.type==='group'?'群':(o&&o.qq?'Q':'人'))}
+
+function rtAvatarHtml(o,sm){
+  var cls='rt-avatar'+(sm?' sm':'');
+  var label=rtEsc(rtInitial(o));
+  var img=o&&o.avatar?'<img src="'+rtEsc(o.avatar)+'" alt="" onerror="this.remove()">':'';
+  return '<span class="'+cls+'">'+img+label+'</span>';
+}
 
 function rtInit(){
   if(!rtToken()){location.href='/';return}
@@ -142,6 +190,8 @@ function rtInit(){
     sel.value=pick.appId;
     rtState.bot=pick;
     document.getElementById('rtAppId').textContent='APP_ID: '+pick.appId;
+    rtState.lastId=0;
+    rtOpenLive();
     rtLoadConvs();
   }).catch(function(e){rtToast('加载机器人失败：'+e.message,true);document.getElementById('rtConvs').innerHTML='<div class="rt-empty">加载失败：'+rtEsc(e.message)+'</div>'});
 }
@@ -150,9 +200,10 @@ function rtOnBot(){
   var v=document.getElementById('rtBotSel').value;
   rtState.bot=rtState.bots.filter(function(b){return String(b.appId)===v})[0]||null;
   document.getElementById('rtAppId').textContent=rtState.bot?('APP_ID: '+rtState.bot.appId):'';
-  rtCloseStream();
   rtState.active=null;
+  rtState.lastId=0;
   rtResetChat();
+  rtOpenLive();
   rtLoadConvs();
   history.replaceState(null,'','/realtime.html?bot='+encodeURIComponent(v));
 }
@@ -161,7 +212,6 @@ function rtSetScope(s){
   rtState.scope=s;
   var tabs=document.querySelectorAll('#rtTabs .rt-tab');
   for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('active',tabs[i].getAttribute('data-scope')===s);
-  rtCloseStream();
   rtState.active=null;
   rtResetChat();
   rtLoadConvs();
@@ -179,6 +229,9 @@ function rtLoadConvs(manual){
       var still=rtState.convs.filter(function(c){return c.id===rtState.active.id&&c.type===rtState.active.type})[0];
       if(!still)rtResetChat();
     }
+    if(!rtState.active&&rtState.convs.length&&window.innerWidth>860){
+      rtOpenConv(rtState.convs[0].type,rtState.convs[0].id);
+    }
   }).catch(function(e){box.innerHTML='<div class="rt-empty">加载失败：'+rtEsc(e.message)+'</div>'});
 }
 
@@ -188,15 +241,14 @@ function rtRenderConvs(){
   box.innerHTML=rtState.convs.map(function(c){
     var isG=c.type==='group';
     var name=c.name||(isG?(c.group_number?('群 '+c.group_number):'群聊'):(c.qq?('QQ '+c.qq):'私聊用户'));
-    var initial=isG?'群':'人';
     var active=rtState.active&&rtState.active.id===c.id&&rtState.active.type===c.type?' active':'';
-    var meta=isG?('ID: '+c.openid):(c.qq?('QQ: '+c.qq):('OpenID: '+(c.openid||'')));
+    var meta=isG?('群号 '+(c.group_number||'未绑定')+' · '+c.openid):(c.qq?('QQ '+c.qq):('OpenID '+(c.openid||'')));
     return '<div class="rt-conv'+active+'" onclick="rtOpenConv(\''+c.type+'\',\''+rtEsc(c.id)+'\')">'
-      +'<div class="rt-avatar">'+initial+'</div>'
+      +rtAvatarHtml({name:name,avatar:c.avatar,type:c.type,qq:c.qq})
       +'<div class="rt-conv-main"><div class="rt-conv-top"><span class="rt-conv-name">'+rtEsc(name)+'</span>'
       +(c.msg_count?'<span class="rt-badge">'+c.msg_count+'</span>':'')
       +'<span class="rt-conv-time">'+rtFmtTime(c.last_time)+'</span></div>'
-      +'<div class="rt-conv-sub">'+rtEsc(rtShort(c.last_text||meta,42))+'</div></div></div>';
+      +'<div class="rt-conv-sub">'+rtEsc(rtShort(c.last_text||meta,40))+'</div></div></div>';
   }).join('');
 }
 
@@ -207,14 +259,20 @@ function rtEmptyText(){
 }
 
 function rtResetChat(){
-  rtCloseStream();
   document.getElementById('rtChatName').textContent='未选择会话';
   document.getElementById('rtChatMeta').textContent='从左侧选择群聊或私聊开始';
+  document.getElementById('rtChatAvatar').outerHTML=rtAvatarHtml({name:'?',type:'group'},true).replace('class="rt-avatar sm"','class="rt-avatar sm" id="rtChatAvatar"');
   document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">选择左侧任一会话，即可查看历史消息并实时预览新消息</div>';
   var ta=document.getElementById('rtInput');ta.value='';ta.disabled=true;
   document.getElementById('rtSend').disabled=true;
+  document.getElementById('rtGroupMgrBtn').style.display='none';
+  document.getElementById('rtReloadBtn').style.display='none';
   document.getElementById('rtApp').setAttribute('data-view','list');
-  rtSetConn('off','未连接');
+}
+
+function rtSetChatAvatar(o){
+  var el=document.getElementById('rtChatAvatar');if(!el)return;
+  el.outerHTML=rtAvatarHtml(o,true).replace('class="rt-avatar sm"','class="rt-avatar sm" id="rtChatAvatar"');
 }
 
 function rtOpenConv(type,id){
@@ -226,15 +284,20 @@ function rtOpenConv(type,id){
   var isG=type==='group';
   var name=c.name||(isG?(c.group_number?('群 '+c.group_number):'群聊'):(c.qq?('QQ '+c.qq):'私聊用户'));
   document.getElementById('rtChatName').textContent=(isG?'群聊 · ':'私聊 · ')+name;
-  var meta=isG?('群号 <code>'+(c.group_number||'未绑定')+'</code> · OpenID <code>'+rtEsc(c.openid)+'</code>')
-               :('QQ <code>'+(c.qq||'未知')+'</code> · OpenID <code>'+rtEsc(c.openid)+'</code>');
+  rtSetChatAvatar({name:name,avatar:c.avatar,type:c.type,qq:c.qq});
+  var meta=isG?('群号 <code onclick="rtCopy(\''+rtEsc(c.group_number||'')+'\')">'+(c.group_number||'未绑定')+'</code> · OpenID <code onclick="rtCopy(\''+rtEsc(c.openid)+'\')">'+rtEsc(c.openid)+'</code>')
+               :('QQ <code>'+(c.qq||'未知')+'</code> · OpenID <code onclick="rtCopy(\''+rtEsc(c.openid)+'\')">'+rtEsc(c.openid)+'</code>');
   document.getElementById('rtChatMeta').innerHTML=meta;
+  document.getElementById('rtGroupMgrBtn').style.display=isG?'':'none';
+  document.getElementById('rtReloadBtn').style.display='';
   document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">正在加载历史消息...</div>';
   var ta=document.getElementById('rtInput');ta.disabled=false;
   document.getElementById('rtSend').disabled=false;
   rtLoadHistory(type,id);
-  rtOpenStream(type,id);
+  if(!rtState.es)rtOpenLive();
 }
+
+function rtCopy(t){if(!t)return;try{navigator.clipboard.writeText(t);rtToast('已复制：'+t)}catch(e){}}
 
 function rtLoadHistory(type,id){
   rtApi('/api/realtime/messages?botId='+encodeURIComponent(rtState.bot.appId)+'&type='+type+'&target='+encodeURIComponent(id)+'&limit=120')
@@ -249,29 +312,64 @@ function rtLoadHistory(type,id){
     }).catch(function(e){document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">历史消息加载失败：'+rtEsc(e.message)+'</div>'});
 }
 
-function rtOpenStream(type,id){
+function rtReloadActive(){if(rtState.active)rtLoadHistory(rtState.active.type,rtState.active.id)}
+
+function rtOpenLive(){
+  if(!rtState.bot)return;
   rtCloseStream();
-  var url='/api/realtime/stream?botId='+encodeURIComponent(rtState.bot.appId)+'&type='+type+'&target='+encodeURIComponent(id);
+  var url='/api/realtime/live?botId='+encodeURIComponent(rtState.bot.appId)+'&sinceId='+rtState.lastId;
   try{
     var es=new EventSource(url,{withCredentials:true});
     rtState.es=es;
-    es.onopen=function(){rtSetConn('on','实时同步中')};
+    es.onopen=function(){rtSetConn('on','实时同步中');rtStopFallback()};
     es.onmessage=function(ev){
       try{
         var m=JSON.parse(ev.data);
-        if(!rtState.active||rtState.active.id!==id)return;
-        if(m.id&&m.id<=rtState.lastId)return;
-        rtState.lastId=Math.max(rtState.lastId,m.id||0);
-        var box=document.getElementById('rtMsgs');
-        var ph=box.querySelector('.rt-placeholder');if(ph)ph.remove();
-        var near=box.scrollHeight-box.scrollTop-box.clientHeight<120;
-        box.appendChild(rtMsgNode(m));
-        if(near)rtScrollBottom();
+        if(!m.id||m.id<=rtState.lastId)return;
+        rtState.lastId=m.id;
+        if(rtState.active&&rtMatches(m)){
+          var box=document.getElementById('rtMsgs');
+          var ph=box.querySelector('.rt-placeholder');if(ph)ph.remove();
+          var pend=box.querySelector('.rt-msg.pending');if(pend&&m.dir==='out')pend.remove();
+          var near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
+          box.appendChild(rtMsgNode(m));
+          if(near)rtScrollBottom();
+        }else{
+          rtScheduleListRefresh();
+        }
       }catch(e){}
     };
-    es.onerror=function(){rtSetConn('off','连接中断，重连中')};
-  }catch(e){rtSetConn('off','无法建立实时连接')}
+    es.onerror=function(){rtSetConn('off','连接中断，轮询同步');rtStartFallback()};
+  }catch(e){rtSetConn('off','无法建立实时连接');rtStartFallback()}
 }
+
+function rtStartFallback(){
+  if(rtState.fallbackTimer)return;
+  rtState.fallbackTimer=setInterval(function(){
+    if(!rtState.active||document.hidden)return;
+    rtApi('/api/realtime/messages?botId='+encodeURIComponent(rtState.bot.appId)+'&type='+rtState.active.type+'&target='+encodeURIComponent(rtState.active.id)+'&limit=40')
+      .then(function(data){
+        var msgs=(data.messages||[]).filter(function(m){return m.id>rtState.lastId});
+        if(!msgs.length)return;
+        var box=document.getElementById('rtMsgs');
+        var ph=box.querySelector('.rt-placeholder');if(ph)ph.remove();
+        var near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
+        msgs.forEach(function(m){box.appendChild(rtMsgNode(m));rtState.lastId=Math.max(rtState.lastId,m.id)});
+        if(near)rtScrollBottom();
+      }).catch(function(){});
+  },2500);
+}
+function rtStopFallback(){if(rtState.fallbackTimer){clearInterval(rtState.fallbackTimer);rtState.fallbackTimer=null}}
+
+function rtMatches(m){
+  var a=rtState.active;if(!a)return false;
+  if(a.type==='group')return m.group_id===a.id;
+  if(m.category==='send')return m.group_id===a.id;
+  return (m.group_id===''||!m.group_id)&&m.user_id===a.id;
+}
+
+var _listTimer=null;
+function rtScheduleListRefresh(){if(_listTimer)return;_listTimer=setTimeout(function(){_listTimer=null;rtLoadConvs(true)},1500)}
 
 function rtCloseStream(){
   if(rtState.es){try{rtState.es.close()}catch(e){}rtState.es=null}
@@ -284,15 +382,64 @@ function rtSetConn(state,text){
   document.getElementById('rtConnText').textContent=text;
 }
 
-function rtMsgNode(m){
+function rtLinkify(text){
+  var s=String(text==null?'':text),out='',last=0,m;
+  var re=/\[([^\]]+)\]\((mqqapi:\/\/[^)\s]+|https?:\/\/[^)\s]+)\)|(mqqapi:\/\/\S+|https?:\/\/\S+)/g;
+  while((m=re.exec(s))){
+    out+=rtEsc(s.slice(last,m.index));
+    if(m[1]!=null)out+='<a href="'+rtEsc(m[2])+'" target="_blank" rel="noopener">'+rtEsc(m[1])+'</a>';
+    else out+='<a href="'+rtEsc(m[3])+'" target="_blank" rel="noopener">'+rtEsc(m[3])+'</a>';
+    last=re.lastIndex;
+  }
+  out+=rtEsc(s.slice(last));
+  return out;
+}
+function rtFmtContent(raw){
+  var s=String(raw==null?'':raw);
+  if(!s.trim())return '<span style="opacity:.6">[无文本内容]</span>';
+  var html='';
+  s.split('\n').forEach(function(line){
+    var img=line.match(/^\[图片\]\s*(\S+)/);
+    var vid=line.match(/^\[视频\]\s*(\S+)/);
+    var aud=line.match(/^\[语音\]\s*(\S+)/);
+    var file=line.match(/^\[文件\]\s*(.+)$/);
+    if(img&&/^https?:\/\//.test(img[1])){
+      html+='<img class="rt-img" loading="lazy" src="'+rtEsc(img[1])+'" onclick="window.open(this.src)">';
+    }else if(vid&&/^https?:\/\//.test(vid[1])){
+      html+='<div><a href="'+rtEsc(vid[1])+'" target="_blank" rel="noopener">[视频] 点击播放</a></div>';
+    }else if(aud&&/^https?:\/\//.test(aud[1])){
+      html+='<div><audio controls preload="none" src="'+rtEsc(aud[1])+'"></audio></div>';
+    }else if(file){
+      var parts=file[1].trim().split(/\s+/);
+      var u=parts[parts.length-1];
+      if(/^https?:\/\//.test(u)){
+        var nm=parts.slice(0,-1).join(' ')||'下载文件';
+        html+='<div><a href="'+rtEsc(u)+'" target="_blank" rel="noopener">[文件] '+rtEsc(nm)+'</a></div>';
+      }else{
+        html+='<div>'+rtLinkify(line)+'</div>';
+      }
+    }else{
+      html+='<div>'+rtLinkify(line)+'</div>';
+    }
+  });
+  return html;
+}
+
+function rtMsgNode(m,pending){
+  var out=m.dir==='out';
   var div=document.createElement('div');
-  div.className='rt-msg '+(m.dir==='out'?'out':'in');
-  var who=m.dir==='out'?'机器人':(m.user_id?(rtState.active&&rtState.active.type==='c2c'?'用户':'成员')+' '+m.user_id:'用户');
-  var content=String(m.content||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  if(!content)content='<span style="opacity:.6">[无文本内容]</span>';
-  content=content.replace(/(https?:\/\/[^\s]+|mqqapi:\/\/[^\s]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
-  div.innerHTML='<div><div class="who">'+rtEsc(who)+'</div><div class="bubble">'+content+'</div></div>'
-    +'<div class="mtime">'+rtEsc(rtFmtTime(m.created_at))+'</div>';
+  div.className='rt-msg '+(out?'out':'in')+(pending?' pending':'');
+  if(pending)div.setAttribute('data-pending','1');
+  var name=out?'机器人':(m.sender_name||'');
+  var av;
+  if(out){av='<span class="rt-avatar sm">机</span>'}
+  else{
+    var initial=m.sender_name?m.sender_name.slice(0,1):'人';
+    av=m.sender_avatar?'<span class="rt-avatar sm"><img src="'+rtEsc(m.sender_avatar)+'" alt="" onerror="this.remove()">'+rtEsc(initial)+'</span>':'<span class="rt-avatar sm">'+rtEsc(initial)+'</span>';
+  }
+  var whoTag=out?'':'<span>'+rtEsc(name)+'</span>'+(m.sender_qq?'<span class="rt-who-qq">QQ '+rtEsc(m.sender_qq)+'</span>':'')+'<span class="rt-who-qq">'+rtEsc(rtShort(m.user_id||'',12))+'</span>';
+  div.innerHTML=av+'<div class="rt-msg-body"><div class="who">'+whoTag+'</div><div class="bubble">'+rtFmtContent(m.content)+'</div>'
+    +'<div class="mtime">'+rtEsc(pending?'发送中...':rtFmtTime(m.created_at))+'</div></div>';
   return div;
 }
 
@@ -305,10 +452,47 @@ function rtSend(){
   if(!content)return;
   rtState.sending=true;
   document.getElementById('rtSend').disabled=true;
+  var box=document.getElementById('rtMsgs');
+  var ph=box.querySelector('.rt-placeholder');if(ph)ph.remove();
+  var optimistic=rtMsgNode({dir:'out',content:content,created_at:new Date().toISOString().replace('T',' ').slice(0,19)},true);
+  box.appendChild(optimistic);rtScrollBottom();
+  ta.value='';
   rtApi('/api/realtime/send',{method:'POST',body:{botId:rtState.bot.appId,type:rtState.active.type,target:rtState.active.id,content:content}})
-    .then(function(){ta.value='';})
-    .catch(function(e){rtToast('发送失败：'+e.message,true)})
+    .then(function(){setTimeout(rtReloadActive,900)})
+    .catch(function(e){optimistic.remove();rtToast('发送失败：'+e.message,true)})
     .then(function(){rtState.sending=false;if(rtState.active)document.getElementById('rtSend').disabled=false});
+}
+
+function rtPickMedia(kind){
+  var inp=document.getElementById('rtMedia');
+  inp.setAttribute('data-kind',kind);
+  inp.value='';
+  inp.accept=kind==='video'?'video/*':(kind==='emoji'?'image/*,.gif':'image/*');
+  inp.click();
+}
+function rtUploadMedia(input){
+  var file=input.files&&input.files[0];
+  if(!file){return}
+  if(!rtState.active){rtToast('请先选择会话',true);input.value='';return}
+  var kind=input.getAttribute('data-kind')||'image';
+  var mediaType=kind==='video'?'video':'image';
+  var fd=new FormData();
+  fd.append('botId',rtState.bot.appId);
+  fd.append('type',rtState.active.type);
+  fd.append('target',rtState.active.id);
+  fd.append('mediaType',mediaType);
+  fd.append('file',file);
+  rtToast('正在上传'+(mediaType==='video'?'视频':'图片')+'...');
+  var savedType=rtState.active.type,savedId=rtState.active.id;
+  rtApi('/api/realtime/send-media',{method:'POST',body:fd})
+    .then(function(){rtToast('已发送');if(rtState.active&&rtState.active.type===savedType&&rtState.active.id===savedId)setTimeout(rtReloadActive,900)})
+    .catch(function(e){rtToast('发送失败：'+e.message,true)})
+    .then(function(){input.value=''});
+}
+
+function rtOpenGroupMgr(){
+  var a=rtState.active;if(!a||a.type!=='group')return;
+  window.open('/index.html?open=groupmgr&bot='+encodeURIComponent(rtState.bot.appId)+'&group='+encodeURIComponent(a.id),'_blank');
 }
 
 function rtBackToList(){document.getElementById('rtApp').setAttribute('data-view','list')}
@@ -318,6 +502,7 @@ document.getElementById('rtInput').addEventListener('keydown',function(e){
 });
 
 rtInit();
+setInterval(function(){if(!document.hidden)rtLoadConvs(true)},6000);
 </script>
 </body>
 </html>

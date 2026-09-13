@@ -31,6 +31,51 @@ function isDuplicateMessage(key: string): boolean {
   return false;
 }
 
+// 构造入站消息正文：纯文本 + 附件标记行，供面板「消息工作台」原样预览图片/视频/语音/文件。
+// QQ 开放平台富媒体事件里，非文本消息的 d.content 为空，媒体信息位于 d.attachments
+// （少数版本位于 d.message / d.msg_elements），这里做多形态兜底提取。
+export function collectIncomingMedia(d: any): Array<{ ct: string; url: string; name: string }> {
+  const out: Array<{ ct: string; url: string; name: string }> = [];
+  const push = (ct: any, url: any, name: any) => {
+    const u = String(url || '').trim();
+    const n = String(name || '').trim();
+    if (!u && !n) return;
+    out.push({ ct: String(ct || '').toLowerCase(), url: u, name: n });
+  };
+  const scan = (arr: any) => {
+    if (!Array.isArray(arr)) return;
+    for (const a of arr) {
+      if (!a) continue;
+      if (a.data && typeof a.data === 'object') {
+        const t = String(a.type || '').toLowerCase();
+        const ct = a.data?.content_type || (t === 'image' ? 'image/*' : t === 'video' ? 'video/*' : (t === 'audio' || t === 'voice' || t === 'record') ? 'audio/*' : '');
+        push(ct, a.data?.url || a.data?.raw_url || a.url, a.data?.filename || a.filename);
+      } else {
+        push(a.content_type, a.url || a.raw_url, a.filename);
+      }
+    }
+  };
+  scan(d?.attachments);
+  scan(d?.message);
+  scan(d?.msg_elements);
+  return out;
+}
+
+export function buildIncomingDetail(d: any, maxLen = 1000): string {
+  const lines: string[] = [];
+  const text = String(d?.content || '').trim();
+  if (text) lines.push(text);
+  for (const m of collectIncomingMedia(d)) {
+    let tag = '文件';
+    if (m.ct.startsWith('image')) tag = '图片';
+    else if (m.ct.startsWith('video')) tag = '视频';
+    else if (m.ct.startsWith('audio') || m.ct.startsWith('voice')) tag = '语音';
+    lines.push('[' + tag + '] ' + (m.name ? m.name + ' ' : '') + m.url);
+  }
+  const out = lines.join('\n');
+  return out.length > maxLen ? out.slice(0, maxLen) : out;
+}
+
 function ensureGroupMembersTable() {
   getDb().exec(`
     CREATE TABLE IF NOT EXISTS group_members (
@@ -165,7 +210,7 @@ export class WebhookManager {
         }
         // 记录私聊用户映射（带触发机器人 bot_id），供定时任务按归属机器人发私聊
         try { setUserMapping(authorId, '', d.author?.username || '', this.botId); } catch (e) {}
-        addSystemLog('info', 'message', '收到私聊消息', (d.content || '').substring(0, 100), authorId, '', this.botId);
+        addSystemLog('info', 'message', '收到私聊消息', buildIncomingDetail(d, 500), authorId, '', this.botId);
         if (isDuplicateMessage(`c:${d.id || ''}|${authorId}|${d.content}`)) {
           logger.info(`C2C event deduplicated: content="${(d.content || '').substring(0, 40)}"`);
           break;
@@ -223,7 +268,7 @@ export class WebhookManager {
           try { setUserMapping(authorId, qqId, d.author?.username || '', this.botId); } catch (e) {}
         }
 
-        addSystemLog('info', 'message', '收到群消息', (d.content || '').substring(0, 150), authorId, gid, this.botId);
+        addSystemLog('info', 'message', '收到群消息', buildIncomingDetail(d), authorId, gid, this.botId);
         logger.info(`Webhook dispatch: type=${eventType} content="${(d.content||'').substring(0,40)}" group_openid=${gid} authorId=${authorId}`);
         if (isDuplicateMessage(`g:${gid}|${d.id || ''}|${authorId}|${d.content}`)) {
           logger.info(`Group event deduplicated: content="${(d.content || '').substring(0, 40)}" group=${gid} bot=${this.botId}`);
@@ -243,7 +288,7 @@ export class WebhookManager {
       }
       case 'AT_MESSAGE_CREATE':
       case 'MESSAGE_CREATE':
-        addSystemLog('info', 'message', '收到频道消息', (d.content || '').substring(0, 150), authorId, d.channel_id || '', this.botId);
+        addSystemLog('info', 'message', '收到频道消息', buildIncomingDetail(d), authorId, d.channel_id || '', this.botId);
         if (isDuplicateMessage(`gu:${d.channel_id || ''}|${d.id || ''}|${authorId}|${d.content}`)) break;
         await this.eventBus.emit('message.guild', {
           id: d.id,

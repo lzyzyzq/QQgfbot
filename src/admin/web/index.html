@@ -1436,6 +1436,7 @@ function handleQQLoginSuccess(data){
   updateSidebar();
   loadDashboard();
   loadBotCount();
+  applyPendingOpen();
   window.history.replaceState({}, '', window.location.pathname);
   // QQ 登录成功后自动触发 NapCat 真实QQ号同步（未配置则静默跳过）
   if(data.qq_number){
@@ -1506,7 +1507,7 @@ async function doLogin(){
     setAdminTokenCookie(data.token);
     errEl.textContent='登录成功，跳转中...';
     setTimeout(function(){
-      hideLogin();updateSidebar();loadDashboard();loadBotCount();
+      hideLogin();updateSidebar();loadDashboard();loadBotCount();applyPendingOpen();
       errEl.textContent='';
       checkPasswordPolicy();
     },300);
@@ -1611,10 +1612,23 @@ let _botsCache=[];
 let _botsCacheTime=0;
 let _autoRefreshTimer=null;
 let _dashTimer=null;
+let _pendingOpen=null;
 async function getBotsCached(){
   if(_botsCache.length&&Date.now()-_botsCacheTime<30000)return _botsCache;
   try{const b=await api('/api/bots');_botsCache=b||[];_botsCacheTime=Date.now();}catch(e){}
   return _botsCache;
+}
+// 处理 URL 深链参数（如实时消息工作台跳转过来的 ?open=groupmgr&bot=<appId>&group=<id>）
+async function applyPendingOpen(){
+  if(!_pendingOpen||_pendingOpen.applied)return;
+  if(_pendingOpen.cmd==='groupmgr'){
+    _pendingOpen.applied=true;
+    try{
+      const bots=await getBotsCached();
+      const b=(bots||[]).find(x=>String(x.appId)===String(_pendingOpen.bot));
+      if(b)await showGroupMgr(b.id,b.name,b.appId,_pendingOpen.group);
+    }catch(e){}
+  }
 }
 // 把当前锁定机器人同步到各页面的筛选下拉（无锁定时也填充机器人选项）
 async function applyBotFilterToPage(){
@@ -2378,13 +2392,14 @@ var currentGroupMgrBotId='';
 async function showInviteBot(id,name){try{const data=await api('/api/bots/'+id+'/invite-url');docById('inviteBotLabel').textContent=name+' (AppID: '+data.appId+')';docById('inviteUrl').value=data.inviteUrl;docById('qrcodeUrl').value=data.qrcodeUrl;docById('modalInviteBot').classList.add('active')}catch(e){alert('获取邀请链接失败: '+e.message)}}
 function copyInviteUrl(){navigator.clipboard.writeText(docById('inviteUrl').value).then(()=>{const btn=event.target;btn.textContent='已复制';setTimeout(()=>btn.textContent='复制',2000)})}
 
-async function showGroupMgr(id,name,appId){currentGroupMgrBotId=id;docById('groupMgrLabel').textContent='- '+name;docById('groupMgrGroupId').innerHTML='<option value="">-- 加载中 --</option>';docById('groupMgrMemberId').innerHTML='<option value="">-- 先选择群 --</option>';docById('groupAnnounceContent').value='';  docById('groupMgrResult').style.display='none';docById('modalGroupMgr').classList.add('active');
+async function showGroupMgr(id,name,appId,preselectGroupId){currentGroupMgrBotId=id;docById('groupMgrLabel').textContent='- '+name;docById('groupMgrGroupId').innerHTML='<option value="">-- 加载中 --</option>';docById('groupMgrMemberId').innerHTML='<option value="">-- 先选择群 --</option>';docById('groupAnnounceContent').value='';  docById('groupMgrResult').style.display='none';docById('modalGroupMgr').classList.add('active');
   loadNapcatConfig();
   let groups=[];
   try{const data=await api('/api/bots/'+id+'/groups');groups=data.groups||[]}catch(e){console.error(e)}
   const sel=docById('groupMgrGroupId');
   sel.innerHTML='<option value="">-- 请选择群 --</option>';
-  groups.forEach(g=>{sel.innerHTML+='<option value="'+esc(g.id)+'" title="'+esc(g.id)+'">'+(g.name?esc(g.name)+' ('+esc(g.id).slice(0,10)+'...)':esc(g.id))+'</option>'})}
+  groups.forEach(g=>{sel.innerHTML+='<option value="'+esc(g.id)+'" title="'+esc(g.id)+'">'+(g.name?esc(g.name)+' ('+esc(g.id).slice(0,10)+'...)':esc(g.id))+'</option>'});
+  if(preselectGroupId){const opt=Array.from(sel.options).find(o=>o.value===preselectGroupId);if(opt){sel.value=preselectGroupId;onGroupMgrGroupChange()}}}
 
 async function onGroupMgrGroupChange(){const groupId=docById('groupMgrGroupId').value;const sel=docById('groupMgrMemberId');if(!groupId){sel.innerHTML='<option value="">-- 先选择群 --</option>';docById('groupMemberMapTbody').innerHTML='<tr><td colspan="4" style="color:var(--text2);text-align:center;padding:10px">请先选择群</td></tr>';return}
   sel.innerHTML='<option value="">-- 加载中 --</option>';
@@ -4175,6 +4190,10 @@ function mdToHtml(md){return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
   const urlParams = new URLSearchParams(window.location.search);
   const qqCode = urlParams.get('code');
   const bindOpenid = (urlParams.get('openid')||'').trim();
+  const openCmd = (urlParams.get('open')||'').trim();
+  if (openCmd) {
+    _pendingOpen = { cmd: openCmd, bot: (urlParams.get('bot')||'').trim(), group: (urlParams.get('group')||'').trim(), applied: false };
+  }
   if (savedToken && !qqCode) {
     token = savedToken;
     localStorage.removeItem('admin_token');
@@ -4188,6 +4207,7 @@ function mdToHtml(md){return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
           updateSidebar();
           loadDashboard();
           loadBotCount();
+          applyPendingOpen();
         }
       }).catch(() => showLogin());
     } catch(e) { showLogin(); }
@@ -4249,10 +4269,23 @@ function mdToHtml(md){return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
     });
     }
     window.history.replaceState({}, '', window.location.pathname);
+    return;
   }
+  // 无本地 token 且非回调：尝试用 Cookie 会话自动登录（支持新标签页/深链直达）
+  api('/api/auth/me').then(info => {
+    if (info && info.username) {
+      currentUser = { username: info.username, role: info.role };
+      currentUserPermissions = info.permissions || null;
+      hideLogin();
+      updateSidebar();
+      loadDashboard();
+      loadBotCount();
+      applyPendingOpen();
+    } else {
+      showLogin();
+    }
+  }).catch(() => showLogin());
 })();
-
-showLogin();
 </script>
 <script src="tester.js"></script>
 </body>
