@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QQ 开放平台 · 管理页</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background: #f2f3f5; color: #333; }
+  header { background: linear-gradient(135deg,#1e3a8a,#2563eb); color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  header h1 { font-size: 17px; font-weight: 600; }
+  header .sub { font-size: 12px; opacity: .85; margin-top: 3px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 14px 12px 60px; }
+  .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  label { font-size: 12px; color: #666; }
+  select, input[type=text], textarea { padding: 8px 10px; border: 1px solid #d9d9d9; border-radius: 8px; font-size: 13px; font-family: inherit; width: 100%; }
+  textarea { min-height: 52px; resize: vertical; line-height: 1.5; }
+  .btn { padding: 8px 16px; border: 1px solid #d9d9d9; background: #fff; border-radius: 8px; font-size: 13px; cursor: pointer; color: #555; }
+  .btn:hover { border-color: #2563eb; color: #2563eb; }
+  .btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.danger { color: #ef4444; border-color: #ef4444; }
+  .btn.green { background: #16a34a; border-color: #16a34a; color: #fff; }
+  .btn.sm { padding: 4px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; background: rgba(255,255,255,.16); }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #cbd5e1; }
+  .badge.on .dot { background: #22c55e; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tab { padding: 7px 12px; border: 1px solid #d9d9d9; border-radius: 16px; font-size: 13px; cursor: pointer; background: #fff; color: #555; }
+  .tab.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .hint { font-size: 11px; color: #999; margin-top: 6px; line-height: 1.6; }
+  .err { color: #ef4444; font-size: 12px; }
+  .ok { color: #16a34a; font-size: 12px; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .tbl th, .tbl td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; word-break: break-all; vertical-align: top; }
+  .tbl th { background: #f8fafc; color: #475569; font-weight: 600; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 10px; font-size: 12px; overflow: auto; max-height: 320px; line-height: 1.5; }
+  .field { margin-bottom: 8px; }
+  .field > label { display: block; margin-bottom: 4px; }
+  .modal-mask { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: none; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  .modal-mask.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 420px; max-height: 88vh; overflow: auto; }
+  .modal h3 { font-size: 15px; margin-bottom: 10px; color: #1e3a8a; }
+  .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .qr-box { text-align: center; padding: 10px; }
+  .qr-box img { width: 200px; height: 200px; border: 1px solid #e5e7eb; border-radius: 8px; }
+  .action-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <h1>QQ 开放平台</h1>
+      <div class="sub">开发者登录后可管理机器人信息、成员、Ark 模板、域名报备、IP 白名单、事件订阅、Webhook、沙箱、可用范围及高级接口</div>
+    </div>
+    <div class="row">
+      <span id="sessionBadge" class="badge"><span class="dot"></span>未登录</span>
+      <button class="btn sm" onclick="openManual()">手动填写</button>
+      <button class="btn sm primary" onclick="startLogin()">扫码登录</button>
+      <button class="btn sm" onclick="startAuth()">授权管理</button>
+      <button class="btn sm danger" onclick="logoutSession()">退出</button>
+      <button class="btn sm" onclick="openUpstream()">上游配置</button>
+      <button class="btn sm" onclick="location.href='/'">返回面板</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <label>选择机器人</label>
+      <select id="botSelect" style="flex:1;max-width:420px"></select>
+      <button class="btn sm" onclick="loadBots()">刷新</button>
+      <button class="btn sm" onclick="reloadTab()">重载当前页</button>
+    </div>
+    <div class="hint" id="upstreamHint"></div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div class="card" id="content"></div>
+</div>
+
+<!-- 通用输入弹窗 -->
+<div class="modal-mask" id="inputMask">
+  <div class="modal">
+    <h3 id="inputTitle">输入</h3>
+    <div id="inputFields"></div>
+    <div class="actions">
+      <button class="btn" onclick="closeInput()">取消</button>
+      <button class="btn primary" onclick="submitInput()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 扫码弹窗 -->
+<div class="modal-mask" id="qrMask">
+  <div class="modal">
+    <h3 id="qrTitle">扫码授权</h3>
+    <div class="qr-box"><img id="qrImg" alt="二维码" src=""></div>
+    <div class="hint" id="qrStatus" style="text-align:center"></div>
+    <div class="err" id="qrError" style="text-align:center;display:none"></div>
+    <div class="row" id="qrFallback" style="justify-content:center;gap:8px;display:none;margin-top:8px">
+      <button class="btn sm" onclick="closeQr();openManual()">改用手动填写</button>
+      <button class="btn sm" onclick="closeQr();openUpstream()">去配置上游</button>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="closeQr()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 手动填写会话 -->
+<div class="modal-mask" id="manualMask">
+  <div class="modal">
+    <h3>手动填写登录态</h3>
+    <div class="hint" style="margin-bottom:8px">登录 q.qq.com 后，从浏览器开发者工具 Cookie 中复制 quin / quid / qticket，或直接粘贴整段 Cookie。</div>
+    <div class="field">
+      <label>uin（QQ 号）</label>
+      <div class="row" style="gap:6px">
+        <input type="text" id="mUin" style="flex:1">
+        <button class="btn sm" onclick="fillPanelQq()">读取面板 QQ</button>
+      </div>
+      <div class="hint" id="panelQqHint"></div>
+    </div>
+    <div class="field"><label>developerId（quid）</label><input type="text" id="mDid"></div>
+    <div class="field"><label>ticket（qticket）</label><input type="text" id="mTicket"></div>
+    <div class="field"><label>或粘贴整段 Cookie（自动解析）</label><textarea id="mCookie"></textarea></div>
+    <div class="actions">
+      <button class="btn" onclick="document.getElementById('manualMask').classList.remove('show')">取消</button>
+      <button class="btn primary" onclick="saveManual()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 上游配置 -->
+<div class="modal-mask" id="upstreamMask">
+  <div class="modal" style="max-width:560px">
+    <h3>上游接口配置（超级主人）</h3>
+    <div class="hint" style="margin-bottom:8px">配置 baseUrl、各动作的端点映射与登录态请求头模板。未配置的动作不可用。</div>
+    <textarea id="upstreamJson" style="min-height:260px;font-family:monospace"></textarea>
+    <div class="actions">
+      <button class="btn" onclick="document.getElementById('upstreamMask').classList.remove('show')">取消</button>
+      <button class="btn primary" onclick="saveUpstream()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function api(path, opts) {
+  opts = opts || {};
+  var headers = { 'Content-Type': 'application/json' };
+  var token = localStorage.getItem('admin_token') || '';
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return fetch(path, Object.assign({}, opts, {
+    headers: Object.assign({}, headers, opts.headers || {}),
+    credentials: 'same-origin',
+    cache: 'no-store'
+  })).then(function (r) { return r.json().catch(function () { return {}; }); });
+}
+
+var bots = [];
+var botId = '';
+var currentTab = 'info';
+var sessionMask = { loggedIn: false };
+
+var TABS = [
+  { key: 'info', label: '基础信息', actions: [{ action: 'info', label: '查询基础信息', mode: 'read', special: 'info' }] },
+  { key: 'members', label: '成员列表', actions: [{ action: 'members', label: '查询成员', mode: 'read', special: 'members' }] },
+  { key: 'tpl', label: 'Ark 模板', actions: [
+    { action: 'msg-tpl', label: '查询模板', mode: 'read', special: 'msg-tpl' },
+    { action: 'msg-tpl/delete', label: '删除模板', mode: 'write', fields: [
+      { name: 'tplid', label: '模板 ID' }, { name: 'qrcode', label: '扫码票据（可留空自动获取）', optional: true }
+    ], special: 'msg-tpl/delete' }
+  ] },
+  { key: 'ark', label: '域名报备', actions: [
+    { action: 'ark_url.query', label: '查询报备', mode: 'read' },
+    { action: 'ark_url.check', label: '校验 URL', mode: 'write', fields: [{ name: 'url', label: 'URL' }] },
+    { action: 'ark_url.modify', label: '提交报备', mode: 'write', fields: [{ name: 'urls', label: 'URL 列表（换行或逗号分隔）', type: 'list' }] }
+  ] },
+  { key: 'ips', label: 'IP 白名单', actions: [
+    { action: 'white_ip.query', label: '查询白名单', mode: 'read' },
+    { action: 'white_ip.update', label: '更新白名单', mode: 'write', fields: [{ name: 'ips', label: 'IP 列表（换行或逗号分隔）', type: 'list' }] }
+  ] },
+  { key: 'event', label: '事件订阅', actions: [
+    { action: 'event.list', label: '查询事件', mode: 'read' },
+    { action: 'event.modify', label: '修改事件', mode: 'write', fields: [{ name: 'event_ids', label: '事件 ID 列表（换行或逗号分隔）', type: 'list' }] }
+  ] },
+  { key: 'webhook', label: '回调 Webhook', actions: [
+    { action: 'callback.query', label: '查询回调', mode: 'read' },
+    { action: 'callback.get_webhook', label: '查询 Webhook', mode: 'read' },
+    { action: 'callback.modify', label: '修改回调 URL', mode: 'write', fields: [{ name: 'callback_urls', label: '回调 URL 列表', type: 'list' }] },
+    { action: 'callback.set_webhook', label: '设置 Webhook', mode: 'write', fields: [{ name: 'webhook_url', label: 'Webhook URL' }] },
+    { action: 'callback.check_webhook', label: '校验 Webhook', mode: 'read', fields: [{ name: 'webhook_url', label: 'Webhook URL' }] },
+    { action: 'callback.check_icp', label: 'ICP 校验', mode: 'read', fields: [{ name: 'url', label: 'URL' }] },
+    { action: 'callback.webhook_whitelist', label: 'Webhook 白名单', mode: 'read' }
+  ] },
+  { key: 'sandbox', label: '沙箱管理', actions: [
+    { action: 'sandbox.query', label: '查询沙箱', mode: 'read' },
+    { action: 'sandbox.get_creator_uin', label: '查询创建者 Uin', mode: 'read' },
+    { action: 'sandbox.add', label: '添加沙箱', mode: 'write', fields: [{ name: 'robot_scene', label: '场景' }, { name: 'ids', label: 'ID 列表', type: 'list' }] },
+    { action: 'sandbox.del', label: '删除沙箱', mode: 'write', fields: [{ name: 'robot_scene', label: '场景' }, { name: 'ids', label: 'ID 列表', type: 'list' }] }
+  ] },
+  { key: 'scope', label: '可用范围', actions: [
+    { action: 'scope.mode.query', label: '查询模式', mode: 'read' },
+    { action: 'scope.query', label: '查询范围', mode: 'read', fields: [{ name: 'robot_scene', label: '场景', default: 2 }] },
+    { action: 'scope.mode.switch', label: '切换模式', mode: 'write', fields: [{ name: 'robot_scene', label: '场景' }, { name: 'mode', label: '模式' }] },
+    { action: 'scope.add', label: '添加范围', mode: 'write', fields: [{ name: 'robot_scene', label: '场景' }, { name: 'id', label: 'ID' }] },
+    { action: 'scope.del', label: '删除范围', mode: 'write', fields: [{ name: 'robot_scene', label: '场景' }, { name: 'id', label: 'ID' }] }
+  ] },
+  { key: 'groups', label: '群/频道', actions: [
+    { action: 'group.list', label: '群列表', mode: 'read' },
+    { action: 'guild.list', label: '频道列表', mode: 'read' }
+  ] },
+  { key: 'token', label: '密钥/Token', actions: [
+    { action: 'access_token_ttl.query', label: '查询 Token 有效期', mode: 'read' },
+    { action: 'dev_info.query', label: '查询开发者信息', mode: 'read' },
+    { action: 'reset-credentials', label: '重置密钥', mode: 'write', special: 'reset-credentials', fields: [{ name: 'type', label: '类型（secret / token）' }] }
+  ] },
+  { key: 'corpus', label: '官方语料', actions: [
+    { action: 'corpus.status', label: '语料状态', mode: 'read' },
+    { action: 'corpus.list', label: '语料列表', mode: 'read' },
+    { action: 'corpus.search', label: '搜索语料', mode: 'read', fields: [{ name: 'keyword', label: '关键词' }] }
+  ] },
+  { key: 'advanced', label: '高级接口', actions: [{ action: '', label: '自定义动作', mode: 'write', fields: [
+    { name: '__action', label: '动作名（见 /cgi-actions）' },
+    { name: '__params', label: '参数 JSON', type: 'json' }
+  ] }] }
+];
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function renderSessionBadge() {
+  var b = $('sessionBadge');
+  if (sessionMask.loggedIn) {
+    b.className = 'badge on';
+    b.innerHTML = '<span class="dot"></span>已登录 uin: ' + esc(sessionMask.uin);
+  } else {
+    b.className = 'badge';
+    b.innerHTML = '<span class="dot"></span>未登录';
+  }
+}
+
+function loadSession() {
+  return api('/api/open-platform/session').then(function (r) {
+    sessionMask = r || { loggedIn: false };
+    renderSessionBadge();
+  });
+}
+
+function loadBots() {
+  return api('/api/bots').then(function (r) {
+    bots = Array.isArray(r) ? r : (r.bots || []);
+    var sel = $('botSelect');
+    if (!bots.length) { sel.innerHTML = '<option value="">暂无机器人</option>'; return; }
+    sel.innerHTML = bots.map(function (b) {
+      return '<option value="' + esc(b.id) + '">' + esc(b.name) + ' (' + esc(b.appId) + ')</option>';
+    }).join('');
+    botId = botId && bots.some(function (b) { return String(b.id) === String(botId); }) ? botId : bots[0].id;
+    sel.value = String(botId);
+  });
+}
+
+function loadUpstreamHint() {
+  return api('/api/open-platform/cgi-actions').then(function (r) {
+    var n = (r && r.actions) ? r.actions.length : 0;
+    var modeText = {
+      manual: '登录态来源：手动填写（粘贴 q.qq.com 控制台 Cookie）',
+      panel: '登录态来源：复用面板 QQ 登录（确认 QQ 号后补票据）',
+      custom: '登录态来源：自建扫码适配器（login.create / login.check）',
+      builtin: '登录态来源：内置 q.qq.com 扫码（login.create / login.check）'
+    }[loginCfg.mode] || '登录态来源：手动填写';
+    var base = n
+      ? '上游已配置动作 ' + n + ' 个。'
+      : '上游接口尚未配置：点击右上角「上游配置」填写 baseUrl 与端点映射。';
+    $('upstreamHint').innerHTML = base + '　' + esc(modeText) + (loginCfg.note ? '（' + esc(loginCfg.note) + '）' : '');
+  });
+}
+
+function renderTabs() {
+  $('tabs').innerHTML = TABS.map(function (t) {
+    return '<div class="tab' + (t.key === currentTab ? ' active' : '') + '" data-tab="' + t.key + '">' + esc(t.label) + '</div>';
+  }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (el) {
+    el.onclick = function () { currentTab = el.getAttribute('data-tab'); renderTabs(); loadTab(); };
+  });
+}
+
+function currentTabDef() {
+  return TABS.filter(function (t) { return t.key === currentTab; })[0];
+}
+
+function reloadTab() { loadTab(); }
+
+function loadTab() {
+  var tab = currentTabDef();
+  $('content').innerHTML = '<div class="hint">加载中...</div>';
+  var readActions = tab.actions.filter(function (a) { return a.mode === 'read'; });
+  var html = '<div class="row" style="justify-content:space-between"><h2 style="font-size:14px;color:#1e3a8a">' + esc(tab.label) + '</h2></div>';
+  html += '<div class="action-bar">' + tab.actions.map(function (a, i) {
+    return '<button class="btn sm' + (a.mode === 'write' ? ' primary' : '') + '" data-idx="' + i + '">' + esc(a.label) + '</button>';
+  }).join('') + '</div>';
+  html += '<div id="tabResult" style="margin-top:10px"></div>';
+  $('content').innerHTML = html;
+  Array.prototype.forEach.call($('content').querySelectorAll('.action-bar .btn'), function (btn) {
+    btn.onclick = function () { runAction(tab.actions[Number(btn.getAttribute('data-idx'))]); };
+  });
+  if (readActions.length) runAction(readActions[0]);
+}
+
+function requireReady(cb) {
+  if (!botId) { alert('请先选择机器人'); return false; }
+  if (!sessionMask.loggedIn) { alert('请先完成开发者扫码登录或手动填写登录态'); return false; }
+  return true;
+}
+
+function runAction(def) {
+  if (!requireReady()) return;
+  if (def.mode === 'read' && (!def.fields || !def.fields.length)) {
+    doRead(def, {});
+    return;
+  }
+  openInput(def.label, def.fields || [], function (params) {
+    if (def.mode === 'read') { doRead(def, params); return; }
+    if (def.special) { doSpecialWrite(def, params); return; }
+    withQr(function (qrcode) {
+      params.qrcode = qrcode;
+      doRead(def, params, true);
+    });
+  });
+}
+
+function doRead(def, params, silent) {
+  if (def.special) {
+    var url = '/api/open-platform/' + encodeURIComponent(botId) + '/' + def.special;
+    var qs = Object.keys(params).filter(function (k) { return k !== 'qrcode'; })
+      .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+    return api(url + (qs ? '?' + qs : '')).then(renderResult, renderResult);
+  }
+  var action = def.action || (params && params.__action);
+  var inner = def.action ? params : ((params && params.__params) || {});
+  delete inner.__action;
+  delete inner.__params;
+  return api('/api/open-platform/' + encodeURIComponent(botId) + '/cgi', {
+    method: 'POST', body: JSON.stringify({ action: action, params: inner })
+  }).then(renderResult, renderResult);
+}
+
+function renderResult(r) {
+  var box = $('tabResult');
+  if (!box) return;
+  if (r && r.ok) {
+    box.innerHTML = '<div class="ok">调用成功</div>' + jsonView(r.data);
+  } else if (r && r.error) {
+    box.innerHTML = '<div class="err">' + esc(r.error) + '</div>' + (r.data ? jsonView(r.data) : '');
+  } else {
+    box.innerHTML = jsonView(r);
+  }
+}
+
+function jsonView(obj) {
+  if (obj == null) return '<pre>(空)</pre>';
+  if (typeof obj === 'object' && !Array.isArray(obj)) {
+    var keys = Object.keys(obj);
+    if (keys.length && keys.every(function (k) { return obj[k] == null || typeof obj[k] !== 'object'; })) {
+      return '<table class="tbl"><tr>' + keys.map(function (k) { return '<th>' + esc(k) + '</th>'; }).join('') + '</tr><tr>' +
+        keys.map(function (k) { return '<td>' + esc(obj[k]) + '</td>'; }).join('') + '</tr></table>' +
+        '<details style="margin-top:8px"><summary class="hint">原始 JSON</summary><pre>' + esc(JSON.stringify(obj, null, 2)) + '</pre></details>';
+    }
+    if (Array.isArray(obj) && obj.length || (obj.data && Array.isArray(obj.data))) {
+      var arr = Array.isArray(obj) ? obj : obj.data;
+      if (arr.length && typeof arr[0] === 'object') {
+        var cols = Object.keys(arr[0]);
+        return '<table class="tbl"><tr>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr>' +
+          arr.map(function (it) { return '<tr>' + cols.map(function (c) { return '<td>' + esc(typeof it[c] === 'object' ? JSON.stringify(it[c]) : it[c]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>' +
+          '<details style="margin-top:8px"><summary class="hint">原始 JSON</summary><pre>' + esc(JSON.stringify(obj, null, 2)) + '</pre></details>';
+      }
+    }
+  }
+  return '<pre>' + esc(typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2)) + '</pre>';
+}
+
+// ---- 写操作（专用接口，如模板删除 / 重置密钥）----
+function doSpecialWrite(def, params) {
+  withQr(function (qrcode) {
+    params.qrcode = qrcode;
+    api('/api/open-platform/' + encodeURIComponent(botId) + '/' + def.special, {
+      method: 'POST', body: JSON.stringify(params)
+    }).then(renderResult, renderResult);
+  });
+}
+
+// ---- 扫码流 ----
+var qrTimer = null;
+function withQr(onDone) {
+  createQrThenPoll(onDone);
+}
+function createQrThenPoll(onDone) {
+  var bot = bots.filter(function (b) { return String(b.id) === String(botId); })[0];
+  qrBegin('扫码确认', '正在获取确认二维码...');
+  api('/api/open-platform/qrcode/create', {
+    method: 'POST', body: JSON.stringify({ type: 'auth', app_id: bot ? bot.appId : '', action: 'auth' })
+  }).then(function (r) {
+    var qrcode = consumeQrResponse(r, '请使用手机 QQ 扫码并在手机端确认...');
+    if (qrcode === null) return;
+    var times = 0;
+    clearInterval(qrTimer);
+    qrTimer = setInterval(function () {
+      times++;
+      if (times > 150) { clearInterval(qrTimer); qrFail('二维码已超时', '请关闭后重试'); return; }
+      api('/api/open-platform/qrcode/check', { method: 'POST', body: JSON.stringify({ qrcode: qrcode, _q: Date.now() }) })
+        .then(function (chk) {
+          if (chk && chk.ok) {
+            var cd = chk.data || {};
+            if (cd.authorized || cd.confirmed) {
+              clearInterval(qrTimer);
+              $('qrStatus').textContent = '授权成功，可继续操作';
+              var ticket = cd.ticket || cd.qrcode || cd.qr_code || qrcode;
+              closeQr();
+              onDone(ticket);
+            }
+          }
+        });
+    }, 2000);
+  });
+}
+
+function closeQr() { clearInterval(qrTimer); $('qrMask').classList.remove('show'); }
+
+// 打开扫码弹窗并重置为「获取中」状态
+function qrBegin(title, status) {
+  clearInterval(qrTimer);
+  if (title) $('qrTitle').textContent = title;
+  $('qrImg').src = '';
+  $('qrError').style.display = 'none';
+  $('qrError').innerHTML = '';
+  $('qrFallback').style.display = 'none';
+  $('qrStatus').textContent = status || '正在获取二维码...';
+  $('qrMask').classList.add('show');
+}
+
+// 扫码失败：把上游原因与修复建议直接显示在弹窗内，并提供手动/配置入口
+function qrFail(msg, hint) {
+  clearInterval(qrTimer);
+  $('qrImg').src = '';
+  $('qrStatus').textContent = '';
+  var e = $('qrError');
+  e.style.display = 'block';
+  e.innerHTML = esc(msg || '获取二维码失败') + (hint ? '<div class="hint" style="margin-top:4px">' + esc(hint) + '</div>' : '');
+  $('qrFallback').style.display = 'flex';
+}
+
+// 消费二维码创建响应：失败返回 null；成功显示图片并返回轮询票据
+function consumeQrResponse(r, tip) {
+  if (!r || !r.ok) { qrFail((r && r.error) || '获取二维码失败', (r && r.hint) || ''); return null; }
+  var d = r.data || {};
+  if (!d.url) { qrFail('上游未返回二维码地址', (r && r.hint) || ''); return null; }
+  $('qrImg').src = d.url;
+  $('qrStatus').textContent = tip || '请使用手机 QQ 扫码...';
+  return d.token || '';
+}
+
+function startLogin() {
+  qrBegin('扫码登录', '正在获取登录二维码...');
+  api('/api/open-platform/qrcode/create', { method: 'POST', body: JSON.stringify({ type: 'login' }) }).then(function (r) {
+    var qrcode = consumeQrResponse(r, '请使用手机 QQ 扫码登录...');
+    if (qrcode === null) return;
+    var times = 0;
+    clearInterval(qrTimer);
+    qrTimer = setInterval(function () {
+      times++;
+      if (times > 150) { clearInterval(qrTimer); qrFail('二维码已超时', '请点击下方「改用手动填写」或关闭后重试'); return; }
+      api('/api/open-platform/qrcode/check', { method: 'POST', body: JSON.stringify({ qrcode: qrcode }) }).then(function (chk) {
+        if (chk && chk.ok && chk.data) {
+          var cd = chk.data;
+          if (cd.uin && cd.developerId && cd.ticket) {
+            clearInterval(qrTimer);
+            api('/api/open-platform/session', { method: 'POST', body: JSON.stringify(cd) }).then(function (sr) {
+              if (sr && sr.ok) { closeQr(); loadSession().then(loadTab); }
+              else { qrFail((sr && sr.error) || '保存登录态失败'); }
+            });
+          } else if (cd.authorized) {
+            $('qrStatus').textContent = '已确认，等待登录态回传...';
+          }
+        }
+      });
+    }, 2000);
+  });
+}
+
+function startAuth() {
+  if (!requireReady()) return;
+  var bot = bots.filter(function (b) { return String(b.id) === String(botId); })[0];
+  qrBegin('扫码授权', '正在获取授权二维码...');
+  api('/api/open-platform/qrcode/create', { method: 'POST', body: JSON.stringify({ type: 'auth', app_id: bot ? bot.appId : '' }) }).then(function (r) {
+    var qrcode = consumeQrResponse(r, '请扫码授权管理该机器人...');
+    if (qrcode === null) return;
+    var times = 0;
+    clearInterval(qrTimer);
+    qrTimer = setInterval(function () {
+      times++;
+      if (times > 150) { clearInterval(qrTimer); return; }
+      api('/api/open-platform/qrcode/check', { method: 'POST', body: JSON.stringify({ qrcode: qrcode }) }).then(function (chk) {
+        if (chk && chk.ok && chk.data && (chk.data.authorized || chk.data.confirmed)) {
+          clearInterval(qrTimer);
+          $('qrStatus').innerHTML = '<span class="ok">授权成功</span>';
+          setTimeout(closeQr, 1000);
+        }
+      });
+    }, 2000);
+  });
+}
+
+function logoutSession() {
+  if (!confirm('确定退出开发者登录态？')) return;
+  api('/api/open-platform/session', { method: 'DELETE' }).then(function () {
+    sessionMask = { loggedIn: false }; renderSessionBadge(); loadTab();
+  });
+}
+
+// ---- 手动会话 ----
+var loginCfg = { mode: 'manual', note: '' };
+function openManual() {
+  $('panelQqHint').textContent = '';
+  $('manualMask').classList.add('show');
+  if (loginCfg.mode === 'panel') fillPanelQq();
+}
+// 复用面板已有 QQ 登录（心月互联 / NapCat）拿到的绑定 QQ 号，预填 uin
+function fillPanelQq() {
+  var h = $('panelQqHint');
+  h.textContent = '读取中...';
+  api('/api/open-platform/session/panel-qq').then(function (r) {
+    if (r && r.qq) {
+      $('mUin').value = r.qq;
+      h.textContent = '已填入面板绑定 QQ：' + r.qq + (r.nickname ? '（' + r.nickname + '）' : '') + '，仍需补全 developerId / ticket';
+    } else if (r && r.openid) {
+      h.textContent = '面板账号已绑定 OpenID，但未记录 QQ 号，请手动填写 uin';
+    } else {
+      h.textContent = '当前面板账号未绑定 QQ，请先在「系统设置 → 账号」绑定后再试';
+    }
+  });
+}
+function loadLoginConfig() {
+  return api('/api/open-platform/login-config').then(function (r) {
+    loginCfg = r || { mode: 'manual' };
+  });
+}
+function saveManual() {
+  var uin = $('mUin').value.trim();
+  var did = $('mDid').value.trim();
+  var ticket = $('mTicket').value.trim();
+  var raw = $('mCookie').value.trim();
+  if (raw) {
+    function pick(name) { var m = raw.match(new RegExp(name + '=([^;\\s]+)', 'i')); return m ? m[1].trim() : ''; }
+    uin = uin || pick('quin') || pick('uin');
+    did = did || pick('quid');
+    ticket = ticket || pick('qticket');
+  }
+  if (!uin || !did || !ticket) { alert('uin / developerId / ticket 不能为空'); return; }
+  api('/api/open-platform/session', { method: 'POST', body: JSON.stringify({ uin: uin, developerId: did, ticket: ticket }) }).then(function (r) {
+    if (r && r.ok) { $('manualMask').classList.remove('show'); loadSession().then(loadTab); }
+    else { alert((r && r.error) || '保存失败'); }
+  });
+}
+
+// ---- 通用输入弹窗 ----
+var inputCb = null;
+function openInput(title, fields, cb) {
+  $('inputTitle').textContent = title;
+  $('inputFields').innerHTML = fields.map(function (f) {
+    return '<div class="field"><label>' + esc(f.label) + (f.optional ? '（可选）' : '') + '</label>' +
+      '<input type="text" data-name="' + esc(f.name) + '" data-type="' + esc(f.type || 'text') + '" value="' + esc(f.default != null ? f.default : '') + '"></div>';
+  }).join('');
+  inputCb = { fields: fields, cb: cb };
+  $('inputMask').classList.add('show');
+}
+function closeInput() { $('inputMask').classList.remove('show'); inputCb = null; }
+function submitInput() {
+  if (!inputCb) return;
+  var params = {};
+  Array.prototype.forEach.call($('inputFields').querySelectorAll('input'), function (el) {
+    var name = el.getAttribute('data-name');
+    var type = el.getAttribute('data-type');
+    var val = el.value.trim();
+    if (val === '' && name.indexOf('__') !== 0 && name !== 'qrcode') return;
+    if (type === 'list') params[name] = val.split(/[\n,，]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    else if (type === 'json') { try { params[name] = JSON.parse(val || '{}'); } catch (e) { params[name] = val; } }
+    else params[name] = val;
+  });
+  var cb = inputCb.cb;
+  closeInput();
+  cb(params);
+}
+
+// ---- 上游配置 ----
+function openUpstream() {
+  api('/api/open-platform/config').then(function (cfg) {
+    $('upstreamJson').value = JSON.stringify(cfg || {}, null, 2);
+    $('upstreamMask').classList.add('show');
+  });
+}
+function saveUpstream() {
+  var raw = $('upstreamJson').value;
+  var obj;
+  try { obj = JSON.parse(raw || '{}'); } catch (e) { alert('JSON 格式错误'); return; }
+  api('/api/open-platform/config', { method: 'PUT', body: JSON.stringify(obj) }).then(function (r) {
+    if (r && r.ok) { $('upstreamMask').classList.remove('show'); loadUpstreamHint(); }
+    else { alert((r && r.error) || '保存失败'); }
+  });
+}
+
+// ---- 初始化 ----
+$('botSelect').addEventListener('change', function (e) { botId = e.target.value; loadTab(); });
+loadSession().then(loadLoginConfig).then(loadBots).then(loadUpstreamHint).then(function () { renderTabs(); loadTab(); });
+</script>
+</body>
+</html>
