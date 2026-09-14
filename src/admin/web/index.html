@@ -231,7 +231,7 @@ input[type="file"]{color:var(--text2)}
     </div>
   </div>
   <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">仪表盘</div>
-  <div class="nav-item" data-page="realtime" onclick="window.open('/realtime.html','_blank')">实时同步消息<span class="nav-badge" style="background:#0ea5e9">实时</span></div>
+  <div class="nav-item" data-page="realtime" onclick="openRealtime('')">实时同步消息<span class="nav-badge" style="background:#0ea5e9">实时</span></div>
   <div class="nav-item" data-page="bots" onclick="switchPage('bots')">我的机器人<span class="nav-badge" id="botBadge">0</span></div>
   <div class="nav-item" data-page="membersync" onclick="switchPage('membersync')">成员同步</div>
   <div class="nav-item" data-page="channels" onclick="switchPage('channels')">频道管理</div>
@@ -2013,7 +2013,13 @@ function dashBotCardHtml(b){
     '</div></div>';
 }
 function dashOpenRealtime(appId){
-  window.open('/realtime.html?bot='+encodeURIComponent(appId||''),'_blank');
+  openRealtime(appId);
+}
+function openRealtime(appId){
+  var t='';
+  try{t=token||localStorage.getItem('admin_token')||''}catch(e){t=token||''}
+  var url='/realtime.html?bot='+encodeURIComponent(appId||'')+(t?'&token='+encodeURIComponent(t):'');
+  window.open(url,'_blank');
 }
 function dashOpenDict(){
   window.open('/menu-editor.html?plugin='+encodeURIComponent('词典回复.js')+'&tab=dict','_blank');

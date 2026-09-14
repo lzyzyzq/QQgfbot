@@ -236,7 +236,7 @@ var rtState={bots:[],bot:null,scope:'all',convs:[],active:null,es:null,lastId:0,
 
 function rtEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function rtCookie(n){var m=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)'));return m?decodeURIComponent(m[1]):''}
-function rtToken(){return rtCookie('admin_token')||localStorage.getItem('admin_token')||''}
+function rtToken(){var q='';try{q=new URLSearchParams(location.search).get('token')||''}catch(e){}return q||rtCookie('admin_token')||localStorage.getItem('admin_token')||''}
 function rtToast(msg,isErr){var t=document.getElementById('rtToast');t.textContent=msg;t.className='rt-toast show'+(isErr?' err':'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='rt-toast'},2600)}
 function rtSessionExpired(){
   if(rtState._exp)return;rtState._exp=1;
@@ -266,7 +266,6 @@ function rtAvatarHtml(o,sm){
 }
 
 function rtInit(){
-  if(!rtToken()){location.href='/';return}
   var qs=new URLSearchParams(location.search);
   var wantBot=qs.get('bot')||'';
   rtApi('/api/bots').then(function(bots){
