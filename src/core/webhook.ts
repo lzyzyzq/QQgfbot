@@ -283,6 +283,8 @@ export class WebhookManager {
           timestamp: d.timestamp,
           member_openid: d.author?.member_openid || '',
           botId: this.botId,
+          // 事件类型：GROUP_AT_MESSAGE_CREATE=用户 @ 了机器人（AI 兜底触发判定用）
+          eventType,
         });
         break;
       }

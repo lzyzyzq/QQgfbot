@@ -18,6 +18,7 @@ import { createBotRoutes } from './admin/routes/bot';
 import { createNapcatRoutes } from './admin/routes/napcat';
 import { createOpenPlatformRoutes } from './admin/routes/open-platform';
 import { createRealtimeRoutes } from './admin/routes/realtime';
+import { createAiRoutes } from './admin/routes/ai';
 import editorRoutes from './admin/routes/editor';
 import type { AdminConfig } from './admin/config';
 
@@ -25,6 +26,7 @@ import type { AdminConfig } from './admin/config';
 import { initDb, closeDb, getConfig, setConfig, getDb, addSystemLog } from './db/index';
 import { seedExamplePlugins } from './db/seed';
 import { EventBus, initAssignmentCache, migratePhpPyAssignments } from './core/event-bus';
+import { initAiReply } from './core/ai-reply';
 import { startScheduleRunner } from './core/schedule-runner';
 import { createBot, getBot, registerBot, runWithBotContext, currentBotId, getBotInstance, alsBotId } from './core/bot';
 import { WebhookManager } from './core/webhook';
@@ -608,6 +610,7 @@ async function main() {
   app.use('/api/bots', createBotRoutes(botManager));
   app.use('/api/open-platform', createOpenPlatformRoutes(botManager, adminAuth));
   app.use('/api/realtime', createRealtimeRoutes(botManager));
+  app.use('/api/ai', createAiRoutes(adminAuth));
   app.use('/api/napcat', createNapcatRoutes(adminAuth, eventBus));
   app.use('/api/editor', editorRoutes);
   app.use('/api/plugins', createPluginRoutes(PLUGINS_DIR, adminAuth));
@@ -827,6 +830,8 @@ async function main() {
 
   // ===== 初始化机器人引擎 =====
   eventBus = new EventBus();
+  // AI 兜底回复：监听消息事件，词库等未命中时调用模型回复（扣金币）
+  initAiReply(eventBus, adminAuth);
   initAssignmentCache();
   const bot = createBot(eventBus);
   try { webhookManager = new WebhookManager(eventBus); }

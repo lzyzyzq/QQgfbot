@@ -233,6 +233,7 @@ input[type="file"]{color:var(--text2)}
   <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">仪表盘</div>
   <div class="nav-item" data-page="realtime" onclick="openRealtime('')">实时同步消息<span class="nav-badge" style="background:#0ea5e9">实时</span></div>
   <div class="nav-item" data-page="bots" onclick="switchPage('bots')">我的机器人<span class="nav-badge" id="botBadge">0</span></div>
+  <div class="nav-item" data-page="ai" onclick="switchPage('ai')">AI 智能回复<span class="nav-badge" style="background:#8b5cf6">Beta</span></div>
   <div class="nav-item" data-page="membersync" onclick="switchPage('membersync')">成员同步</div>
   <div class="nav-item" data-page="channels" onclick="switchPage('channels')">频道管理</div>
   <div class="nav-item" data-page="editor" onclick="switchPage('editor')">代码编辑</div>
@@ -254,6 +255,7 @@ input[type="file"]{color:var(--text2)}
   <div class="user-info">
     <div id="sidebarUser">未登录</div>
     <div class="role" id="sidebarRole"></div>
+    <div style="margin-top:4px;font-size:12px;color:#f59e0b;display:none" id="sidebarCoins">金币 <span>0</span></div>
     <div style="margin-top:8px"><a href="#" onclick="showChangeCode()" style="color:var(--accent);font-size:12px">修改授权码</a></div>
     <div style="margin-top:4px"><a href="#" onclick="doLogout()" style="color:var(--danger);font-size:12px">退出登录</a></div>
   </div>
@@ -330,6 +332,118 @@ input[type="file"]{color:var(--text2)}
   <div class="card" id="featureCard">
     <h3>功能模块</h3>
     <div style="color:var(--text2);font-size:13px;line-height:1.8" id="featureList">加载中...</div>
+  </div>
+</div>
+
+<div class="page" id="page-ai">
+  <h2>AI 智能回复</h2>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="min-width:240px">
+        <label>选择机器人</label>
+        <select id="aiBotSel" onchange="aiLoadCfg()" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px"><option value="">加载中...</option></select>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div style="font-size:12px;color:var(--text2)">机器人所有者金币余额</div>
+        <div style="font-size:22px;font-weight:700;color:#f59e0b" id="aiCoins">-</div>
+        <div style="font-size:11px;color:var(--text2)">AI 兜底回复每次成功调用扣 <span id="aiCoinCost">1</span> 金币</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>兜底回复配置</h3>
+    <p style="font-size:12px;color:var(--text2);margin-top:-4px">当 QQ 消息没有命中任何词库指令时，由 AI 模型兜底回复。</p>
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:640px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="aiEnabled" style="width:18px;height:18px"> 启用 AI 兜底回复（关闭后，未命中指令的消息不会触发 AI）</label>
+      <div>
+        <label>模型接口（AI 格式 / 供应商）</label>
+        <select id="aiProvider" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px"></select>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px" id="aiProviderHint"></div>
+      </div>
+      <div>
+        <label>密钥方式</label>
+        <div style="display:flex;gap:16px;font-size:14px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="aiKeyMode" value="system" onchange="aiKeyModeChanged()"> 使用系统共享密钥</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="aiKeyMode" value="own" onchange="aiKeyModeChanged()"> 使用我自己的密钥</label>
+        </div>
+      </div>
+      <div id="aiOwnKeyWrap" style="display:none">
+        <label>我的 API Key</label>
+        <input id="aiOwnKey" type="password" placeholder="sk-..." style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label>模型地址 Base URL（留空用供应商默认）</label>
+          <input id="aiBaseUrl" placeholder="https://api.example.com/v1" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px">
+        </div>
+        <div>
+          <label>模型名称（留空用供应商默认）</label>
+          <input id="aiModel" placeholder="auto" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px">
+        </div>
+        <div>
+          <label>随机度 temperature（0-2）</label>
+          <input id="aiTemp" type="number" min="0" max="2" step="0.1" value="0.8" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px">
+        </div>
+        <div>
+          <label>最大回复 tokens</label>
+          <input id="aiMaxTokens" type="number" min="16" max="4096" value="512" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px">
+        </div>
+      </div>
+      <div>
+        <label>记忆轮数（0=无记忆，每轮包含一问一答）</label>
+        <input id="aiMemory" type="number" min="0" max="20" value="5" style="width:120px;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px">
+      </div>
+      <div>
+        <label>AI 人设 / 系统提示词（System Prompt）</label>
+        <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;align-items:center">
+          <select id="aiPresetSel" style="padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px"></select>
+          <button class="btn btn-outline btn-xs" onclick="aiApplyPreset()">套用预设人设</button>
+          <span style="font-size:11px;color:var(--text2)">套用预设仅填充下方模板，可继续修改</span>
+        </div>
+        <textarea id="aiSystemPrompt" rows="4" placeholder="你是一个智能QQ群助手，回答简洁友好..." style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px;resize:vertical"></textarea>
+      </div>
+      <div>
+        <label>生效场景</label>
+        <div style="display:flex;gap:16px;font-size:14px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiGroupEnabled" checked onchange="aiGroupTriggerVisibility()"> 群聊生效</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiC2cEnabled" checked> 私聊生效</label>
+        </div>
+      </div>
+      <div id="aiGroupTriggerWrap">
+        <label>群聊触发方式</label>
+        <div style="display:flex;gap:16px;font-size:14px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="aiGroupTrigger" value="at" checked> 仅 @机器人时回复（推荐）</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="aiGroupTrigger" value="all"> 所有消息都回复（耗金币快）</label>
+        </div>
+      </div>
+      <div>
+        <label>工具 / 函数定义（Tools，OpenAI tools JSON 数组，留空不使用）</label>
+        <textarea id="aiTools" rows="4" placeholder='[{"type":"function","function":{"name":"...","description":"...","parameters":{...}}}]' style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px;font-family:monospace;resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+          <button class="btn btn-outline btn-xs" onclick="aiResetTools()">重置</button>
+          <span style="font-size:11px;color:var(--text2)">自定义格式可用 <code>{{tools_json}}</code> 引用此处定义</span>
+        </div>
+      </div>
+      <div><button class="btn btn-primary" onclick="aiSaveCfg()" style="padding:10px 28px">保存配置</button> <span id="aiSaveMsg" style="font-size:13px;color:var(--success)"></span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>在线测试</h3>
+    <p style="font-size:12px;color:var(--text2);margin-top:-4px">直接调用模型验证配置，不扣金币、不写入对话记忆；需先保存配置。</p>
+    <div style="display:flex;gap:8px;max-width:640px">
+      <input id="aiTestMsg" placeholder="输入测试消息，如：今天天气怎么样？" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px" onkeydown="if(event.key==='Enter')aiTest()">
+      <button class="btn btn-primary" id="aiTestBtn" onclick="aiTest()">发送</button>
+    </div>
+    <div id="aiTestOut" style="display:none;margin-top:12px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;white-space:pre-wrap;max-width:640px"></div>
+  </div>
+  <div class="card" id="aiProvCard" style="display:none">
+    <h3>模型供应商管理 <span style="font-size:12px;color:var(--text2);font-weight:400">（仅超级主人）</span></h3>
+    <div class="table-wrap"><table><thead><tr><th>名称</th><th>格式</th><th>默认地址</th><th>默认模型</th><th>系统密钥</th><th>操作</th></tr></thead><tbody id="aiProvList"></tbody></table></div>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="aiProvEdit()">添加供应商</button>
+  </div>
+  <div class="card" id="aiUserCard" style="display:none">
+    <h3>用户金币与侧边栏权限 <span style="font-size:12px;color:var(--text2);font-weight:400">（仅超级主人）</span></h3>
+    <div class="table-wrap"><table><thead><tr><th>用户名</th><th>角色</th><th>金币</th><th>操作</th></tr></thead><tbody id="aiUserList"></tbody></table></div>
   </div>
 </div>
 
@@ -1029,6 +1143,16 @@ input[type="file"]{color:var(--text2)}
   </div>
 </div></div>
 
+<div class="modal-overlay" id="modalAiPages"><div class="modal">
+  <h3>侧边栏可用功能 <span id="aiPagesUser" style="font-size:13px;color:var(--text2)"></span></h3>
+  <p style="font-size:12px;color:var(--text2);margin-top:-6px">不勾选任何项 = 按角色默认显示；超级主人始终不受限。</p>
+  <div id="aiPagesChecks" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:300px;overflow:auto;margin-bottom:8px"></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('modalAiPages')">取消</button>
+    <button class="btn btn-primary" onclick="aiPagesSave()">保存</button>
+  </div>
+</div></div>
+
 <div class="modal-overlay" id="modalUploadPlugin"><div class="modal">
   <h3>上传插件</h3>
   <div class="form-group"><label>插件名</label><input id="uploadPluginName" placeholder="插件名称（可选）"></div>
@@ -1568,14 +1692,20 @@ function updateSidebar(){
   if(restartBtn)restartBtn.style.display=currentUser?.role==='super_master'?'':'none';
   docById('botBadge').textContent=botCount;
   const isSuper=currentUser?.role==='super_master';
-  const limited=['dashboard','bots','membersync','plugins','runlog','authcodes'];
+  const limited=['dashboard','bots','ai','membersync','plugins','runlog','authcodes'];
+  // 超主设置过 allowedPages 时按其过滤（空/未设置=角色默认 limited），超主不受限
+  const allowedPages=isSuper?null:(Array.isArray(currentUser?.allowedPages)&&currentUser.allowedPages.length?currentUser.allowedPages:limited);
   document.querySelectorAll('.nav-item').forEach(n=>{
     const p=n.getAttribute('data-page');
-    n.style.display=(isSuper||limited.includes(p))?'':'none';
+    n.style.display=(isSuper||allowedPages.includes(p))?'':'none';
   });
   const genBtn=docById('authCodeGenBtn');
   if(genBtn)genBtn.style.display=(isSuper||currentUser?.role==='master')?'':'none';
   if(isSuper){document.querySelectorAll('.nav-item[data-page="bots"]')[0]?.firstChild&&(document.querySelectorAll('.nav-item[data-page="bots"]')[0].childNodes[0].textContent='所有机器人')}
+  // 顶栏显示金币余额
+  if(currentUser){
+    api('/api/ai/coins').then(d=>{if(d&&typeof d.coins==='number'){const el=docById('sidebarCoins');if(el){el.style.display='';const sp=el.querySelector('span');if(sp)sp.textContent=d.coins;}}}).catch(()=>{});
+  }
 }
 
 async function loadBotCount(){try{const bots=await getBotsCached();botCount=bots.length;docById('botBadge').textContent=botCount}catch{}}
@@ -1655,9 +1785,9 @@ function switchPage(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const page=docById('page-'+name);if(page)page.classList.add('active');
   const nav=document.querySelector(`.nav-item[data-page="${name}"]`);if(nav)nav.classList.add('active');
-  const titles={dashboard:'仪表盘',bots:'我的机器人',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',help:'帮助文档'};
+  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',help:'帮助文档'};
   docById('mobilePageTitle').textContent=titles[name]||name;
-  const loaders={dashboard:loadDashboard,bots:loadBots,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,help:loadHelp};
+  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
   if(currentBot&&['membersync','users','runlog','feedback','authcodes','channels','plugins'].includes(name)){
     applyBotFilterToPage().then(runLoader);
@@ -1685,6 +1815,260 @@ function switchPage(name){
     },10000);
   }
   if(window.innerWidth<769)toggleSidebar();
+}
+
+// ===== AI 智能回复 =====
+let _aiMeta={personas:[],pages:[],coinCost:1};
+let _aiCfg=null;
+let _aiProvFull=[]; // 超主视角完整供应商（含 systemKey）
+let _aiPagesTarget='';
+
+async function loadAiPage(){
+  try{const m=await api('/api/ai/meta');if(m)_aiMeta=m;}catch(e){}
+  if(_aiMeta.coinCost)docById('aiCoinCost').textContent=_aiMeta.coinCost;
+  try{
+    const bots=await getBotsCached();
+    const sel=docById('aiBotSel');
+    const prev=sel.value;
+    sel.innerHTML='<option value="">请选择机器人</option>'+bots.map(b=>'<option value="'+esc(b.appId)+'"'+(b.status==='running'?'':'')+'>'+esc(b.name)+'（'+esc(b.appId)+'）</option>').join('');
+    if(prev)sel.value=prev;
+  }catch(e){}
+  docById('aiPresetSel').innerHTML=(_aiMeta.personas||[]).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('');
+  const isSuper=currentUser?.role==='super_master';
+  docById('aiProvCard').style.display=isSuper?'':'none';
+  docById('aiUserCard').style.display=isSuper?'':'none';
+  if(isSuper){aiProvLoad();aiUserLoad();}
+  if(docById('aiBotSel').value)await aiLoadCfg();else aiFillProviderSelect([]);
+  refreshSidebarCoins();
+}
+
+async function refreshSidebarCoins(){
+  try{
+    const d=await api('/api/ai/coins');
+    const el=docById('sidebarCoins');
+    if(el&&d&&typeof d.coins==='number'){el.style.display='';const sp=el.querySelector('span');if(sp)sp.textContent=d.coins;}
+  }catch(e){}
+}
+
+function aiFillProviderSelect(list){
+  const sel=docById('aiProvider');
+  const prev=sel.value||(_aiCfg?_aiCfg.providerId:'');
+  sel.innerHTML='<option value="">（未选择）</option>'+list.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+esc(p.format||'openai')+(p.hasSystemKey?' · 含系统密钥':'')+'</option>').join('');
+  if(prev)sel.value=prev;
+  aiProviderHint();
+}
+
+function aiProviderHint(){
+  const sel=docById('aiProvider');
+  const opt=sel.selectedOptions[0];
+  docById('aiProviderHint').textContent=opt&&opt.value?('已选：'+opt.textContent):'请先由超级主人在下方「模型供应商管理」添加，或使用自己的密钥。';
+}
+
+function aiKeyModeChanged(){
+  const own=document.querySelector('input[name="aiKeyMode"]:checked')?.value==='own';
+  docById('aiOwnKeyWrap').style.display=own?'':'none';
+}
+
+async function aiLoadCfg(){
+  const bot=docById('aiBotSel').value;
+  if(!bot){_aiCfg=null;return;}
+  try{
+    const d=await api('/api/ai/config?bot='+encodeURIComponent(bot));
+    _aiCfg=d.config||null;
+    const cfg=_aiCfg||{};
+    docById('aiCoins').textContent=typeof d.ownerCoins==='number'?d.ownerCoins:'-';
+    docById('aiEnabled').checked=!!cfg.enabled;
+    aiFillProviderSelect(d.providers||[]);
+    document.querySelector('input[name="aiKeyMode"][value="'+(cfg.keyMode==='own'?'own':'system')+'"]').checked=true;
+    aiKeyModeChanged();
+    docById('aiOwnKey').value=cfg.ownKey||'';
+    docById('aiOwnKey').placeholder=cfg.ownKey?'已保存（重新输入可覆盖）':'sk-...';
+    docById('aiBaseUrl').value=cfg.baseUrl||'';
+    docById('aiModel').value=cfg.model||'';
+    docById('aiTemp').value=typeof cfg.temperature==='number'?cfg.temperature:0.8;
+    docById('aiMaxTokens').value=typeof cfg.maxTokens==='number'?cfg.maxTokens:512;
+    docById('aiMemory').value=typeof cfg.memoryRounds==='number'?cfg.memoryRounds:5;
+    docById('aiSystemPrompt').value=cfg.systemPrompt||'';
+    docById('aiGroupEnabled').checked=cfg.groupEnabled!==false;
+    docById('aiC2cEnabled').checked=cfg.c2cEnabled!==false;
+    document.querySelector('input[name="aiGroupTrigger"][value="'+(cfg.groupTrigger==='all'?'all':'at')+'"]').checked=true;
+    docById('aiTools').value=cfg.toolsJson||'';
+    aiGroupTriggerVisibility();
+  }catch(e){aiShowSaveMsg('加载配置失败：'+e.message,true)}
+}
+
+function aiGroupTriggerVisibility(){
+  docById('aiGroupTriggerWrap').style.display=docById('aiGroupEnabled').checked?'':'none';
+}
+
+function aiShowSaveMsg(text,err){
+  const el=docById('aiSaveMsg');
+  el.textContent=text;
+  el.style.color=err?'var(--danger)':'var(--success)';
+  setTimeout(()=>{el.textContent=''},4000);
+}
+
+function aiCollectCfg(){
+  const bot=docById('aiBotSel').value;
+  if(!bot){alert('请先选择机器人');return null;}
+  return {
+    bot,
+    enabled:docById('aiEnabled').checked,
+    providerId:docById('aiProvider').value,
+    keyMode:document.querySelector('input[name="aiKeyMode"]:checked')?.value==='own'?'own':'system',
+    ownKey:docById('aiOwnKey').value.trim(),
+    baseUrl:docById('aiBaseUrl').value.trim(),
+    model:docById('aiModel').value.trim(),
+    temperature:Number(docById('aiTemp').value)||0.8,
+    maxTokens:Number(docById('aiMaxTokens').value)||512,
+    memoryRounds:Number(docById('aiMemory').value)||0,
+    systemPrompt:docById('aiSystemPrompt').value,
+    groupEnabled:docById('aiGroupEnabled').checked,
+    c2cEnabled:docById('aiC2cEnabled').checked,
+    groupTrigger:document.querySelector('input[name="aiGroupTrigger"]:checked')?.value==='all'?'all':'at',
+    toolsJson:docById('aiTools').value.trim(),
+  };
+}
+
+async function aiSaveCfg(){
+  const cfg=aiCollectCfg();
+  if(!cfg)return;
+  try{
+    await api('/api/ai/config?bot='+encodeURIComponent(cfg.bot),{method:'PUT',body:cfg});
+    aiShowSaveMsg('已保存');
+  }catch(e){aiShowSaveMsg('保存失败：'+e.message,true)}
+}
+
+async function aiTest(){
+  const bot=docById('aiBotSel').value;
+  const msg=docById('aiTestMsg').value.trim();
+  const out=docById('aiTestOut');
+  if(!bot){alert('请先选择机器人');return;}
+  if(!msg){alert('请输入测试消息');return;}
+  const btn=docById('aiTestBtn');
+  btn.disabled=true;btn.textContent='请求中...';
+  out.style.display='';out.textContent='正在调用模型...';
+  try{
+    const d=await api('/api/ai/test',{method:'POST',body:{bot,message:msg}});
+    out.textContent=d.reply||'（空回复）';
+  }catch(e){out.textContent='失败：'+(e.message||e);out.style.color='var(--danger)';setTimeout(()=>{out.style.color=''},3000)}
+  btn.disabled=false;btn.textContent='发送';
+}
+
+function aiApplyPreset(){
+  const id=docById('aiPresetSel').value;
+  const p=(_aiMeta.personas||[]).find(x=>x.id===id);
+  if(p)docById('aiSystemPrompt').value=p.prompt;
+}
+
+function aiResetTools(){
+  docById('aiTools').value='';
+}
+
+// ===== 供应商管理（超主） =====
+async function aiProvLoad(){
+  try{
+    const d=await api('/api/ai/providers');
+    _aiProvFull=d.providers||[];
+    docById('aiProvList').innerHTML=_aiProvFull.length?_aiProvFull.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+esc(p.format||'openai')+'</td><td style="max-width:220px;word-break:break-all;font-size:12px">'+esc(p.baseUrl||'-')+'</td><td>'+esc(p.model||'-')+'</td><td>'+(p.systemKey?'<span style="color:var(--success)">已设置</span>':'<span style="color:var(--text2)">未设置</span>')+'</td><td><button class="btn btn-outline btn-xs" onclick="aiProvEdit(\''+esc(p.id)+'\')">编辑</button> <button class="btn btn-danger btn-xs" onclick="aiProvDel(\''+esc(p.id)+'\')">删除</button></td></tr>').join(''):'<tr><td colspan="6" style="color:var(--text2);text-align:center;padding:10px">暂无供应商，点击下方添加</td></tr>';
+  }catch(e){}
+}
+
+async function aiProvEdit(id){
+  const p=id?_aiProvFull.find(x=>x.id===id):null;
+  const name=prompt('供应商名称',p?p.name:'');
+  if(name===null)return;
+  if(!name.trim()){alert('名称不能为空');return;}
+  const format=prompt('API 格式（如 openai）',p?(p.format||'openai'):'openai');
+  if(format===null)return;
+  const baseUrl=prompt('默认模型地址 Base URL',p?p.baseUrl:'');
+  if(baseUrl===null)return;
+  const model=prompt('默认模型名称',p?p.model:'');
+  if(model===null)return;
+  const sysKey=prompt('系统共享密钥（留空并确认=保留原密钥；输入新值=覆盖；输入 CLEAR=清除）',p&&p.systemKey?'（已设置，输入新值覆盖）':'');
+  if(sysKey===null)return;
+  const body={id:id||'',name:name.trim(),format:format.trim()||'openai',baseUrl:baseUrl.trim(),model:model.trim()};
+  if(sysKey==='CLEAR')body.systemKey='';
+  else if(sysKey.trim()&&sysKey.trim().indexOf('（已设置')!==0)body.systemKey=sysKey.trim();
+  try{
+    await api('/api/ai/providers',{method:'POST',body});
+    aiProvLoad();
+    if(docById('aiBotSel').value)aiLoadCfg();
+  }catch(e){alert('保存失败：'+e.message)}
+}
+
+async function aiProvDel(id){
+  if(!confirm('确定删除该供应商？正在使用它的机器人将无法触发 AI 兜底。'))return;
+  try{await api('/api/ai/providers/'+encodeURIComponent(id),{method:'DELETE'});aiProvLoad();}catch(e){alert('删除失败：'+e.message)}
+}
+
+// ===== 用户金币与侧边栏权限（超主） =====
+async function aiUserLoad(){
+  try{
+    const admins=await api('/api/auth/admins');
+    const roleLabels={super_master:'超级主人',master:'主人',member:'会员',user:'普通用户'};
+    docById('aiUserList').innerHTML=(admins||[]).map(a=>{
+      const isSuper=a.role==='super_master';
+      return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
+      '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
+      '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',-1)">-1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏权限</button>')+'</td></tr>';
+    }).join('');
+  }catch(e){}
+}
+
+async function aiCoinAdjust(username,delta){
+  const reason=prompt((delta>0?'增加':'扣减')+' 1 金币 · 备注（可留空）','')||'';
+  try{
+    const d=await api('/api/ai/coins/adjust',{method:'POST',body:{username,delta,reason}});
+    alert('已'+(delta>0?'增加':'扣减')+'，当前余额：'+d.balance);
+    aiUserLoad();refreshSidebarCoins();
+  }catch(e){alert('操作失败：'+e.message)}
+}
+
+async function aiCoinCustom(username){
+  const inp=prompt('增减金币数量（正数=增加，负数=扣减）','');
+  if(inp===null)return;
+  const delta=Math.trunc(Number(inp));
+  if(!delta||isNaN(delta)){alert('请输入非 0 整数');return;}
+  const reason=prompt('备注（可留空）','')||'';
+  try{
+    const d=await api('/api/ai/coins/adjust',{method:'POST',body:{username,delta,reason}});
+    alert('操作成功，当前余额：'+d.balance);
+    aiUserLoad();refreshSidebarCoins();
+  }catch(e){alert('操作失败：'+e.message)}
+}
+
+async function aiCoinLogs(username){
+  try{
+    const d=await api('/api/ai/coins?username='+encodeURIComponent(username));
+    const logs=(d.logs||[]).map(l=>'['+esc(String(l.created_at||''))+'] '+(l.delta>0?'+':'')+l.delta+' → 余额 '+l.balance+(l.reason?('（'+esc(l.reason)+'，操作：'+esc(l.operator||'-')+'）'):'')).join('\n');
+    alert((username+' 当前金币：'+d.coins+'\n\n')+(logs||'暂无流水'));
+  }catch(e){alert('查询失败：'+e.message)}
+}
+
+async function aiPagesEdit(username){
+  _aiPagesTarget=username;
+  if(!_aiMeta.pages||!_aiMeta.pages.length){
+    try{const m=await api('/api/ai/meta');if(m)_aiMeta=m;}catch(e){}
+  }
+  let cur=[];
+  try{
+    const d=await api('/api/ai/pages?username='+encodeURIComponent(username));
+    cur=d.allowedPages||[];
+  }catch(e){}
+  docById('aiPagesUser').textContent='· '+username+(cur.length?('（当前 '+cur.length+' 项）'):'（当前：按角色默认全部）');
+  docById('aiPagesChecks').innerHTML=(_aiMeta.pages||[]).map(p=>'<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="'+esc(p.id)+'" '+(cur.includes(p.id)?'checked':'')+'> '+esc(p.name)+'</label>').join('');
+  docById('modalAiPages').classList.add('active');
+}
+
+async function aiPagesSave(){
+  const checks=[...docById('aiPagesChecks').querySelectorAll('input:checked')].map(i=>i.value);
+  try{
+    await api('/api/ai/pages',{method:'PUT',body:{username:_aiPagesTarget,pages:checks}});
+    closeModal('modalAiPages');
+    const msg=checks.length?('已限制为 '+checks.length+' 项功能。用户刷新页面后生效。'):'已恢复默认（全部可见）。用户刷新页面后生效。';
+    alert(msg);
+  }catch(e){alert('保存失败：'+e.message)}
 }
 
 // ===== 部署终端 =====
@@ -2024,8 +2408,13 @@ function openRealtime(appId){
 function dashOpenDict(){
   window.open('/menu-editor.html?plugin='+encodeURIComponent('词典回复.js')+'&tab=dict','_blank');
 }
-function dashOpenAI(name){
-  alert('机器人「'+(name||'')+'」的 AI 智能回复尚未内置。\n\n可在「插件管理」安装或开发 AI 类插件，再按机器人启用；当前面板未提供机器人级 AI 开关。');
+async function dashOpenAI(name){
+  switchPage('ai');
+  try{
+    const bots=await getBotsCached();
+    const b=bots.find(x=>x.name===name);
+    if(b){const sel=docById('aiBotSel');if(sel){sel.value=b.appId;aiLoadCfg();}}
+  }catch(e){}
 }
 function dashGauge(label,val,pct,color){
   const p=Math.max(0,Math.min(100,Number(pct)||0));

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
+import { addCoinLog } from '../db/index';
 import type { AdminConfig, JwtPayload, AdminUser, UserPermission } from './config';
 
 const CONFIG_FILE = path.resolve('data', 'admin.json');
@@ -146,6 +147,29 @@ export class AdminAuth {
       expireAt: a.expireAt,
       permissions: a.permissions,
       createdAt: a.createdAt,
+      coins: typeof a.coins === 'number' ? a.coins : 0,
+      allowedPages: Array.isArray(a.allowedPages) ? a.allowedPages : undefined,
     }));
+  }
+
+  // 调整用户金币（delta 可正可负），余额下限 0；写入 admin.json 并记流水
+  adjustCoins(username: string, delta: number, reason: string, operator: string): number | null {
+    const user = this.config.admins.find(a => a.username === username);
+    if (!user) return null;
+    const cur = typeof user.coins === 'number' ? user.coins : 0;
+    const next = Math.max(0, cur + Math.trunc(delta) || 0);
+    user.coins = next;
+    saveAdmins(this.config.admins);
+    try { addCoinLog(username, next - cur, next, reason || '', operator || ''); } catch {}
+    return next;
+  }
+
+  // 读取用户可用侧边栏页面；超级主人或未配置时返回 null（=全部可用）
+  getAllowedPages(username: string): string[] | null {
+    const user = this.config.admins.find(a => a.username === username);
+    if (!user) return null;
+    if (user.role === 'super_master') return null;
+    if (!Array.isArray(user.allowedPages) || user.allowedPages.length === 0) return null;
+    return user.allowedPages;
   }
 }

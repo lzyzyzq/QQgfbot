@@ -139,6 +139,9 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       permissions: user?.permissions,
       shouldRemind,
       passwordChangedAt,
+      // 金币余额与可用侧边栏页面（超级主人 allowedPages 恒为 null=不受限）
+      coins: typeof user?.coins === 'number' ? user.coins : 0,
+      allowedPages: auth.getAllowedPages(req.adminUser.username),
     });
   });
 
@@ -193,6 +196,8 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       permissions: a.permissions,
       createdAt: a.createdAt,
       createdBy: a.createdBy,
+      coins: typeof a.coins === 'number' ? a.coins : 0,
+      allowedPages: a.allowedPages || [],
     })));
   });
 

@@ -160,6 +160,16 @@ function createTables() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS coin_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL,
+      delta INTEGER NOT NULL,
+      balance INTEGER NOT NULL DEFAULT 0,
+      reason TEXT DEFAULT '',
+      operator TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_user_mappings_qq ON user_mappings(qq_number);
     CREATE INDEX IF NOT EXISTS idx_system_logs_category ON system_logs(category);
     CREATE INDEX IF NOT EXISTS idx_system_logs_created ON system_logs(created_at);
@@ -367,4 +377,21 @@ export function deleteSystemLogs(ids: number[]): number {
 
 export function clearSystemLogs(): number {
   return getDb().prepare('DELETE FROM system_logs').run().changes;
+}
+
+export function addCoinLog(username: string, delta: number, balance: number, reason: string, operator: string) {
+  try {
+    getDb().prepare(
+      'INSERT INTO coin_logs (username, delta, balance, reason, operator) VALUES (?, ?, ?, ?, ?)'
+    ).run(username || '', Math.trunc(delta) || 0, Math.trunc(balance) || 0, reason || '', operator || '');
+  } catch (e) { /* 写入失败不阻塞主流程 */ }
+}
+
+export function queryCoinLogs(username?: string, limit: number = 50): any[] {
+  let sql = 'SELECT * FROM coin_logs';
+  const params: any[] = [];
+  if (username) { sql += ' WHERE username = ?'; params.push(username); }
+  sql += ' ORDER BY id DESC LIMIT ?';
+  params.push(Math.max(1, Math.min(500, Math.trunc(limit) || 50)));
+  return getDb().prepare(sql).all(...params);
 }

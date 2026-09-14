@@ -21,6 +21,10 @@ export interface AdminUser {
   createdBy?: string;
   createdAt?: number;
   passwordChangedAt?: string;
+  // 金币余额：AI 兜底回复等增值功能按次扣减，仅超级主人可增减
+  coins?: number;
+  // 侧边栏可用页面列表（值为页面 id）；未设置或空数组=按角色默认全部可用；超级主人始终不受限
+  allowedPages?: string[];
 }
 
 export interface UserPermission {
