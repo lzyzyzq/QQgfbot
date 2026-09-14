@@ -62,9 +62,9 @@ button{cursor:pointer}
 .rt-conv:hover{background:var(--bg3)}
 .rt-conv.active{background:linear-gradient(90deg,var(--accent-soft),transparent)}
 .rt-conv.active::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
-.rt-avatar{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#2b3550,#222b40);color:#9db8ff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex:none;position:relative;overflow:hidden;user-select:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.rt-avatar{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#2b3550,#222b40);color:#9db8ff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none;position:relative;overflow:hidden;user-select:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
 .rt-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}
-.rt-avatar.sm{width:38px;height:38px;border-radius:11px;font-size:14px}
+.rt-avatar.sm{width:34px;height:34px;border-radius:10px;font-size:13px}
 .rt-conv.active .rt-avatar{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
 .rt-conv-main{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px}
 .rt-conv-top{display:flex;align-items:baseline;gap:6px}
@@ -89,11 +89,11 @@ button{cursor:pointer}
 .rt-head-actions{display:flex;gap:8px;align-items:center;flex:none}
 .rt-hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 14px;font-size:12.5px;white-space:nowrap;transition:.15s}
 .rt-hbtn:hover{color:#fff;border-color:var(--accent);background:var(--accent-soft)}
-.rt-msgs{flex:1;overflow-y:auto;overflow-x:hidden;padding:22px 20px 8px;display:flex;flex-direction:column;gap:15px;min-height:0;scroll-behavior:smooth}
-.rt-msg{display:flex;gap:10px;max-width:76%;align-items:flex-start;animation:rtIn .16s ease}
+.rt-msgs{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 16px 6px;display:flex;flex-direction:column;gap:12px;min-height:0;scroll-behavior:smooth}
+.rt-msg{display:flex;gap:9px;max-width:76%;align-items:flex-start;animation:rtIn .16s ease}
 @keyframes rtIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .rt-msg.out{align-self:flex-end;flex-direction:row-reverse}
-.rt-msg-av{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2b3550,#222b40);color:#9db8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;overflow:hidden;position:relative;user-select:none}
+.rt-msg-av{width:33px;height:33px;border-radius:9px;background:linear-gradient(135deg,#2b3550,#222b40);color:#9db8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:none;overflow:hidden;position:relative;user-select:none}
 .rt-msg-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .rt-msg.out .rt-msg-av{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
 .rt-msg-body{min-width:0}
@@ -101,7 +101,7 @@ button{cursor:pointer}
 .rt-msg .who{font-size:11px;color:var(--text3);margin:0 4px 5px;word-break:break-all;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .rt-msg.out .who{flex-direction:row-reverse}
 .rt-who-qq{color:#9db8ff;font-size:10px;background:var(--accent-soft);padding:0 6px;border-radius:6px}
-.rt-msg .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:14px;border-top-left-radius:5px;padding:10px 14px;font-size:13.5px;line-height:1.66;word-break:break-word;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.rt-msg .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:13px;border-top-left-radius:5px;padding:9px 12px;font-size:13px;line-height:1.6;word-break:break-word;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .rt-msg.out .bubble{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;border-top-left-radius:14px;border-top-right-radius:5px}
 .rt-msg.pending .bubble{opacity:.6}
 .rt-msg.pending .bubble::after{content:'';display:inline-block;width:12px;height:12px;margin-left:8px;border:2px solid rgba(255,255,255,.55);border-top-color:transparent;border-radius:50%;vertical-align:-2px;animation:rtSpin .7s linear infinite}
@@ -114,17 +114,18 @@ button{cursor:pointer}
 .rt-placeholder{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:14px;text-align:center;padding:30px;line-height:1.9}
 
 /* ===== 输入区 ===== */
-.rt-editor{border-top:1px solid var(--border);background:linear-gradient(180deg,var(--bg2),#121721);padding:11px 16px;padding-bottom:calc(11px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:flex-end;flex-shrink:0}
-.rt-editor-main{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
-.rt-tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-.rt-tool{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:5px 13px;font-size:12.5px;transition:.15s}
+.rt-editor{border-top:1px solid var(--border);background:linear-gradient(180deg,var(--bg2),#121721);padding:9px 14px;padding-bottom:calc(9px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
+.rt-editor-main{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.rt-tools{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;align-items:center;scrollbar-width:none}
+.rt-tools::-webkit-scrollbar{display:none}
+.rt-tool{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:4px 11px;font-size:12px;transition:.15s;flex:none}
 .rt-tool:hover{color:#fff;border-color:var(--accent);background:var(--accent-soft)}
 .rt-tool.active{color:#fff;border-color:var(--accent);background:var(--accent-soft)}
 .rt-hint{font-size:11px;color:var(--text3);margin-left:auto}
-.rt-editor textarea{width:100%;resize:none;height:46px;max-height:150px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:12px 13px;font-size:14px;line-height:1.5;outline:none;transition:.15s;overflow-y:auto}
+.rt-editor textarea{width:100%;resize:none;height:42px;max-height:120px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.5;outline:none;transition:.15s;overflow-y:auto}
 .rt-editor textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .rt-editor textarea:disabled{opacity:.55}
-.rt-send{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:11px;padding:0 26px;height:46px;font-size:14px;font-weight:600;white-space:nowrap;box-shadow:0 4px 14px rgba(79,140,255,.36);transition:.15s;flex:none}
+.rt-send{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:10px;padding:0 22px;height:42px;font-size:13.5px;font-weight:600;white-space:nowrap;box-shadow:0 4px 14px rgba(79,140,255,.36);transition:.15s;flex:none}
 .rt-send:hover{filter:brightness(1.08)}
 .rt-send:active{transform:translateY(1px)}
 .rt-send:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
@@ -148,7 +149,9 @@ button{cursor:pointer}
   .rt-brand .rt-logo{width:24px;height:24px;border-radius:8px;font-size:13px}
   .rt-bot select{max-width:132px;padding:5px 26px 5px 10px;font-size:12.5px;background-position:calc(100% - 14px) 12px,calc(100% - 9px) 12px}
   .rt-appid{display:none}
-  .rt-right .rt-mini{display:none}
+  .rt-right .rt-refresh{display:none}
+  .rt-right{gap:6px}
+  .rt-home{padding:4px 9px;font-size:11.5px}
   .rt-conn{padding:4px 9px;font-size:11px;gap:5px}
   .rt-tabs{order:3;width:100%;justify-content:space-between;padding:3px}
   .rt-tab{flex:1;text-align:center;padding:5px 0;font-size:12.5px}
@@ -171,23 +174,24 @@ button{cursor:pointer}
   .rt-back{display:flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:15px}
   .rt-chat-name{font-size:14px}
   .rt-hbtn{padding:5px 10px;font-size:12px}
-  .rt-msgs{padding:12px 10px 4px;gap:11px}
-  .rt-msg{max-width:90%;gap:8px}
-  .rt-msg-av{width:30px;height:30px;border-radius:8px;font-size:11px}
-  .rt-msg .who{font-size:10.5px;margin-bottom:3px}
-  .rt-msg .bubble{padding:8px 11px;font-size:13px;line-height:1.55;border-radius:12px}
-  .rt-msg .mtime{font-size:9.5px;margin-top:3px}
-  .rt-placeholder{padding:20px;font-size:13px}
-  .rt-editor{gap:7px;padding:7px 9px;padding-bottom:calc(7px + env(safe-area-inset-bottom))}
-  .rt-editor textarea{font-size:14px;height:40px;max-height:110px;padding:9px 11px;border-radius:10px}
-  .rt-editor-main{gap:6px}
-  .rt-tools{gap:5px}
-  .rt-tool{padding:4px 10px;font-size:12px;border-radius:8px}
-  .rt-send{padding:0 16px;height:40px;font-size:13px;border-radius:10px}
+  .rt-msgs{padding:10px 8px 3px;gap:9px}
+  .rt-msg{max-width:92%;gap:7px}
+  .rt-msg-av{width:28px;height:28px;border-radius:8px;font-size:10.5px}
+  .rt-msg .who{font-size:10px;margin-bottom:2px}
+  .rt-msg .bubble{padding:7px 10px;font-size:12.5px;line-height:1.5;border-radius:11px}
+  .rt-msg .mtime{font-size:9px;margin-top:2px}
+  .rt-placeholder{padding:18px;font-size:12.5px}
+  .rt-editor{gap:6px;padding:6px 8px;padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+  .rt-editor textarea{font-size:13.5px;height:38px;max-height:96px;padding:8px 10px;border-radius:9px}
+  .rt-editor-main{gap:5px}
+  .rt-tools{gap:5px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .rt-tools::-webkit-scrollbar{display:none}
+  .rt-tool{padding:3px 8px;font-size:11.5px;border-radius:7px;flex:none}
+  .rt-send{padding:0 14px;height:38px;font-size:12.5px;border-radius:9px}
   .rt-hint{display:none}
-  .rt-emoji{max-height:128px;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));padding:5px}
-  .rt-emoji img{width:24px;height:24px}
-  .rt-head-actions .rt-hbtn{padding:5px 9px}
+  .rt-emoji{max-height:104px;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));padding:4px;border-radius:9px}
+  .rt-emoji img{width:22px;height:22px}
+  .rt-head-actions .rt-hbtn{padding:4px 8px}
 }
 @media(max-width:400px){
   .rt-tool{padding:4px 8px;font-size:11.5px}
@@ -211,7 +215,8 @@ button{cursor:pointer}
       <div class="rt-tab" data-scope="c2c" onclick="rtSetScope('c2c')">私聊</div>
     </div>
     <div class="rt-right">
-      <button class="rt-mini" onclick="rtLoadConvs(true)">刷新</button>
+      <button class="rt-mini rt-home" onclick="rtGoHome()">&#8592; 主界面</button>
+      <button class="rt-mini rt-refresh" onclick="rtLoadConvs(true)">刷新</button>
       <span class="rt-conn"><span class="rt-dot" id="rtDot"></span><span id="rtConnText">未连接</span></span>
     </div>
   </header>
@@ -400,6 +405,7 @@ function rtOpenConv(type,id){
   rtCloseEmoji();
   rtRenderConvs();
   document.getElementById('rtApp').setAttribute('data-view','chat');
+  try{if(window.innerWidth<=820&&((history.state||{}).view!=='chat'))history.pushState({view:'chat'},'')}catch(e){}
   var isG=type==='group';
   var name=rtConvName(c);
   document.getElementById('rtChatName').innerHTML='<span class="rt-kind '+(isG?'g':'c')+'">'+(isG?'群聊':'私聊')+'</span><span class="nm">'+rtEsc(name)+'</span>';
@@ -644,7 +650,7 @@ function rtInsertEmoji(name){
   var pos=s+code.length;
   try{ta.setSelectionRange(pos,pos)}catch(_){}
   ta.focus();
-  ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,150)+'px';
+  ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,110)+'px';
 }
 document.getElementById('rtEmoji').addEventListener('click',function(ev){
   var btn=ev.target.closest('button[data-n]');if(!btn)return;
@@ -657,12 +663,17 @@ function rtOpenGroupMgr(){
 }
 
 function rtBackToList(){document.getElementById('rtApp').setAttribute('data-view','list')}
+function rtGoHome(){rtCloseEmoji();try{location.href='/'}catch(e){}}
+window.addEventListener('popstate',function(){
+  var app=document.getElementById('rtApp');
+  if(app&&app.getAttribute('data-view')==='chat'){app.setAttribute('data-view','list')}
+});
 
 document.getElementById('rtInput').addEventListener('keydown',function(e){
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();rtSend()}
 });
 document.getElementById('rtInput').addEventListener('input',function(){
-  this.style.height='auto';this.style.height=Math.min(this.scrollHeight,150)+'px';
+  this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';
 });
 document.getElementById('rtInput').addEventListener('focus',function(){
   var ta=this;
