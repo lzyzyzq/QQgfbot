@@ -19,7 +19,7 @@
       "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.16.zip"
     }
   ],
-  "changeLog": "消息工作台修复并重新打包（以 1.0.15 为基础）：界面进一步缩小并居中、QQ 浏览器可完整看到输入框、新增返回主界面。",
+  "changeLog": "新增 AI 智能回复侧边栏：未命中词库时 AI 兜底回复（扣金币），支持供应商/人设/触发方式/在线测试；新增用户金币系统与超主侧边栏权限配置",
   "changeType": "框架升级",
   "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.16.zip",
   "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.16.zip",
