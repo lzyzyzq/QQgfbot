@@ -9,7 +9,7 @@
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
     "version": "1.0.16",
-    "changeLog": "消息工作台修复并重新打包：修复打不开/登录态过期、真实头像、手机端输入框、QQ 表情，以 1.0.15 为基础完整升级至 1.0.16。"
+    "changeLog": "消息工作台修复并重新打包（以 1.0.15 为基础）：修复打不开/登录态误跳、真实头像、手机端输入框、QQ 表情，完整升级至 1.0.16。"
   },
   "releases": [
     {
