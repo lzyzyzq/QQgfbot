@@ -45,7 +45,8 @@ export function authMiddleware(auth: AdminAuth) {
       return;
     }
 
-    const token = req.cookies?.admin_token || req.headers.authorization?.replace('Bearer ', '');
+    const queryToken = typeof req.query.token === 'string' ? req.query.token : '';
+    const token = req.cookies?.admin_token || req.headers.authorization?.replace('Bearer ', '') || queryToken;
     if (!token) {
       res.status(401).json({ error: 'Unauthorized' });
       return;

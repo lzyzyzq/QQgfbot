@@ -40,33 +40,49 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
     return /^\d{6,15}$/.test(n) ? `https://p.qlogo.cn/gh/${n}/${n}/0` : '';
   }
 
-  // 用户头像/昵称：按 openid 关联 user_mappings 的 QQ 号取头像
-  const userCache = new Map<string, { avatar: string; name: string; qq: string }>();
-  function userInfo(openid: string): { avatar: string; name: string; qq: string } {
+  // 用户头像/昵称：优先 user_mappings（全局 openid↔QQ），其次 group_members（手动映射写入的 qq_id/nickname）
+  // 头像优先级：已绑定 QQ → qlogo；未绑定 → QQ 官方 qqapp(appId+openid) 真实头像；都没有则返回空（前端用首字占位）
+  const userCache = new Map<string, { avatar: string; name: string; qq: string; ts: number }>();
+  function userInfo(openid: string, appId = ''): { avatar: string; name: string; qq: string } {
     const key = String(openid || '');
     if (!key) return { avatar: '', name: '', qq: '' };
-    const hit = userCache.get(key);
-    if (hit) return hit;
-    let info = { avatar: '', name: '', qq: '' };
+    const ck = String(appId || '') + ':' + key;
+    const hit = userCache.get(ck);
+    if (hit && Date.now() - hit.ts < 60000) return hit;
+    let qq = '';
+    let name = '';
     try {
-      const um = getDb().prepare('SELECT qq_number, nickname FROM user_mappings WHERE openid=?').get(key) as any;
-      const qq = String(um?.qq_number || '');
-      info = {
-        avatar: /^\d{5,12}$/.test(qq) ? `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100` : '',
-        name: um?.nickname || '',
-        qq,
-      };
+      const db = getDb();
+      const um = db.prepare('SELECT qq_number, nickname FROM user_mappings WHERE openid=?').get(key) as any;
+      if (um) {
+        qq = String(um.qq_number || '').trim();
+        name = String(um.nickname || '').trim();
+      }
+      const gm = db.prepare(
+        "SELECT qq_id, nickname FROM group_members WHERE member_openid=? ORDER BY CASE WHEN qq_id<>'' THEN 0 ELSE 1 END, last_seen DESC LIMIT 1"
+      ).get(key) as any;
+      if (gm) {
+        if (!/^\d{5,12}$/.test(qq) && gm.qq_id) qq = String(gm.qq_id).trim();
+        if (!name && gm.nickname) name = String(gm.nickname).trim();
+      }
     } catch { /* ignore */ }
+    let avatar = '';
+    if (/^\d{5,12}$/.test(qq)) {
+      avatar = `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100`;
+    } else if (appId && /^[0-9A-Za-z_-]{16,64}$/.test(key)) {
+      avatar = `https://q.qlogo.cn/qqapp/${appId}/${key}/100`;
+    }
+    const info = { avatar, name, qq, ts: Date.now() };
     if (userCache.size > 800) userCache.clear();
-    userCache.set(key, info);
+    userCache.set(ck, info);
     return info;
   }
 
   // 日志行归一化：区分入站/出站
-  function normRow(r: any) {
+  function normRow(r: any, appId = '') {
     const cat = String(r.category || '');
     const dir = cat === 'send' ? 'out' : 'in';
-    const u = dir === 'in' ? userInfo(String(r.user_id || '')) : { avatar: '', name: '', qq: '' };
+    const u = dir === 'in' ? userInfo(String(r.user_id || ''), appId) : { avatar: '', name: '', qq: '' };
     return {
       id: Number(r.id) || 0,
       dir,
@@ -118,7 +134,7 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
         const ids = [...knownGroups];
         if (ids.length) {
           const ph = ids.map(() => '?').join(',');
-          for (const g of db.prepare(`SELECT id, name, group_number, member_count, last_active FROM groups WHERE id IN (${ph})`).all(...ids) as any[]) {
+          for (const g of db.prepare(`SELECT id, name, group_number, avatar, member_count, last_active FROM groups WHERE id IN (${ph})`).all(...ids) as any[]) {
             if (seen.has(String(g.id))) continue;
             seen.add(String(g.id));
             groups.push(g);
@@ -142,7 +158,7 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
           name: g.name || '',
           openid: String(g.id),
           group_number: g.group_number || '',
-          avatar: groupAvatar(g.group_number),
+          avatar: g.avatar || groupAvatar(g.group_number),
           member_count: g.member_count || 0,
           last_active: g.last_active || '',
           msg_count: cnt,
@@ -172,7 +188,7 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
           um = db.prepare('SELECT qq_number, nickname FROM user_mappings WHERE openid=?').get(uid);
           last = db.prepare("SELECT message, detail, created_at FROM system_logs WHERE bot_id=? AND ((category='message' AND user_id=? AND (group_id='' OR group_id IS NULL)) OR (category='send' AND group_id=?)) ORDER BY id DESC LIMIT 1").get(appId, uid, uid);
         } catch { /* ignore */ }
-        const u = userInfo(uid);
+        const u = userInfo(uid, appId);
         out.push({
           type: 'c2c',
           id: uid,
@@ -221,7 +237,7 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
     let rows: any[] = [];
     try { rows = db.prepare(sql).all(...params) as any[]; } catch { /* ignore */ }
     rows.reverse();
-    res.json({ messages: rows.map(normRow) });
+    res.json({ messages: rows.map((r) => normRow(r, rb.appId)) });
   });
 
   // SSE 实时流：入站/出站日志增量推送
@@ -263,7 +279,7 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
       try {
         for (const r of query(lastId)) {
           lastId = Math.max(lastId, Number(r.id) || 0);
-          res.write('event: message\ndata: ' + JSON.stringify(normRow(r)) + '\n\n');
+          res.write('event: message\ndata: ' + JSON.stringify(normRow(r, appId)) + '\n\n');
         }
         res.write(': ping\n\n');
       } catch { /* ignore */ }
@@ -318,7 +334,7 @@ export function createRealtimeRoutes(botManager: BotManager): Router {
       try {
         for (const r of query(lastId)) {
           lastId = Math.max(lastId, Number(r.id) || 0);
-          res.write('event: message\ndata: ' + JSON.stringify(normRow(r)) + '\n\n');
+          res.write('event: message\ndata: ' + JSON.stringify(normRow(r, appId)) + '\n\n');
         }
         res.write(': ping\n\n');
       } catch { /* ignore */ }

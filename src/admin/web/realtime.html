@@ -1,111 +1,180 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0e1117">
 <title>消息工作台 - QQ Bot 管理面板</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f1419;--bg2:#1a1f2e;--bg3:#222840;--text:#d9e0e8;--text2:#8892a4;--accent:#3b82f6;--accent2:#2563eb;--danger:#ef4444;--success:#22c55e;--warn:#f59e0b;--border:#2a3040;--radius:10px}
+:root{
+  --bg:#0e1117;--bg2:#151a24;--bg3:#1d2330;--bg4:#252d3d;
+  --text:#e7ecf3;--text2:#8c97a9;--text3:#5e6a7d;
+  --accent:#4f8cff;--accent2:#3b6fe0;--accent-soft:rgba(79,140,255,.14);
+  --danger:#f2555a;--success:#35c46a;--warn:#f0a72a;
+  --border:#283143;--border2:#333e52;--radius:12px;
+  --shadow:0 8px 28px rgba(0,0,0,.34);
+}
 html,body{height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:8px;height:8px}
-::-webkit-scrollbar-thumb{background:rgba(127,127,127,.28);border-radius:4px}
-::-webkit-scrollbar-thumb:hover{background:rgba(127,127,127,.45)}
+::-webkit-scrollbar-thumb{background:rgba(140,151,169,.26);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(140,151,169,.46)}
 ::-webkit-scrollbar-track{background:transparent}
-.rt-app{display:flex;flex-direction:column;height:100vh}
-.rt-topbar{display:flex;align-items:center;gap:14px;padding:11px 20px;background:linear-gradient(180deg,#1d2436,#171d2b);border-bottom:1px solid var(--border);flex-wrap:wrap;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,.25);z-index:5}
-.rt-title{font-size:16px;font-weight:700;color:var(--accent);white-space:nowrap;letter-spacing:.5px}
-.rt-bot{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);flex-wrap:wrap}
-.rt-bot select{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 12px;font-size:13px;outline:none;max-width:240px;cursor:pointer}
-.rt-bot select:focus{border-color:var(--accent)}
-.rt-appid{font-size:11.5px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
-.rt-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:9px;padding:4px}
-.rt-tab{padding:6px 15px;font-size:13px;border-radius:7px;cursor:pointer;color:var(--text2);user-select:none;transition:.15s}
+button,input,textarea,select{font-family:inherit}
+button{cursor:pointer}
+.rt-app{display:flex;flex-direction:column;height:100vh;height:var(--rt-vh,100dvh);overflow:hidden}
+
+/* ===== 顶栏 ===== */
+.rt-topbar{display:flex;align-items:center;gap:14px;padding:10px 18px;padding-top:calc(10px + env(safe-area-inset-top));background:linear-gradient(180deg,#1c2434,#141a25);border-bottom:1px solid var(--border);flex-shrink:0;box-shadow:0 2px 14px rgba(0,0,0,.32);z-index:6;flex-wrap:wrap}
+.rt-brand{display:flex;align-items:center;gap:9px;white-space:nowrap}
+.rt-brand .rt-logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#8a5cff);display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 3px 10px rgba(79,140,255,.4)}
+.rt-title{font-size:15px;font-weight:700;letter-spacing:.4px}
+.rt-bot{display:flex;align-items:center;gap:8px;min-width:0}
+.rt-bot select{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 30px 7px 12px;font-size:13px;outline:none;max-width:230px;cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--text2) 50%),linear-gradient(135deg,var(--text2) 50%,transparent 50%);background-position:calc(100% - 16px) 15px,calc(100% - 11px) 15px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.rt-bot select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.rt-appid{font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px;white-space:nowrap}
+.rt-tabs{display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:4px}
+.rt-tab{padding:6px 15px;font-size:13px;border-radius:7px;cursor:pointer;color:var(--text2);user-select:none;transition:.15s;white-space:nowrap}
 .rt-tab:hover{color:var(--text)}
-.rt-tab.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.4)}
+.rt-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 2px 8px rgba(79,140,255,.4)}
 .rt-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-.rt-mini{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 14px;font-size:12.5px;cursor:pointer;transition:.15s}
+.rt-mini{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 15px;font-size:12.5px;transition:.15s}
 .rt-mini:hover{color:var(--text);border-color:var(--accent)}
-.rt-conn{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.rt-conn{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px;white-space:nowrap;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:5px 12px}
 .rt-dot{width:8px;height:8px;border-radius:50%;background:var(--text2);flex:none;transition:.3s}
 .rt-dot.on{background:var(--success);box-shadow:0 0 8px var(--success)}
-.rt-dot.off{background:var(--danger);box-shadow:0 0 8px rgba(239,68,68,.6)}
+.rt-dot.off{background:var(--danger);box-shadow:0 0 8px rgba(242,85,90,.6)}
+
+/* ===== 主体 ===== */
 .rt-body{flex:1;display:flex;min-height:0}
-.rt-side{width:300px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
-.rt-side-head{padding:13px 16px;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:600;letter-spacing:.3px}
-.rt-convs{flex:1;overflow-y:auto;overscroll-behavior:contain}
-.rt-conv{display:flex;gap:11px;padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(127,127,127,.07);transition:.15s}
+.rt-side{width:312px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.rt-side-head{padding:12px 14px 8px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--border)}
+.rt-side-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--text2);font-weight:600;letter-spacing:.3px}
+.rt-count{background:var(--bg4);border:1px solid var(--border);border-radius:20px;padding:1px 9px;font-size:11px;color:var(--text2)}
+.rt-search{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 11px;transition:.15s}
+.rt-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.rt-search svg{flex:none;opacity:.55}
+.rt-search input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--text);font-size:13px}
+.rt-search input::placeholder{color:var(--text3)}
+.rt-convs{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:6px}
+.rt-conv{display:flex;gap:11px;padding:10px 11px;cursor:pointer;border-radius:11px;transition:.14s;position:relative}
 .rt-conv:hover{background:var(--bg3)}
-.rt-conv.active{background:linear-gradient(90deg,rgba(59,130,246,.18),transparent);border-left:3px solid var(--accent);padding-left:13px}
-.rt-avatar{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#2b3550,#232b40);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none;position:relative;overflow:hidden;user-select:none}
+.rt-conv.active{background:linear-gradient(90deg,var(--accent-soft),transparent)}
+.rt-conv.active::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.rt-avatar{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#2b3550,#222b40);color:#9db8ff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex:none;position:relative;overflow:hidden;user-select:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
 .rt-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}
-.rt-avatar.sm{width:34px;height:34px;border-radius:9px;font-size:13px}
+.rt-avatar.sm{width:38px;height:38px;border-radius:11px;font-size:14px}
 .rt-conv.active .rt-avatar{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
-.rt-conv-main{flex:1;min-width:0}
+.rt-conv-main{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px}
 .rt-conv-top{display:flex;align-items:baseline;gap:6px}
 .rt-conv-name{font-size:13.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rt-conv-time{font-size:10.5px;color:var(--text2);flex:none}
-.rt-conv-sub{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
-.rt-badge{display:inline-block;font-size:10px;padding:1px 7px;border-radius:9px;background:rgba(59,130,246,.18);color:#93c5fd;margin-right:5px;vertical-align:1px}
-.rt-empty{padding:44px 22px;text-align:center;color:var(--text2);font-size:13px;line-height:1.9}
-.rt-chat{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:radial-gradient(1200px 500px at 80% -10%,rgba(59,130,246,.06),transparent)}
-.rt-chat-head{padding:12px 20px;background:rgba(26,31,46,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0}
-.rt-back{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:0 4px}
+.rt-conv-time{font-size:10.5px;color:var(--text3);flex:none}
+.rt-conv-sub{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt-badge{display:inline-block;font-size:10px;padding:1px 7px;border-radius:9px;background:var(--accent-soft);color:#a8c4ff;flex:none}
+.rt-tag{font-size:10px;color:var(--text2);background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:0 6px;flex:none;line-height:16px}
+.rt-empty{padding:52px 22px;text-align:center;color:var(--text2);font-size:13px;line-height:1.9}
+
+/* ===== 聊天区 ===== */
+.rt-chat{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:radial-gradient(1100px 460px at 82% -12%,rgba(79,140,255,.07),transparent)}
+.rt-chat-head{padding:11px 18px;background:rgba(21,26,36,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:11px;flex-shrink:0}
+.rt-back{display:none;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:16px;border-radius:9px;width:34px;height:34px;line-height:1;flex:none}
+.rt-back:active{background:var(--bg4)}
 .rt-chat-title{flex:1;min-width:0}
-.rt-chat-name{font-size:15px;font-weight:700}
-.rt-chat-meta{font-size:11.5px;color:var(--text2);margin-top:4px;word-break:break-all;line-height:1.7}
-.rt-chat-meta code{background:rgba(127,127,127,.14);padding:1px 6px;border-radius:5px;font-size:11px;cursor:pointer;color:var(--text)}
-.rt-chat-meta code:hover{background:rgba(59,130,246,.25)}
-.rt-head-actions{display:flex;gap:8px;align-items:center}
-.rt-hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 13px;font-size:12.5px;cursor:pointer;white-space:nowrap;transition:.15s}
-.rt-hbtn:hover{color:#fff;border-color:var(--accent);background:rgba(59,130,246,.2)}
-.rt-msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;min-height:0}
-.rt-msg{display:flex;gap:10px;max-width:78%;align-items:flex-start}
+.rt-chat-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:0;overflow:hidden}
+.rt-chat-name .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt-kind{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:6px;margin-right:7px;flex:none}
+.rt-kind.g{background:rgba(53,196,106,.16);color:#8ee3ac}
+.rt-kind.c{background:rgba(240,167,42,.16);color:#f4cd83}
+.rt-head-actions{display:flex;gap:8px;align-items:center;flex:none}
+.rt-hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 14px;font-size:12.5px;white-space:nowrap;transition:.15s}
+.rt-hbtn:hover{color:#fff;border-color:var(--accent);background:var(--accent-soft)}
+.rt-msgs{flex:1;overflow-y:auto;overflow-x:hidden;padding:22px 20px 8px;display:flex;flex-direction:column;gap:15px;min-height:0;scroll-behavior:smooth}
+.rt-msg{display:flex;gap:10px;max-width:76%;align-items:flex-start;animation:rtIn .16s ease}
+@keyframes rtIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .rt-msg.out{align-self:flex-end;flex-direction:row-reverse}
+.rt-msg-av{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2b3550,#222b40);color:#9db8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;overflow:hidden;position:relative;user-select:none}
+.rt-msg-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rt-msg.out .rt-msg-av{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
 .rt-msg-body{min-width:0}
 .rt-msg.out .rt-msg-body{display:flex;flex-direction:column;align-items:flex-end}
-.rt-msg .who{font-size:11px;color:var(--text2);margin:0 4px 5px;word-break:break-all;display:flex;gap:6px;align-items:center}
+.rt-msg .who{font-size:11px;color:var(--text3);margin:0 4px 5px;word-break:break-all;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .rt-msg.out .who{flex-direction:row-reverse}
-.rt-who-qq{color:var(--accent);font-size:10px;background:rgba(59,130,246,.14);padding:0 5px;border-radius:6px}
-.rt-msg .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:13px;border-top-left-radius:4px;padding:10px 14px;font-size:13.5px;line-height:1.65;word-break:break-word;box-shadow:0 1px 4px rgba(0,0,0,.18)}
-.rt-msg.out .bubble{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;border-top-left-radius:13px;border-top-right-radius:4px}
-.rt-msg.pending .bubble{opacity:.65}
+.rt-who-qq{color:#9db8ff;font-size:10px;background:var(--accent-soft);padding:0 6px;border-radius:6px}
+.rt-msg .bubble{background:var(--bg2);border:1px solid var(--border);border-radius:14px;border-top-left-radius:5px;padding:10px 14px;font-size:13.5px;line-height:1.66;word-break:break-word;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.rt-msg.out .bubble{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;border-top-left-radius:14px;border-top-right-radius:5px}
+.rt-msg.pending .bubble{opacity:.6}
+.rt-msg.pending .bubble::after{content:'';display:inline-block;width:12px;height:12px;margin-left:8px;border:2px solid rgba(255,255,255,.55);border-top-color:transparent;border-radius:50%;vertical-align:-2px;animation:rtSpin .7s linear infinite}
+@keyframes rtSpin{to{transform:rotate(360deg)}}
 .rt-msg .bubble a{color:inherit;text-decoration:underline;word-break:break-all}
-.rt-msg .bubble img.rt-img{max-width:260px;max-height:260px;border-radius:10px;display:block;margin:2px 0;cursor:zoom-in}
-.rt-msg .bubble audio{height:34px;max-width:250px;margin-top:4px}
-.rt-msg .mtime{font-size:10px;color:var(--text2);margin:5px 4px 0}
+.rt-msg .bubble img.rt-img{max-width:min(280px,100%);max-height:300px;border-radius:11px;display:block;margin:2px 0;cursor:zoom-in;background:var(--bg3)}
+.rt-msg .bubble audio{height:36px;max-width:100%;margin-top:5px}
+.rt-msg .mtime{font-size:10px;color:var(--text3);margin:5px 4px 0}
 .rt-msg.out .mtime{text-align:right}
-.rt-editor{border-top:1px solid var(--border);background:var(--bg2);padding:12px 18px;display:flex;gap:12px;align-items:flex-end;flex-shrink:0}
-.rt-editor-main{flex:1;display:flex;flex-direction:column;gap:7px;min-width:0}
+.rt-placeholder{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:14px;text-align:center;padding:30px;line-height:1.9}
+
+/* ===== 输入区 ===== */
+.rt-editor{border-top:1px solid var(--border);background:linear-gradient(180deg,var(--bg2),#121721);padding:11px 16px;padding-bottom:calc(11px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:flex-end;flex-shrink:0}
+.rt-editor-main{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
 .rt-tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-.rt-tool{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:5px 13px;font-size:12.5px;cursor:pointer;transition:.15s}
-.rt-tool:hover{color:var(--text);border-color:var(--accent);background:rgba(59,130,246,.12)}
-.rt-hint{font-size:11px;color:var(--text2);margin-left:auto}
-.rt-editor textarea{flex:1;resize:none;height:66px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;width:100%;transition:.15s}
-.rt-editor textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
-.rt-send{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:10px;padding:0 26px;height:46px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:0 3px 12px rgba(59,130,246,.35)}
+.rt-tool{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:5px 13px;font-size:12.5px;transition:.15s}
+.rt-tool:hover{color:#fff;border-color:var(--accent);background:var(--accent-soft)}
+.rt-tool.active{color:#fff;border-color:var(--accent);background:var(--accent-soft)}
+.rt-hint{font-size:11px;color:var(--text3);margin-left:auto}
+.rt-editor textarea{width:100%;resize:none;height:46px;max-height:150px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:12px 13px;font-size:14px;line-height:1.5;outline:none;transition:.15s;overflow-y:auto}
+.rt-editor textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.rt-editor textarea:disabled{opacity:.55}
+.rt-send{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:11px;padding:0 26px;height:46px;font-size:14px;font-weight:600;white-space:nowrap;box-shadow:0 4px 14px rgba(79,140,255,.36);transition:.15s;flex:none}
 .rt-send:hover{filter:brightness(1.08)}
-.rt-send:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
-.rt-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-8px);background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 20px;font-size:13px;z-index:99;opacity:0;pointer-events:none;transition:.2s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.rt-send:active{transform:translateY(1px)}
+.rt-send:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+
+/* ===== QQ 表情面板 ===== */
+.rt-emoji{display:none;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:2px;max-height:172px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:11px;padding:7px}
+.rt-emoji.show{display:grid}
+.rt-emoji button{background:transparent;border:none;padding:3px;border-radius:8px;cursor:pointer;line-height:0;display:flex;align-items:center;justify-content:center}
+.rt-emoji button:hover{background:var(--accent-soft)}
+.rt-emoji img{width:26px;height:26px;display:block}
+
+/* ===== 提示 ===== */
+.rt-toast{position:fixed;top:calc(16px + env(safe-area-inset-top));left:50%;transform:translateX(-50%) translateY(-8px);background:var(--bg4);border:1px solid var(--border2);border-radius:10px;padding:10px 20px;font-size:13px;z-index:99;opacity:0;pointer-events:none;transition:.2s;box-shadow:var(--shadow);max-width:88vw;text-align:center}
 .rt-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .rt-toast.err{border-color:var(--danger);color:#fca5a5}
-.rt-placeholder{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:14px;text-align:center;padding:30px;line-height:1.9}
-@media(max-width:860px){
+
+/* ===== 手机端 ===== */
+@media(max-width:820px){
+  .rt-topbar{gap:9px;padding:9px 12px;padding-top:calc(9px + env(safe-area-inset-top))}
+  .rt-title{display:none}
+  .rt-bot select{max-width:150px}
+  .rt-appid{display:none}
+  .rt-right .rt-mini{display:none}
+  .rt-tabs{order:3;width:100%;justify-content:space-between}
+  .rt-tab{flex:1;text-align:center;padding:7px 0}
   .rt-side{width:100%;border-right:none}
   .rt-chat{display:none}
+  .rt-app[data-view="chat"] .rt-topbar{display:none}
   .rt-app[data-view="chat"] .rt-side{display:none}
   .rt-app[data-view="chat"] .rt-chat{display:flex}
-  .rt-back{display:block}
-  .rt-msg{max-width:90%}
+  .rt-app[data-view="chat"] .rt-chat-head{padding-top:calc(11px + env(safe-area-inset-top))}
+  .rt-back{display:flex;align-items:center;justify-content:center}
+  .rt-msg{max-width:88%}
+  .rt-msgs{padding:16px 12px 6px}
+  .rt-editor{gap:9px;padding:9px 11px;padding-bottom:calc(9px + env(safe-area-inset-bottom))}
+  .rt-editor textarea{font-size:15px}
+  .rt-send{padding:0 20px}
   .rt-hint{display:none}
-  .rt-head-actions .rt-hbtn span{display:none}
+  .rt-head-actions .rt-hbtn{padding:7px 11px}
+}
+@media(max-width:400px){
+  .rt-tool{padding:5px 10px;font-size:12px}
+  .rt-send{padding:0 16px;font-size:13px}
+  .rt-chat-name{font-size:14px}
 }
 </style>
 </head>
 <body>
 <div class="rt-app" id="rtApp" data-view="list">
   <header class="rt-topbar">
-    <div class="rt-title">消息工作台</div>
+    <div class="rt-brand"><span class="rt-logo">&#128172;</span><span class="rt-title">消息工作台</span></div>
     <div class="rt-bot">
       <select id="rtBotSel" onchange="rtOnBot()"></select>
       <span class="rt-appid" id="rtAppId"></span>
@@ -122,33 +191,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </header>
   <div class="rt-body">
     <aside class="rt-side">
-      <div class="rt-side-head"><span>会话列表</span><span id="rtConvCount">0</span></div>
+      <div class="rt-side-head">
+        <div class="rt-side-top"><span>会话列表</span><span class="rt-count" id="rtConvCount">0</span></div>
+        <label class="rt-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input id="rtSearch" placeholder="搜索会话 / 群号 / QQ" oninput="rtRenderConvs()">
+        </label>
+      </div>
       <div class="rt-convs" id="rtConvs"><div class="rt-empty">加载中...</div></div>
     </aside>
     <section class="rt-chat">
       <div class="rt-chat-head" id="rtChatHead">
-        <button class="rt-back" onclick="rtBackToList()">&#8592;</button>
+        <button class="rt-back" onclick="rtBackToList()" title="返回会话列表">&#8592;</button>
         <span class="rt-avatar sm" id="rtChatAvatar">?</span>
         <div class="rt-chat-title">
-          <div class="rt-chat-name" id="rtChatName">未选择会话</div>
-          <div class="rt-chat-meta" id="rtChatMeta">从左侧选择群聊或私聊开始</div>
+          <div class="rt-chat-name" id="rtChatName"><span class="nm">未选择会话</span></div>
         </div>
         <div class="rt-head-actions">
           <button class="rt-hbtn" id="rtGroupMgrBtn" style="display:none" onclick="rtOpenGroupMgr()">群管理</button>
           <button class="rt-hbtn" id="rtReloadBtn" style="display:none" onclick="rtReloadActive()">刷新</button>
         </div>
       </div>
-      <div class="rt-msgs" id="rtMsgs"><div class="rt-placeholder">选择左侧任一会话，即可查看历史消息并实时预览新消息</div></div>
+      <div class="rt-msgs" id="rtMsgs"><div class="rt-placeholder">从左侧选择群聊或私聊，即可查看历史消息并实时预览新消息</div></div>
       <div class="rt-editor">
         <div class="rt-editor-main">
           <div class="rt-tools">
             <button class="rt-tool" onclick="rtPickMedia('image')" title="发送图片">图片</button>
-            <button class="rt-tool" onclick="rtPickMedia('emoji')" title="发送表情包（GIF）">表情</button>
+            <button class="rt-tool" id="rtEmojiBtn" onclick="rtToggleEmoji()" title="QQ 表情">表情</button>
             <button class="rt-tool" onclick="rtPickMedia('video')" title="发送视频">视频</button>
-            <span class="rt-hint">支持链接、表情、@；Enter 发送，Shift+Enter 换行</span>
+            <span class="rt-hint">支持链接；Enter 发送，Shift+Enter 换行</span>
             <input type="file" id="rtMedia" style="display:none" onchange="rtUploadMedia(this)">
           </div>
-          <textarea id="rtInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行" disabled></textarea>
+          <div class="rt-emoji" id="rtEmoji"></div>
+          <textarea id="rtInput" placeholder="输入消息…" disabled></textarea>
         </div>
         <button class="rt-send" id="rtSend" onclick="rtSend()" disabled>发送</button>
       </div>
@@ -163,16 +238,31 @@ function rtEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g
 function rtCookie(n){var m=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)'));return m?decodeURIComponent(m[1]):''}
 function rtToken(){return rtCookie('admin_token')||localStorage.getItem('admin_token')||''}
 function rtToast(msg,isErr){var t=document.getElementById('rtToast');t.textContent=msg;t.className='rt-toast show'+(isErr?' err':'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='rt-toast'},2600)}
-function rtApi(path,opts){opts=opts||{};var h=opts.headers||{};var tk=rtToken();if(tk)h['Authorization']='Bearer '+tk;if(opts.body&&typeof opts.body!=='string'){if(typeof FormData!=='undefined'&&opts.body instanceof FormData){/* multipart */}else{h['Content-Type']='application/json';opts.body=JSON.stringify(opts.body)}}opts.headers=h;opts.credentials='same-origin';return fetch(path,opts).then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})})}
+function rtSessionExpired(){
+  if(rtState._exp)return;rtState._exp=1;
+  try{localStorage.removeItem('admin_token');document.cookie='admin_token=; path=/; max-age=0'}catch(e){}
+  try{if(rtState.es){rtState.es.close();rtState.es=null}}catch(e){}
+  rtToast('登录已过期，正在返回登录页…',true);
+  setTimeout(function(){location.href='/'},900);
+}
+function rtApi(path,opts){opts=opts||{};var h=opts.headers||{};var tk=rtToken();if(tk)h['Authorization']='Bearer '+tk;if(opts.body&&typeof opts.body!=='string'){if(typeof FormData!=='undefined'&&opts.body instanceof FormData){/* multipart */}else{h['Content-Type']='application/json';opts.body=JSON.stringify(opts.body)}}opts.headers=h;opts.credentials='same-origin';return fetch(path,opts).then(function(r){if(r.status===401){rtSessionExpired();throw new Error('登录已过期')}return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})})}
 function rtFmtTime(s){if(!s)return '';var d=new Date(String(s).replace(' ','T'));if(isNaN(d.getTime()))return String(s).slice(5,16);var now=new Date();var sameDay=d.toDateString()===now.toDateString();var hm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);return sameDay?hm:(d.getMonth()+1)+'/'+d.getDate()+' '+hm}
 function rtShort(s,n){s=String(s==null?'':s);return s.length>n?s.slice(0,n)+'…':s}
 function rtInitial(o){var n=String(o&&o.name||'').trim();return n?n.slice(0,1):(o&&o.type==='group'?'群':(o&&o.qq?'Q':'人'))}
+function rtConvName(c){var isG=c.type==='group';return c.name||(isG?(c.group_number?('群 '+c.group_number):'群聊'):(c.qq?('QQ '+c.qq):'私聊用户'))}
+
+function rtAvErr(img){
+  var src=img.getAttribute('src')||'';
+  var m=src.match(/^https:\/\/q([1-4])\.qlogo\.cn\/(.+)$/);
+  if(m){var n=Number(m[1]);if(n<4){img.setAttribute('src','https://q'+(n+1)+'.qlogo.cn/'+m[2]);return}}
+  img.remove();
+}
+function rtAvImg(url){return url?'<img src="'+rtEsc(url)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="rtAvErr(this)">':''}
 
 function rtAvatarHtml(o,sm){
   var cls='rt-avatar'+(sm?' sm':'');
   var label=rtEsc(rtInitial(o));
-  var img=o&&o.avatar?'<img src="'+rtEsc(o.avatar)+'" alt="" onerror="this.remove()">':'';
-  return '<span class="'+cls+'">'+img+label+'</span>';
+  return '<span class="'+cls+'">'+rtAvImg(o&&o.avatar)+label+'</span>';
 }
 
 function rtInit(){
@@ -229,7 +319,7 @@ function rtLoadConvs(manual){
       var still=rtState.convs.filter(function(c){return c.id===rtState.active.id&&c.type===rtState.active.type})[0];
       if(!still)rtResetChat();
     }
-    if(!rtState.active&&rtState.convs.length&&window.innerWidth>860){
+    if(!rtState.active&&rtState.convs.length&&window.innerWidth>820){
       rtOpenConv(rtState.convs[0].type,rtState.convs[0].id);
     }
   }).catch(function(e){box.innerHTML='<div class="rt-empty">加载失败：'+rtEsc(e.message)+'</div>'});
@@ -237,18 +327,22 @@ function rtLoadConvs(manual){
 
 function rtRenderConvs(){
   var box=document.getElementById('rtConvs');
+  var kw=(document.getElementById('rtSearch').value||'').trim().toLowerCase();
+  var list=rtState.convs;
+  if(kw)list=list.filter(function(c){return (rtConvName(c)+' '+(c.group_number||'')+' '+(c.qq||'')+' '+(c.openid||'')+' '+(c.last_text||'')).toLowerCase().indexOf(kw)>=0});
   if(!rtState.convs.length){box.innerHTML='<div class="rt-empty">'+rtEmptyText()+'</div>';return}
-  box.innerHTML=rtState.convs.map(function(c){
+  if(!list.length){box.innerHTML='<div class="rt-empty">没有匹配「'+rtEsc(kw)+'」的会话</div>';return}
+  box.innerHTML=list.map(function(c){
     var isG=c.type==='group';
-    var name=c.name||(isG?(c.group_number?('群 '+c.group_number):'群聊'):(c.qq?('QQ '+c.qq):'私聊用户'));
+    var name=rtConvName(c);
     var active=rtState.active&&rtState.active.id===c.id&&rtState.active.type===c.type?' active':'';
-    var meta=isG?('群号 '+(c.group_number||'未绑定')+' · '+c.openid):(c.qq?('QQ '+c.qq):('OpenID '+(c.openid||'')));
+    var fallback=isG?((c.group_number?('群号 '+c.group_number):'群聊')+' · '+(c.member_count||0)+'人'):(c.qq?('QQ '+c.qq):'私聊');
+    var tag=isG?(c.group_number?'<span class="rt-tag">群 '+rtEsc(c.group_number)+'</span>':''):(c.qq?'<span class="rt-tag">QQ '+rtEsc(c.qq)+'</span>':'');
     return '<div class="rt-conv'+active+'" onclick="rtOpenConv(\''+c.type+'\',\''+rtEsc(c.id)+'\')">'
       +rtAvatarHtml({name:name,avatar:c.avatar,type:c.type,qq:c.qq})
-      +'<div class="rt-conv-main"><div class="rt-conv-top"><span class="rt-conv-name">'+rtEsc(name)+'</span>'
-      +(c.msg_count?'<span class="rt-badge">'+c.msg_count+'</span>':'')
+      +'<div class="rt-conv-main"><div class="rt-conv-top"><span class="rt-conv-name">'+rtEsc(name)+'</span>'+tag
       +'<span class="rt-conv-time">'+rtFmtTime(c.last_time)+'</span></div>'
-      +'<div class="rt-conv-sub">'+rtEsc(rtShort(c.last_text||meta,40))+'</div></div></div>';
+      +'<div class="rt-conv-sub">'+(c.msg_count?'<span class="rt-badge">'+c.msg_count+'</span>':'')+rtEsc(rtShort(c.last_text||fallback,42))+'</div></div></div>';
   }).join('');
 }
 
@@ -259,11 +353,10 @@ function rtEmptyText(){
 }
 
 function rtResetChat(){
-  document.getElementById('rtChatName').textContent='未选择会话';
-  document.getElementById('rtChatMeta').textContent='从左侧选择群聊或私聊开始';
-  document.getElementById('rtChatAvatar').outerHTML=rtAvatarHtml({name:'?',type:'group'},true).replace('class="rt-avatar sm"','class="rt-avatar sm" id="rtChatAvatar"');
-  document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">选择左侧任一会话，即可查看历史消息并实时预览新消息</div>';
-  var ta=document.getElementById('rtInput');ta.value='';ta.disabled=true;
+  document.getElementById('rtChatName').innerHTML='<span class="nm">未选择会话</span>';
+  rtSetChatAvatar({name:'?',type:'group'});
+  document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">从左侧选择群聊或私聊，即可查看历史消息并实时预览新消息</div>';
+  var ta=document.getElementById('rtInput');ta.value='';ta.style.height='';ta.disabled=true;
   document.getElementById('rtSend').disabled=true;
   document.getElementById('rtGroupMgrBtn').style.display='none';
   document.getElementById('rtReloadBtn').style.display='none';
@@ -272,28 +365,27 @@ function rtResetChat(){
 
 function rtSetChatAvatar(o){
   var el=document.getElementById('rtChatAvatar');if(!el)return;
-  el.outerHTML=rtAvatarHtml(o,true).replace('class="rt-avatar sm"','class="rt-avatar sm" id="rtChatAvatar"');
+  el.innerHTML=(o&&o.avatar?'<img src="'+rtEsc(o.avatar)+'" alt="" onerror="this.remove()">':'')+rtEsc(rtInitial(o));
 }
 
 function rtOpenConv(type,id){
   var c=rtState.convs.filter(function(x){return x.id===id&&x.type===type})[0];
   if(!c)return;
   rtState.active=c;
+  rtCloseEmoji();
   rtRenderConvs();
   document.getElementById('rtApp').setAttribute('data-view','chat');
   var isG=type==='group';
-  var name=c.name||(isG?(c.group_number?('群 '+c.group_number):'群聊'):(c.qq?('QQ '+c.qq):'私聊用户'));
-  document.getElementById('rtChatName').textContent=(isG?'群聊 · ':'私聊 · ')+name;
+  var name=rtConvName(c);
+  document.getElementById('rtChatName').innerHTML='<span class="rt-kind '+(isG?'g':'c')+'">'+(isG?'群聊':'私聊')+'</span><span class="nm">'+rtEsc(name)+'</span>';
   rtSetChatAvatar({name:name,avatar:c.avatar,type:c.type,qq:c.qq});
-  var meta=isG?('群号 <code onclick="rtCopy(\''+rtEsc(c.group_number||'')+'\')">'+(c.group_number||'未绑定')+'</code> · OpenID <code onclick="rtCopy(\''+rtEsc(c.openid)+'\')">'+rtEsc(c.openid)+'</code>')
-               :('QQ <code>'+(c.qq||'未知')+'</code> · OpenID <code onclick="rtCopy(\''+rtEsc(c.openid)+'\')">'+rtEsc(c.openid)+'</code>');
-  document.getElementById('rtChatMeta').innerHTML=meta;
   document.getElementById('rtGroupMgrBtn').style.display=isG?'':'none';
   document.getElementById('rtReloadBtn').style.display='';
   document.getElementById('rtMsgs').innerHTML='<div class="rt-placeholder">正在加载历史消息...</div>';
-  var ta=document.getElementById('rtInput');ta.disabled=false;
+  var ta=document.getElementById('rtInput');ta.disabled=false;ta.style.height='';
   document.getElementById('rtSend').disabled=false;
   rtLoadHistory(type,id);
+  if(window.innerWidth<=820)setTimeout(function(){try{ta.focus()}catch(e){}},200);
   if(!rtState.es)rtOpenLive();
 }
 
@@ -317,11 +409,19 @@ function rtReloadActive(){if(rtState.active)rtLoadHistory(rtState.active.type,rt
 function rtOpenLive(){
   if(!rtState.bot)return;
   rtCloseStream();
-  var url='/api/realtime/live?botId='+encodeURIComponent(rtState.bot.appId)+'&sinceId='+rtState.lastId;
+  rtSetConn('wait','连接中…');
+  var tk=rtToken();
+  var url='/api/realtime/live?botId='+encodeURIComponent(rtState.bot.appId)+'&sinceId='+rtState.lastId+(tk?'&token='+encodeURIComponent(tk):'');
+  var watchdog=setTimeout(function(){
+    if(rtState.es&&!rtState.es._opened){
+      rtSetConn('off','轮询同步中');rtStartFallback();
+      try{rtState.es.close()}catch(e){}rtState.es=null;
+    }
+  },4000);
   try{
     var es=new EventSource(url,{withCredentials:true});
     rtState.es=es;
-    es.onopen=function(){rtSetConn('on','实时同步中');rtStopFallback()};
+    es.onopen=function(){es._opened=true;clearTimeout(watchdog);rtSetConn('on','实时同步中');rtStopFallback()};
     es.onmessage=function(ev){
       try{
         var m=JSON.parse(ev.data);
@@ -339,8 +439,8 @@ function rtOpenLive(){
         }
       }catch(e){}
     };
-    es.onerror=function(){rtSetConn('off','连接中断，轮询同步');rtStartFallback()};
-  }catch(e){rtSetConn('off','无法建立实时连接');rtStartFallback()}
+    es.onerror=function(){clearTimeout(watchdog);rtSetConn('off','连接中断，轮询同步');rtStartFallback()};
+  }catch(e){clearTimeout(watchdog);rtSetConn('off','无法建立实时连接');rtStartFallback()}
 }
 
 function rtStartFallback(){
@@ -432,14 +532,14 @@ function rtMsgNode(m,pending){
   if(pending)div.setAttribute('data-pending','1');
   var name=out?'机器人':(m.sender_name||'');
   var av;
-  if(out){av='<span class="rt-avatar sm">机</span>'}
+  if(out){av='<span class="rt-msg-av">机</span>'}
   else{
     var initial=m.sender_name?m.sender_name.slice(0,1):'人';
-    av=m.sender_avatar?'<span class="rt-avatar sm"><img src="'+rtEsc(m.sender_avatar)+'" alt="" onerror="this.remove()">'+rtEsc(initial)+'</span>':'<span class="rt-avatar sm">'+rtEsc(initial)+'</span>';
+    av='<span class="rt-msg-av">'+rtAvImg(m.sender_avatar)+rtEsc(initial)+'</span>';
   }
-  var whoTag=out?'':'<span>'+rtEsc(name)+'</span>'+(m.sender_qq?'<span class="rt-who-qq">QQ '+rtEsc(m.sender_qq)+'</span>':'')+'<span class="rt-who-qq">'+rtEsc(rtShort(m.user_id||'',12))+'</span>';
+  var whoTag=out?'':'<span>'+rtEsc(name||'未知用户')+'</span>'+(m.sender_qq?'<span class="rt-who-qq">QQ '+rtEsc(m.sender_qq)+'</span>':'')+'<span class="rt-who-qq">'+rtEsc(rtShort(m.user_id||'',12))+'</span>';
   div.innerHTML=av+'<div class="rt-msg-body"><div class="who">'+whoTag+'</div><div class="bubble">'+rtFmtContent(m.content)+'</div>'
-    +'<div class="mtime">'+rtEsc(pending?'发送中...':rtFmtTime(m.created_at))+'</div></div>';
+    +'<div class="mtime">'+rtEsc(pending?'发送中…':rtFmtTime(m.created_at))+'</div></div>';
   return div;
 }
 
@@ -450,13 +550,14 @@ function rtSend(){
   var ta=document.getElementById('rtInput');
   var content=ta.value.trim();
   if(!content)return;
+  rtCloseEmoji();
   rtState.sending=true;
   document.getElementById('rtSend').disabled=true;
   var box=document.getElementById('rtMsgs');
   var ph=box.querySelector('.rt-placeholder');if(ph)ph.remove();
   var optimistic=rtMsgNode({dir:'out',content:content,created_at:new Date().toISOString().replace('T',' ').slice(0,19)},true);
   box.appendChild(optimistic);rtScrollBottom();
-  ta.value='';
+  ta.value='';ta.style.height='';
   rtApi('/api/realtime/send',{method:'POST',body:{botId:rtState.bot.appId,type:rtState.active.type,target:rtState.active.id,content:content}})
     .then(function(){setTimeout(rtReloadActive,900)})
     .catch(function(e){optimistic.remove();rtToast('发送失败：'+e.message,true)})
@@ -482,13 +583,48 @@ function rtUploadMedia(input){
   fd.append('target',rtState.active.id);
   fd.append('mediaType',mediaType);
   fd.append('file',file);
-  rtToast('正在上传'+(mediaType==='video'?'视频':'图片')+'...');
+  rtToast('正在上传'+(mediaType==='video'?'视频':'图片')+'…');
   var savedType=rtState.active.type,savedId=rtState.active.id;
   rtApi('/api/realtime/send-media',{method:'POST',body:fd})
     .then(function(){rtToast('已发送');if(rtState.active&&rtState.active.type===savedType&&rtState.active.id===savedId)setTimeout(rtReloadActive,900)})
     .catch(function(e){rtToast('发送失败：'+e.message,true)})
     .then(function(){input.value=''});
 }
+
+/* ===== QQ 表情面板 ===== */
+var RT_EMOJI=[[100,'微笑'],[101,'撇嘴'],[102,'色'],[103,'发呆'],[104,'得意'],[105,'流泪'],[106,'害羞'],[107,'闭嘴'],[108,'睡'],[109,'大哭'],[110,'尴尬'],[111,'发怒'],[112,'调皮'],[113,'呲牙'],[114,'惊讶'],[115,'难过'],[116,'酷'],[117,'冷汗'],[118,'抓狂'],[119,'吐'],[120,'偷笑'],[121,'可爱'],[122,'白眼'],[123,'傲慢'],[124,'饥饿'],[125,'困'],[126,'惊恐'],[127,'流汗'],[128,'憨笑'],[129,'大兵'],[130,'奋斗'],[131,'咒骂'],[132,'疑问'],[133,'嘘'],[134,'晕'],[135,'折磨'],[136,'衰'],[137,'骷髅'],[138,'敲打'],[139,'再见'],[140,'擦汗'],[141,'抠鼻'],[142,'鼓掌'],[143,'糗大了'],[144,'坏笑'],[145,'左哼哼'],[146,'右哼哼'],[147,'哈欠'],[148,'鄙视'],[149,'委屈'],[150,'快哭了'],[151,'阴险'],[152,'亲亲'],[153,'吓'],[154,'可怜'],[155,'菜刀'],[156,'西瓜'],[157,'啤酒'],[158,'篮球'],[159,'乒乓'],[160,'咖啡'],[161,'饭'],[162,'猪头'],[163,'玫瑰'],[164,'凋谢'],[165,'示爱'],[166,'爱心'],[167,'心碎'],[168,'蛋糕'],[169,'闪电'],[170,'炸弹'],[171,'刀'],[172,'足球'],[173,'瓢虫'],[174,'便便'],[175,'月亮'],[176,'太阳'],[177,'礼物'],[178,'拥抱'],[179,'强'],[180,'弱'],[181,'握手'],[182,'胜利'],[183,'抱拳'],[184,'勾引'],[185,'拳头'],[186,'差劲'],[187,'爱你'],[188,'NO'],[189,'OK'],[190,'爱情'],[191,'飞吻'],[192,'跳跳'],[193,'发抖'],[194,'怄火'],[195,'转圈'],[196,'磕头'],[197,'回头'],[198,'跳绳'],[199,'挥手'],[200,'激动'],[201,'街舞'],[202,'献吻'],[203,'左太极'],[204,'右太极']];
+function rtRenderEmoji(){
+  var box=document.getElementById('rtEmoji');
+  if(box.getAttribute('data-ready'))return;
+  box.innerHTML=RT_EMOJI.map(function(e){return '<button type="button" title="'+rtEsc(e[1])+'" data-i="'+e[0]+'" data-n="'+rtEsc(e[1])+'"><img src="https://qzonestyle.gtimg.cn/qzone/em/e'+e[0]+'.gif" alt="'+rtEsc(e[1])+'"></button>'}).join('');
+  box.setAttribute('data-ready','1');
+}
+function rtToggleEmoji(){
+  var box=document.getElementById('rtEmoji');
+  rtRenderEmoji();
+  var on=!box.classList.contains('show');
+  box.classList.toggle('show',on);
+  document.getElementById('rtEmojiBtn').classList.toggle('active',on);
+  if(on){var ta=document.getElementById('rtInput');try{ta.blur()}catch(_){}}
+}
+function rtCloseEmoji(){
+  var box=document.getElementById('rtEmoji');if(box)box.classList.remove('show');
+  var b=document.getElementById('rtEmojiBtn');if(b)b.classList.remove('active');
+}
+function rtInsertEmoji(name){
+  var ta=document.getElementById('rtInput');
+  var code='/'+name;
+  var s=ta.selectionStart||0,e=ta.selectionEnd||0,v=ta.value;
+  ta.value=v.slice(0,s)+code+v.slice(e);
+  var pos=s+code.length;
+  try{ta.setSelectionRange(pos,pos)}catch(_){}
+  ta.focus();
+  ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,150)+'px';
+}
+document.getElementById('rtEmoji').addEventListener('click',function(ev){
+  var btn=ev.target.closest('button[data-n]');if(!btn)return;
+  rtInsertEmoji(btn.getAttribute('data-n'));
+});
 
 function rtOpenGroupMgr(){
   var a=rtState.active;if(!a||a.type!=='group')return;
@@ -500,6 +636,29 @@ function rtBackToList(){document.getElementById('rtApp').setAttribute('data-view
 document.getElementById('rtInput').addEventListener('keydown',function(e){
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();rtSend()}
 });
+document.getElementById('rtInput').addEventListener('input',function(){
+  this.style.height='auto';this.style.height=Math.min(this.scrollHeight,150)+'px';
+});
+document.getElementById('rtInput').addEventListener('focus',function(){
+  if(window.rtSyncViewport){setTimeout(window.rtSyncViewport,60)}
+  setTimeout(function(){if(rtState.active)rtScrollBottom()},280);
+});
+window.addEventListener('resize',function(){if(window.innerWidth>820)document.getElementById('rtApp').setAttribute('data-view','list')});
+
+/* 移动端软键盘：跟随 visualViewport 高度，保证输入框完整可见 */
+(function(){
+  var vv=window.visualViewport;
+  function sync(){
+    var h=vv?vv.height:window.innerHeight;
+    document.documentElement.style.setProperty('--rt-vh',Math.round(h)+'px');
+    if(vv&&vv.offsetTop)window.scrollTo(0,0);
+  }
+  window.rtSyncViewport=sync;
+  if(vv){vv.addEventListener('resize',sync);vv.addEventListener('scroll',sync)}
+  window.addEventListener('resize',sync);
+  window.addEventListener('orientationchange',function(){setTimeout(sync,150)});
+  sync();
+})();
 
 rtInit();
 setInterval(function(){if(!document.hidden)rtLoadConvs(true)},6000);
