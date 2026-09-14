@@ -9,7 +9,7 @@
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
     "version": "1.0.16",
-    "changeLog": "新增「消息工作台」实时同步页：按机器人查看群聊/私聊会话、实时预览消息并可直接发送；仪表盘升级为圆环图状态分布、近 14 天消息趋势与机器人额度展示。"
+    "changeLog": "消息工作台重新打包：修复真实头像、手机端输入框、QQ 表情与登录态过期，实时同步更稳定。"
   },
   "releases": [
     {
@@ -1443,7 +1443,7 @@
     {
       "version": "1.0.16",
       "tag": "v1.0.16",
-      "date": "2026-09-13",
+      "date": "2026-09-14",
       "isCurrent": true,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.16/qqbot-card-editor-patch-1.0.16.zip",
