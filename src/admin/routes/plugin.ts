@@ -262,14 +262,22 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         return names.sort((a, b) => a.localeCompare(b, 'zh-CN'));
       };
       const cidDir = path.join(pluginsDir, CID_DIR);
+      // 合并「新建词库」元数据（config KV：dict.meta.<file>）
+      const dictMeta = new Map<string, any>();
+      try {
+        const rows = getDb().prepare("SELECT key, value FROM config WHERE key LIKE 'dict.meta.%'").all() as any[];
+        for (const r of rows) {
+          try { dictMeta.set(String(r.key).slice('dict.meta.'.length), JSON.parse(r.value)); } catch {}
+        }
+      } catch {}
       res.json({
         ok: true,
         dir: CID_DIR,
         files: [
-          ...collect(cidDir).map((n) => ({ name: n, path: CID_DIR + '/' + n, inDir: true })),
+          ...collect(cidDir).map((n) => ({ name: n, path: CID_DIR + '/' + n, inDir: true, meta: dictMeta.get(n) || null })),
           ...collect(pluginsDir)
             .filter((n) => !fs.existsSync(path.join(cidDir, n)))
-            .map((n) => ({ name: n, path: n, inDir: false })),
+            .map((n) => ({ name: n, path: n, inDir: false, meta: dictMeta.get(n) || null })),
         ],
       });
     } catch (e: any) {
@@ -1885,6 +1893,41 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         reload = 'warn:' + String((e && e.message) || e);
       }
       res.json({ ok: true, fileName: path.basename(file), count: stats.entries, problems: stats.problems, reload });
+    } catch (e: any) {
+      res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  // 新建词库（词库管理页「新建词库」弹窗）：词库名称/版本/作者/联系方式/简介/图标URL + 上传或粘贴 txt
+  router.post('/_dict/create', requireSuperMaster, async (req: Request, res: Response) => {
+    try {
+      const body = req.body || {};
+      const name = String(body.name || '').trim().replace(/\.txt$/i, '');
+      const content = String(body.content || '');
+      if (!name) { res.status(400).json({ error: '请填写词库名称' }); return; }
+      if (!content.trim()) { res.status(400).json({ error: '请粘贴词库内容或上传 .txt 文件' }); return; }
+      const safe = name.replace(/[\\/:*?"<>|\r\n]/g, '').trim();
+      if (!safe) { res.status(400).json({ error: '词库名称含非法字符' }); return; }
+      const dir = path.join(pluginsDir, CID_DIR);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const file = path.join(dir, safe + '.txt');
+      if (fs.existsSync(file)) { res.status(409).json({ error: `词库「${safe}.txt」已存在` }); return; }
+      fs.writeFileSync(file, content, 'utf-8');
+      // 元数据存 config KV，词库列表合并展示
+      const meta: Record<string, string> = {};
+      if (body.version) meta.version = String(body.version).slice(0, 40);
+      if (body.author) meta.author = String(body.author).slice(0, 60);
+      if (body.contact) meta.contact = String(body.contact).slice(0, 60);
+      if (body.icon) meta.icon = String(body.icon).slice(0, 300);
+      if (body.description) meta.description = String(body.description).slice(0, 300);
+      if (Object.keys(meta).length) setConfig('dict.meta.' + safe + '.txt', JSON.stringify(meta));
+      // 尝试热重载同名加载方插件（file-<名>），失败不影响创建
+      let reload = 'skipped';
+      try {
+        const engine = getPluginEngine();
+        if (engine) { await engine.reload('file-' + safe); reload = 'reloaded(file-' + safe + ')'; }
+      } catch (e: any) { reload = 'warn:' + String((e && e.message) || e); }
+      res.json({ ok: true, fileName: safe + '.txt', reload });
     } catch (e: any) {
       res.status(400).json({ error: String((e && e.message) || e) });
     }

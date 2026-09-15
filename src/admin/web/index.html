@@ -466,7 +466,7 @@ input[type="file"]{color:var(--text2)}
   </div>
   <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <input id="mkSearch" placeholder="搜索词库 / 作者 / 分类" style="flex:1;min-width:200px;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px" onkeydown="if(event.key==='Enter')mkLoadItems(1)">
+      <input id="mkSearch" placeholder="搜索词库名称/简介/作者" style="flex:1;min-width:200px;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px" onkeydown="if(event.key==='Enter')mkLoadItems(1)">
       <button class="btn btn-primary btn-sm" onclick="mkLoadItems(1)">搜索</button>
       <span style="font-size:12px;color:var(--text2)" id="mkTotal"></span>
     </div>
@@ -790,12 +790,30 @@ input[type="file"]{color:var(--text2)}
 <div class="page" id="page-dicts">
   <h2>词库管理</h2>
   <div class="action-bar">
+    <button class="btn btn-primary" onclick="showCreateDict()">新建词库</button>
     <button class="btn btn-outline" onclick="loadDictsPage()">刷新</button>
     <button class="btn btn-outline" onclick="window.open('/menu-editor.html?tab=dict','_blank')">打开词库编辑器</button>
   </div>
   <p style="font-size:13px;color:var(--text2);margin:0 0 12px">管理服务器 plugins/词库/ 目录下的本地词库文件；词条编辑请在词库编辑器中完成。</p>
   <div id="dictsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"><p style="color:var(--text2)">加载中…</p></div>
 </div>
+
+<!-- 新建词库弹窗 -->
+<div class="modal-overlay" id="modalNewDict"><div class="modal" style="max-width:560px;max-height:85vh;overflow:auto">
+  <h3>新建词库</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="form-group"><label>词库名称</label><input id="ndName" placeholder="例如：群管词库"></div>
+    <div class="form-group"><label>版本</label><input id="ndVersion" placeholder="1.0.0"></div>
+    <div class="form-group"><label>作者</label><input id="ndAuthor" placeholder="作者名称"></div>
+    <div class="form-group"><label>联系方式</label><input id="ndContact" placeholder="QQ / 邮箱（可选）"></div>
+    <div class="form-group" style="grid-column:1/-1"><label>词库简介</label><textarea id="ndIntro" rows="2" placeholder="词库功能简介"></textarea></div>
+    <div class="form-group" style="grid-column:1/-1"><label>图标 URL（可选）</label><input id="ndIcon" placeholder="https://..."></div>
+  </div>
+  <div class="form-group"><label>本地上传</label><input type="file" id="ndFile" accept=".txt" onchange="ndFilePicked(this)"></div>
+  <div class="form-group"><label>词库内容</label><textarea id="ndContent" rows="10" style="font-family:monospace;font-size:12px" placeholder="支持直接粘贴内容或上传 .txt 文件"></textarea></div>
+  <div class="form-group" style="font-size:12px;color:var(--text2)">支持直接粘贴内容或上传 .txt 文件。词条格式：触发词|回复内容，# 开头为注释；规则词库（规则/触发/结束规则）原样保存。</div>
+  <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modalNewDict')">取消</button><button class="btn btn-primary" onclick="doCreateDict()">保存</button></div>
+</div></div>
 
 <div class="page" id="page-files">
   <h2>文件管理</h2>
@@ -2200,7 +2218,7 @@ async function aiPagesSave(){
 }
 
 // ===== 插件词库市场 =====
-let _mkPage=1,_mkPages=1,_mkAdminOpen=false,_mkEditTarget='';
+let _mkPage=1,_mkPages=1,_mkAdminOpen=false,_mkEditTarget='',_mkEditSource='admin';
 
 async function mkLoadPage(){
   const isSuper=currentUser?.role==='super_master';
@@ -2329,7 +2347,7 @@ async function mkShowMine(){
   try{
     const d=await api('/api/market/mine');
     const statusCN={pending:'<span style="color:#f59e0b">待审核</span>',approved:'<span style="color:var(--success)">已上架</span>',rejected:'<span style="color:var(--danger)">已驳回</span>'};
-    docById('mkMineList').innerHTML=(d.items||[]).length?d.items.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.version)+'</td><td>'+(r.price>0?r.price+' 金币':'免费')+'</td><td>'+(r.entry_count||0)+'</td><td>'+(r.downloads||0)+'</td><td>'+(statusCN[r.status]||r.status)+'</td><td><button class="btn btn-danger btn-xs" onclick="mkUnpublish(\''+esc(r.id)+'\')">下架</button></td></tr>').join(''):'<tr><td colspan="7" style="color:var(--text2);text-align:center;padding:10px">暂无发布，点击「分享词库」提交</td></tr>';
+    docById('mkMineList').innerHTML=(d.items||[]).length?d.items.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.version)+'</td><td>'+(r.price>0?r.price+' 金币':'免费')+'</td><td>'+(r.entry_count||0)+'</td><td>'+(r.downloads||0)+'</td><td>'+(statusCN[r.status]||r.status)+'</td><td><button class="btn btn-outline btn-xs" onclick="mkEditOpen(\''+esc(r.id)+'\',\'mine\')">编辑</button> <button class="btn btn-danger btn-xs" onclick="mkUnpublish(\''+esc(r.id)+'\')">下架</button></td></tr>').join(''):'<tr><td colspan="7" style="color:var(--text2);text-align:center;padding:10px">暂无发布，点击「分享词库」提交</td></tr>';
     docById('mkMineCard').style.display='';
     docById('mkMineCard').scrollIntoView({behavior:'smooth',block:'nearest'});
   }catch(e){alert('加载失败：'+(e.message||e))}
@@ -2404,15 +2422,24 @@ async function mkAdminDel(id){
   try{await api('/api/market/admin/items/'+encodeURIComponent(id),{method:'DELETE'});mkAdminLoad();mkLoadItems();}catch(e){alert('删除失败：'+(e.message||e))}
 }
 
-async function mkEditOpen(id){
+async function mkEditOpen(id,source){
   let item=null;
   try{
-    const d=await api('/api/market/admin/items');
-    item=(d.items||[]).find(x=>x.id===id);
+    if(source==='mine'){
+      const d=await api('/api/market/mine');
+      item=(d.items||[]).find(x=>x.id===id);
+    }else{
+      const d=await api('/api/market/admin/items');
+      item=(d.items||[]).find(x=>x.id===id);
+    }
   }catch(e){}
   if(!item){alert('未找到词库');return;}
   _mkEditTarget=id;
-  docById('mkEditId').textContent='· '+id;
+  _mkEditSource=source||'admin';
+  const isMine=_mkEditSource==='mine';
+  docById('mkEditId').textContent='· '+id+(isMine?'（作者编辑：可改价格/信息，审核与内置由超主管理）':'');
+  // 作者模式隐藏超主专属控件
+  ['mkEditStatus','mkEditBuiltin'].forEach(fid=>{const el=docById(fid);if(el)el.closest('.form-group').style.display=isMine?'none':''});
   docById('mkEditName').value=item.name||'';
   docById('mkEditVersion').value=item.version||'1.0.0';
   docById('mkEditPrice').value=item.price||0;
@@ -2444,9 +2471,15 @@ async function mkEditSave(){
     allowed_roles:roles.length?roles.join(','):'all',
   };
   try{
-    await api('/api/market/admin/items/'+encodeURIComponent(_mkEditTarget),{method:'PUT',body});
+    if(_mkEditSource==='mine'){
+      await api('/api/market/mine/'+encodeURIComponent(_mkEditTarget),{method:'PUT',body:{name:body.name,version:body.version,price:body.price,category:body.category,file_name:body.file_name,description:body.description,content:body.content}});
+    }else{
+      await api('/api/market/admin/items/'+encodeURIComponent(_mkEditTarget),{method:'PUT',body});
+    }
     closeModal('modalMarketEdit');
-    alert('已保存');mkAdminLoad();mkLoadItems();
+    alert('已保存');
+    if(_mkEditSource==='mine')mkShowMine();else mkAdminLoad();
+    mkLoadItems();
   }catch(e){alert('保存失败：'+(e.message||e))}
 }
 
@@ -2780,9 +2813,10 @@ function dashOpenRealtime(appId){
 }
 function openRealtime(appId){
   var t='';
-  try{t=token||localStorage.getItem('admin_token')||''}catch(e){t=token||''}
+  try{t=(typeof token!=='undefined'?token:'')||localStorage.getItem('admin_token')||''}catch(e){t=''}
   var url='/realtime.html?bot='+encodeURIComponent(appId||'')+(t?'&token='+encodeURIComponent(t):'');
-  window.open(url,'_blank');
+  // 手机内置浏览器常拦截 window.open 新窗口，改同窗口跳转保证可达
+  try{window.location.href=url}catch(e){window.open(url,'_blank')}
 }
 function dashOpenDict(){
   window.open('/menu-editor.html?plugin='+encodeURIComponent('词典回复.js')+'&tab=dict','_blank');
@@ -4064,15 +4098,59 @@ async function deletePlugin(name){if(confirm('确定删除插件 "'+name+'" ?'))
 async function uninstallPlugin(name){if(confirm('确定卸载插件「'+name+'」吗？卸载后插件将停止运行并从列表移除，重新安装后才能再次使用。')){try{await api('/api/plugins/'+name,{method:'DELETE'});loadPlugins()}catch(e){alert(e.message)}}}
 // ---- 主人与授权 ----
 let ocCurrent=null;
-async function openOwnerCfg(id,name){ocCurrent={id,name};docById('ocTitle').textContent='主人与授权 · '+name;docById('ocBody').innerHTML='<p style="color:var(--text2)">加载中…</p>';openModal('modalOwnerCfg');try{const d=await api('/api/plugins/owner-config/'+encodeURIComponent(id));ocRender(d)}catch(e){docById('ocBody').innerHTML='<p style="color:var(--danger)">'+esc(e.message)+'</p>'}}
-function ocRender(d){ocCurrent.data=d;const en=d.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';const mode=d.authMode==='restricted'?'<span class="tag tag-pending">部分群授权</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">全开放（未配置授权）</span>';const owners=(d.owners||[]).map(o=>'<span class="tag" style="background:var(--bg3);display:inline-flex;align-items:center;gap:6px">'+esc(o)+'<a href="javascript:void(0)" onclick="ocDelOwner(\''+esc(o)+'\')" style="color:var(--danger);text-decoration:none">×</a></span>').join(' ')||'<span style="color:var(--text2);font-size:12px">暂无主人（配置后群内 owner: 指令生效）</span>';const auths=(d.auths||[]).map(a=>{const exp=a.expireAt===null?'永久有效':new Date(a.expireAt).toLocaleString('zh-CN',{hour12:false})+'（剩余 '+Math.max(0,Math.ceil((a.expireAt-Date.now())/86400000))+' 天）';return'<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg2);border-radius:6px;font-size:13px"><code>'+esc(a.groupId)+'</code><span style="color:var(--text2);font-size:12px">'+exp+'</span><span style="flex:1"></span><button class="btn btn-danger btn-xs" onclick="ocDelAuth(\''+esc(a.groupId)+'\')">删除</button></div>'}).join('')||'<span style="color:var(--text2);font-size:12px">暂无群授权记录</span>';docById('ocBody').innerHTML='<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><strong>'+esc(d.name)+'</strong>'+en+'<span style="font-size:12px;color:var(--text2)">主人数量：'+(d.ownerCount||0)+'</span>'+mode+'</div><div style="font-size:12px;color:var(--text2);background:var(--bg2);padding:8px 10px;border-radius:6px;line-height:1.8;margin-bottom:12px">群内指令：<code>owner:开启</code> <code>owner:关闭</code> <code>owner:授权</code> <code>owner:授权:7</code> <code>owner:取消授权</code> <code>owner:查询授权</code><br>说明：仅主人列表中的用户可发送；未配置群授权时所有群聊开放；私聊不受授权限制</div><div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600">主人列表（QQ号 / OpenID）</label><div style="display:flex;gap:6px;margin-top:6px"><input id="ocOwnerInput" placeholder="输入 QQ 号或 OpenID" style="flex:1"><button class="btn btn-primary btn-sm" onclick="ocAddOwner()">添加</button></div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+owners+'</div></div><div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600">群聊未授权提示文字（留空=静默跳过；同群 60 秒仅提示一次）</label><textarea id="ocUnauthText" rows="2" style="width:100%;margin-top:6px" placeholder="例：本群未授权使用该插件，请联系主人开通～">'+esc(d.unauthText||'')+'</textarea></div><div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600">群聊授权记录</label><div style="display:flex;gap:6px;margin-top:6px"><input id="ocAuthGroup" placeholder="群号" style="flex:1"><input id="ocAuthDays" type="number" min="0" placeholder="天数（0=永久）" style="width:130px"><button class="btn btn-primary btn-sm" onclick="ocAddAuth()">添加授权</button></div><div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+auths+'</div></div><div style="text-align:right"><button class="btn btn-primary" onclick="ocSave()">保存设置</button></div>'}
+async function openOwnerCfg(id,name,kind){ocCurrent={id,name,kind:kind||'plugin'};docById('ocTitle').textContent='主人与授权 - '+name+'（主人说明）';docById('ocBody').innerHTML='<p style="color:var(--text2)">加载中…</p>';openModal('modalOwnerCfg');try{const d=await api('/api/plugins/owner-config/'+encodeURIComponent(id));ocRender(d)}catch(e){docById('ocBody').innerHTML='<p style="color:var(--danger)">'+esc(e.message)+'</p>'}}
+function ocRender(d){
+  ocCurrent.data=d;
+  const noun=ocCurrent.kind==='dict'?'词库':'插件';
+  const en=d.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';
+  const mode=d.authMode==='restricted'?'<span class="tag tag-pending">已配置（仅授权群）</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">未配置（全开放）</span>';
+  const owners=(d.owners||[]).map(o=>'<span class="tag" style="background:var(--bg3);display:inline-flex;align-items:center;gap:6px">'+esc(o)+'<a href="javascript:void(0)" onclick="ocDelOwner(\''+esc(o)+'\')" style="color:var(--danger);text-decoration:none">×</a></span>').join(' ')||'<span style="color:var(--text2);font-size:12px">暂无主人，请添加主人后才能使用 owner 指令</span>';
+  const auths=(d.auths||[]).map(a=>{const exp=a.expireAt===null?'永久有效':new Date(a.expireAt).toLocaleString('zh-CN',{hour12:false})+'（剩余 '+Math.max(0,Math.ceil((a.expireAt-Date.now())/86400000))+' 天）';return'<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg2);border-radius:6px;font-size:13px"><code>'+esc(a.groupId)+'</code><span style="color:var(--text2);font-size:12px">'+exp+'</span><span style="flex:1"></span><button class="btn btn-danger btn-xs" onclick="ocDelAuth(\''+esc(a.groupId)+'\')">删除</button></div>'}).join('');
+  const box=(title,inner)=>'<div style="margin-top:12px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">'+title+'</div>'+inner+'</div>';
+  docById('ocBody').innerHTML=
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-size:13px;color:var(--text2)">'+noun+'状态</span>'+en+'<span style="font-size:13px;color:var(--text2)">主人数量</span><strong>'+(d.ownerCount||0)+'</strong><span style="font-size:13px;color:var(--text2)">群授权模式</span>'+mode+'</div>'
+    + box('主人系统规则说明','<div style="font-size:12px;color:var(--text2);line-height:1.9;background:var(--bg2);padding:10px 12px;border-radius:8px">在词库编辑页添加以下规则，仅主人可触发，非主人会收到"你不是主人，无权操作"提示。<br>开发者（超级主人）自动拥有主人权限，可直接私聊'+noun+'。<br><table style="width:100%;font-size:12px;margin-top:6px;border-collapse:collapse"><tr><td style="padding:2px 8px 2px 0;white-space:nowrap"><code>owner:开启</code></td><td style="color:var(--text2)">开启本'+noun+'（停用后仅主人可重新启用）</td></tr><tr><td style="padding:2px 8px 2px 0"><code>owner:关闭</code></td><td style="color:var(--text2)">停用本'+noun+'（非主人无法触发任何回复）</td></tr><tr><td style="padding:2px 8px 2px 0"><code>owner:授权</code></td><td style="color:var(--text2)">永久授权当前群聊（仅群聊有效）</td></tr><tr><td style="padding:2px 8px 2px 0"><code>owner:授权:7</code></td><td style="color:var(--text2)">授权当前群聊 7 天（数字为天数，到期自动失效）</td></tr><tr><td style="padding:2px 8px 2px 0"><code>owner:取消授权</code></td><td style="color:var(--text2)">取消当前群聊的授权</td></tr><tr><td style="padding:2px 8px 2px 0"><code>owner:查询授权</code></td><td style="color:var(--text2)">查看当前群聊的授权状态和到期时间</td></tr></table><div style="margin-top:8px">示例规则（词库编辑页 → 词条管理 → 添加词条）：<br><code>开启词库 =&gt; owner:开启</code>　<code>关闭词库 =&gt; owner:关闭</code>　<code>授权本群 =&gt; owner:授权</code><br><code>授权7天 =&gt; owner:授权:7</code>　<code>取消授权 =&gt; owner:取消授权</code>　<code>查询授权 =&gt; owner:查询授权</code></div></div>')
+    + box('群聊授权逻辑','<div style="font-size:12px;color:var(--text2);line-height:1.9;background:var(--bg2);padding:10px 12px;border-radius:8px">未配置群授权（无任何记录）：'+noun+'对所有群聊开放（默认行为）<br>已配置群授权：仅已授权群聊可触发回复，未授权群聊发送下方提示文字<br>主人在任意群聊发送 <code>owner:授权</code> 即可授权该群<br>主人身份不受授权限制，在任何群都可触发'+noun+'回复</div>')
+    + box('可用模板变量（任意回复类型均可使用）','<div style="font-size:12px;color:var(--text2);line-height:1.9;background:var(--bg2);padding:10px 12px;border-radius:8px"><code>{user_id}</code> 发送者 OpenID　<code>{group_id}</code> 群聊 OpenID　<code>{args}</code> 匹配参数全文　<code>{1}</code> <code>{2}</code> 第N个参数</div>')
+    + box('主人列表（QQ号 / OpenID）','<div style="display:flex;gap:6px"><input id="ocOwnerInput" placeholder="输入 QQ 号或 OpenID" style="flex:1"><button class="btn btn-primary btn-sm" onclick="ocAddOwner()">添加</button></div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+owners+'</div>')
+    + box('群聊未授权提示文字','<div style="display:flex;gap:6px"><textarea id="ocUnauthText" rows="2" style="flex:1" placeholder="留空=静默跳过；同群 60 秒仅提示一次">'+esc(d.unauthText||'')+'</textarea><button class="btn btn-primary btn-sm" style="align-self:flex-end" onclick="ocSaveText()">保存提示文字</button></div>')
+    + box('群聊授权记录',((d.auths&&d.auths.length)?'':'<div style="font-size:12px;color:var(--text2);margin-bottom:6px">当前所有群聊均可使用</div>')+'<div style="display:flex;gap:6px;margin-bottom:8px"><input id="ocAuthGroup" placeholder="群 OpenID / QQ群号" style="flex:1"><input id="ocAuthDays" type="number" min="0" placeholder="天数（0=永久）" style="width:130px"><button class="btn btn-primary btn-sm" onclick="ocAddAuth()">授权</button></div><div style="font-size:12px;color:var(--text2);margin-bottom:6px">手动添加授权群聊（可从群内发 <code>查群id</code> 获取群 OpenID）</div><div style="display:flex;flex-direction:column;gap:6px">'+(auths||'<span style="color:var(--text2);font-size:12px">暂无群聊授权记录（主人在群内发送"授权本群"或上方手动添加）</span>')+'</div>');
+}
 async function ocAddOwner(){const v=(docById('ocOwnerInput').value||'').trim();if(!v)return;const d=ocCurrent.data;d.owners=d.owners||[];if(d.owners.includes(v)){alert('该主人已存在');return}d.owners.push(v);docById('ocOwnerInput').value='';try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{owners:d.owners}});const nd=await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id));ocRender(nd)}catch(e){alert(e.message)}}
 async function ocDelOwner(o){const d=ocCurrent.data;d.owners=(d.owners||[]).filter(x=>x!==o);try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{owners:d.owners}});const nd=await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id));ocRender(nd)}catch(e){alert(e.message)}}
 async function ocAddAuth(){const g=(docById('ocAuthGroup').value||'').trim();const days=Math.trunc(Number(docById('ocAuthDays').value)||0);if(!g){alert('请输入群号');return}try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{addAuth:{groupId:g,days}}});docById('ocAuthGroup').value='';docById('ocAuthDays').value='';const nd=await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id));ocRender(nd)}catch(e){alert(e.message)}}
 async function ocDelAuth(g){try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{removeAuth:g}});const nd=await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id));ocRender(nd)}catch(e){alert(e.message)}}
-async function ocSave(){const d=ocCurrent.data;try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{owners:d.owners||[],unauthText:docById('ocUnauthText').value}});alert('✅ 已保存');openOwnerCfg(ocCurrent.id,ocCurrent.name)}catch(e){alert(e.message)}}
+async function ocSave(){const d=ocCurrent.data;try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{owners:d.owners||[],unauthText:docById('ocUnauthText').value}});alert('✅ 已保存');openOwnerCfg(ocCurrent.id,ocCurrent.name,ocCurrent.kind)}catch(e){alert(e.message)}}
+async function ocSaveText(){try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{unauthText:docById('ocUnauthText').value}});alert('✅ 提示文字已保存')}catch(e){alert(e.message)}}
 // ---- 词库管理页（骨架：本地词库列表 + 编辑跳转） ----
-async function loadDictsPage(){const el=docById('dictsList');if(!el)return;if(currentUser?.role!=='super_master'){el.innerHTML='<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">词库管理仅超级主人可用；普通管理员请在「插件词库市场」安装词库</div>';return}try{const d=await api('/api/plugins/_dict/files');const files=d.files||[];el.innerHTML=files.length?files.map(f=>'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong style="font-size:14px">'+esc(f.name)+'</strong>'+(f.inDir?'<span class="tag tag-approved">词库目录</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">plugins 根目录</span>')+'</div><div style="font-size:12px;color:var(--text2)">'+esc(f.path)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto"><a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?tab=dict&file='+encodeURIComponent(f.name)+'">编辑词条</a></div></div>').join(''):'<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">暂无词库文件（.txt/.cid），可从市场安装或在词库编辑器中创建</div>'}catch(e){el.innerHTML='<div style="color:var(--danger);padding:24px;grid-column:1/-1;text-align:center">词库列表加载失败：'+esc(e&&e.message||e)+'</div>'}}
+async function loadDictsPage(){const el=docById('dictsList');if(!el)return;if(currentUser?.role!=='super_master'){el.innerHTML='<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">词库管理仅超级主人可用；普通管理员请在「插件词库市场」安装词库</div>';return}try{const d=await api('/api/plugins/_dict/files');const files=d.files||[];el.innerHTML=files.length?files.map(f=>{const m=f.meta||{};const metaLine=[m.version?'v'+esc(m.version):'',m.author?'作者 '+esc(m.author):'',m.contact?esc(m.contact):''].filter(Boolean).join(' · ');return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong style="font-size:14px">'+esc(f.name)+'</strong>'+(f.inDir?'<span class="tag tag-approved">词库目录</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">plugins 根目录</span>')+'</div>'+(metaLine?'<div style="font-size:12px;color:var(--text2)">'+metaLine+'</div>':'')+(m.description?'<div style="font-size:12px;color:var(--text2)">'+esc(m.description)+'</div>':'')+'<div style="font-size:12px;color:var(--text2)">'+esc(f.path)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto"><a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?tab=dict&file='+encodeURIComponent(f.name)+'">编辑词条</a></div></div>'}).join(''):'<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">暂无词库文件（.txt/.cid），可从市场安装或点击「新建词库」创建</div>'}catch(e){el.innerHTML='<div style="color:var(--danger);padding:24px;grid-column:1/-1;text-align:center">词库列表加载失败：'+esc(e&&e.message||e)+'</div>'}}
+// ---- 新建词库（名称/版本/作者/联系方式/简介/图标URL + 上传或粘贴 txt） ----
+function showCreateDict(){
+  ['ndName','ndVersion','ndAuthor','ndContact','ndIntro','ndIcon','ndContent'].forEach(id=>{docById(id).value=''});
+  docById('ndFile').value='';
+  openModal('modalNewDict');
+}
+function ndFilePicked(input){
+  const f=input.files[0];
+  if(!f)return;
+  if(!/\.txt$/i.test(f.name)){alert('仅支持 .txt 文件');input.value='';return}
+  const reader=new FileReader();
+  reader.onload=()=>{docById('ndContent').value=String(reader.result||'')};
+  reader.readAsText(f,'utf-8');
+  if(!docById('ndName').value.trim())docById('ndName').value=f.name.replace(/\.txt$/i,'');
+}
+async function doCreateDict(){
+  const name=docById('ndName').value.trim();
+  const content=docById('ndContent').value;
+  if(!name){alert('请填写词库名称');return}
+  if(!content.trim()){alert('请粘贴词库内容或上传 .txt 文件');return}
+  try{
+    const r=await api('/api/plugins/_dict/create',{method:'POST',body:{name,content,version:docById('ndVersion').value.trim(),author:docById('ndAuthor').value.trim(),contact:docById('ndContact').value.trim(),icon:docById('ndIcon').value.trim(),description:docById('ndIntro').value.trim()}});
+    closeModal('modalNewDict');
+    alert('✅ 词库「'+(r.fileName||name)+'」已创建'+(r.reload&&r.reload.startsWith('reloaded')?'并已热重载':'，重启服务后由词库加载方插件读取'));
+    loadDictsPage();
+  }catch(e){alert(e.message)}
+}
 async function approvePlugin(name){await api('/api/plugins/'+name+'/approve',{method:'POST'});loadPlugins()}
 async function rejectPlugin(name){const reason=prompt('拒绝原因 (可选):');await api('/api/plugins/'+name+'/reject',{method:'POST',body:{reason:reason||undefined}});loadPlugins()}
 

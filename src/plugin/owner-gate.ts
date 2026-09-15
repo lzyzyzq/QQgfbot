@@ -1,6 +1,8 @@
 import { getDb, getConfig, setConfig } from '../db/index';
 import { getBotInstance } from '../core/bot';
 import { createLogger } from '../utils/logger';
+import fs from 'fs';
+import path from 'path';
 
 const logger = createLogger('owner-gate');
 
@@ -59,13 +61,49 @@ function qqOfUser(openid: string): string {
   } catch { return ''; }
 }
 
+// 开发者（超级主人）身份：data/admin.json 中 role=super_master 的 qq/openid，等同主人，可直接私聊/群聊
+let devCache: { qqs: Set<string>; openids: Set<string>; at: number } | null = null;
+function developerIds(): { qqs: Set<string>; openids: Set<string> } {
+  if (devCache && Date.now() - devCache.at < 30000) return { qqs: devCache.qqs, openids: devCache.openids };
+  const qqs = new Set<string>();
+  const openids = new Set<string>();
+  try {
+    const file = path.join(process.cwd(), 'data', 'admin.json');
+    const raw = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    // admin.json 兼容两种结构：顶层数组 或 { admins: [...] }
+    const admins = Array.isArray(raw) ? raw : (Array.isArray(raw?.admins) ? raw.admins : []);
+    for (const a of admins) {
+      if (a?.role !== 'super_master') continue;
+      if (a.qq) qqs.add(String(a.qq));
+      if (a.openid) openids.add(String(a.openid));
+      // openid 未直接绑定 QQ 时经 user_mappings 反查
+      if (a.openid && !a.qq) {
+        const qq = qqOfUser(String(a.openid));
+        if (qq) qqs.add(qq);
+      }
+    }
+  } catch { /* admin.json 缺失时忽略 */ }
+  devCache = { qqs, openids, at: Date.now() };
+  return { qqs, openids };
+}
+
+function isDeveloper(userId: string): boolean {
+  const uid = String(userId || '');
+  if (!uid) return false;
+  const dev = developerIds();
+  if (dev.openids.has(uid)) return true;
+  const qq = qqOfUser(uid);
+  return Boolean(qq && dev.qqs.has(qq));
+}
+
 function isOwner(pluginId: string, userId: string): boolean {
   const cfg = readOwnerConfig(pluginId);
-  if (!cfg.owners.length) return false;
   const uid = String(userId || '');
   if (cfg.owners.includes(uid)) return true;
   const qq = qqOfUser(uid);
-  return Boolean(qq && cfg.owners.includes(qq));
+  if (qq && cfg.owners.includes(qq)) return true;
+  // 开发者（超级主人）自动拥有主人权限
+  return isDeveloper(uid);
 }
 
 // 清理过期授权：返回仍有效的记录

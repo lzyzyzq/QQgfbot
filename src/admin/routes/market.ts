@@ -270,7 +270,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
   router.get('/mine', (req: Request, res: Response) => {
     const me = req.adminUser!;
     const db = getDb();
-    const rows = db.prepare('SELECT id, name, type, version, description, category, price, entry_count, downloads, status, is_builtin, created_at FROM market_items WHERE owner = ? ORDER BY created_at DESC').all(me.username) as any[];
+    const rows = db.prepare('SELECT id, name, type, version, description, category, price, entry_count, downloads, status, is_builtin, allowed_roles, file_name, content, owner, created_at FROM market_items WHERE owner = ? ORDER BY created_at DESC').all(me.username) as any[];
     res.json({ items: rows });
   });
 
@@ -281,6 +281,33 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     const item = db.prepare('SELECT * FROM market_items WHERE id = ?').get(String(req.params.id)) as any;
     if (!item || item.owner !== me.username) { res.status(404).json({ error: '词库不存在' }); return; }
     db.prepare('DELETE FROM market_items WHERE id = ?').run(item.id);
+    res.json({ ok: true });
+  });
+
+  // 作者编辑自己的发布（名称/版本/价格/分类/简介/内容；is_builtin 与审核状态仅超主可改）
+  router.put('/mine/:id', (req: Request, res: Response) => {
+    const me = req.adminUser!;
+    const db = getDb();
+    const item = db.prepare('SELECT * FROM market_items WHERE id = ?').get(String(req.params.id)) as any;
+    if (!item || item.owner !== me.username) { res.status(404).json({ error: '词库不存在' }); return; }
+    const body = req.body || {};
+    const type = item.type === 'plugin' ? 'plugin' : 'dict';
+    const name = String(body.name ?? item.name).trim();
+    if (!name) { res.status(400).json({ error: '名称不能为空' }); return; }
+    const price = Math.max(0, Math.trunc(Number(body.price ?? item.price) || 0));
+    const version = String(body.version ?? (item.version || '1.0.0')).slice(0, 40);
+    const description = String(body.description ?? (item.description || '')).slice(0, 500);
+    const category = String(body.category ?? (item.category || '通用')).slice(0, 40);
+    let content = String(body.content ?? item.content ?? '');
+    if (!content.trim()) { res.status(400).json({ error: '内容不能为空' }); return; }
+    if (type === 'plugin' && !safePluginFileName(String(item.file_name || name + '.js'))) { res.status(400).json({ error: '文件名非法' }); return; }
+    let fileName = item.file_name;
+    if (body.file_name) {
+      const nf = type === 'plugin' ? safePluginFileName(String(body.file_name)) : safeFileName(String(body.file_name));
+      if (nf) fileName = nf;
+    }
+    db.prepare('UPDATE market_items SET name=?, price=?, version=?, description=?, category=?, content=?, file_name=?, updated_at=CURRENT_TIMESTAMP WHERE id=?')
+      .run(name, price, version, description, category, content, fileName || null, item.id);
     res.json({ ok: true });
   });
 
