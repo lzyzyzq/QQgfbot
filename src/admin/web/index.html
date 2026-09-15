@@ -765,8 +765,7 @@ input[type="file"]{color:var(--text2)}
 <div class="page" id="page-plugins">
   <h2>插件管理</h2>
   <div class="action-bar">
-    <button class="btn btn-primary" id="btnUploadPlugin" onclick="showUploadPlugin()">上传插件</button>
-    <button class="btn btn-primary" id="btnAddPlugin" onclick="showAddPlugin()">新增插件</button>
+    <button class="btn btn-primary" id="btnAddPlugin" onclick="showCreatePlugin()">新建插件</button>
     <button class="btn btn-outline" onclick="window.open('/docs/BotAPI参考.md','_blank')">开发文档</button>
     <button class="btn btn-outline" onclick="loadPlugins()">刷新</button>
   </div>
@@ -1281,20 +1280,20 @@ input[type="file"]{color:var(--text2)}
   </div>
 </div></div>
 
-<div class="modal-overlay" id="modalUploadPlugin"><div class="modal">
-  <h3>上传插件</h3>
-  <div class="form-group"><label>插件名</label><input id="uploadPluginName" placeholder="插件名称（可选）"></div>
-  <div class="form-group"><label>插件文件（.js / .mjs / .py / .zip）</label><input type="file" id="uploadPluginFile" accept=".zip,.js,.mjs,.py"></div>
-  <div class="form-group"><label><input type="checkbox" id="uploadPluginOverwrite"> 覆盖已有插件</label></div>
-  <div class="form-group" style="font-size:13px;color:var(--text2)">Python 插件规则：文件夹名与插件名同名（<code>测试.py</code> → 文件夹 <code>测试/</code>），<code>__init__.py</code> 必须保留，<code>Plugin_Information.txt</code> 作为插件介绍。单文件 <code>.py</code> 亦可直接上传。<a href="/plugins/python-plugin-template.zip" style="color:var(--accent)" download>下载 Python 插件模板</a></div>
-  <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modalUploadPlugin')">取消</button><button class="btn btn-primary" onclick="doUploadPlugin()">上传</button></div>
-</div></div>
-
-<div class="modal-overlay" id="modalAddPlugin"><div class="modal">
-  <h3>新增插件</h3>
-  <div class="form-group"><label>选择插件目录</label><select id="addPluginDir" onchange="onAddPluginDirChange()"><option value="">-- 加载中 --</option></select></div>
-  <div class="form-group"><label>将生成的 manifest</label><div id="addPluginPreview" style="display:none;background:var(--bg2);padding:10px;border-radius:8px;font-size:12px;white-space:pre-wrap;min-height:60px"></div></div>
-  <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modalAddPlugin')">取消</button><button class="btn btn-primary" onclick="doCreatePlugin()">生成插件</button></div>
+<div class="modal-overlay" id="modalAddPlugin"><div class="modal" style="max-width:560px;max-height:85vh;overflow:auto">
+  <h3>新建插件</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="form-group"><label>插件名称</label><input id="npName" placeholder="例如：抽奖助手"></div>
+    <div class="form-group"><label>版本</label><input id="npVersion" placeholder="1.0.0"></div>
+    <div class="form-group"><label>作者</label><input id="npAuthor" placeholder="作者名称"></div>
+    <div class="form-group"><label>联系方式</label><input id="npContact" placeholder="QQ / 邮箱（可选）"></div>
+    <div class="form-group" style="grid-column:1/-1"><label>插件简介</label><textarea id="npIntro" rows="2" placeholder="插件功能简介"></textarea></div>
+    <div class="form-group" style="grid-column:1/-1"><label>图标 URL（可选）</label><input id="npIcon" placeholder="https://..."></div>
+  </div>
+  <div class="form-group"><label>本地上传</label><input type="file" id="npFile" accept=".js,.php,.py,.mjs" onchange="npFilePicked(this)"></div>
+  <div class="form-group"><label>插件代码</label><textarea id="npCode" rows="10" style="font-family:monospace;font-size:12px" placeholder="支持直接粘贴内容或上传 .js .php .py .mjs 文件"></textarea></div>
+  <div class="form-group" style="font-size:12px;color:var(--text2)">支持直接粘贴内容或上传 .js .php .py .mjs 文件。上传文件后代码自动填入上方编辑区，可直接修改后保存。</div>
+  <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modalAddPlugin')">取消</button><button class="btn btn-primary" onclick="doCreatePlugin()">保存</button></div>
 </div></div>
 
 <div class="modal-overlay" id="modalPluginDoc"><div class="modal wide">
@@ -3979,7 +3978,7 @@ try{
   res.style.display='block';res.style.background='#052e16';res.style.color='var(--success)';res.textContent=data.message||'操作成功';
 }catch(e){res.style.display='block';res.style.background='#450a0a';res.style.color='var(--danger)';res.textContent='操作失败: '+e.message}}
 
- async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canUpload=isSuper||(currentUserPermissions?.canUploadPlugin===true);const canCreate=isSuper||(currentUserPermissions?.canEditPluginCode===true);docById('btnUploadPlugin').style.display=canUpload?'':'none';docById('btnAddPlugin').style.display=canCreate?'':'none';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));const enState=p.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';let action='';if(isSuper&&s==='pending'){action+='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action+='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';}action+='<button class="btn btn-outline btn-xs" onclick="openOwnerCfg(\''+esc(String(p.id||p.name))+'\',\''+esc(String(p.name))+'\')">主人</button>';if(p.has_webui)action+='<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>';action+='<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>';if(isSuper&&(/^(词典回复|DIC管理)(\.|$)/.test(p.name||'')))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(/^DIC管理/.test(p.name||'')?'DIC':'词典')+'词库</a>';if(isSuper&&(p.type==='code'||p.type==='py'))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>';if(p.canEdit)action+='<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>';if(isSuper)action+='<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>';if(canTest&&p.type!=='file'&&p.type!=='py')action+='<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>';if(isSuper)action+='<button class="btn btn-danger btn-xs" onclick="uninstallPlugin(\''+esc(String(p.name))+'\')">卸载</button>';const chk=isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'';return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">'+('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chk+'<strong style="font-size:14px">'+esc(dispPluginName(p.name))+'</strong>'+badge+typeTag+enState+'</div>')+'<div style="font-size:12px;color:var(--text2)">v'+esc(p.version||'-')+' · 作者 '+esc(p.author||'-')+'</div><div style="font-size:12px;color:var(--text2);min-height:16px;flex:1">'+esc(p.description||'暂无描述')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+action+'</div></div>';}).join('')||'<div style="color:var(--text2);text-align:center;padding:24px;grid-column:1/-1">暂无插件</div>';}catch(e){docById('pluginList').innerHTML='<div style="color:var(--danger);text-align:center;padding:24px;grid-column:1/-1">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</div>'}}
+ async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));const enState=p.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';let action='';if(isSuper&&s==='pending'){action+='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action+='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';}action+='<button class="btn btn-outline btn-xs" onclick="openOwnerCfg(\''+esc(String(p.id||p.name))+'\',\''+esc(String(p.name))+'\')">主人</button>';if(p.has_webui)action+='<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>';action+='<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>';if(isSuper&&(/^(词典回复|DIC管理)(\.|$)/.test(p.name||'')))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(/^DIC管理/.test(p.name||'')?'DIC':'词典')+'词库</a>';if(isSuper&&(p.type==='code'||p.type==='py'))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>';if(p.canEdit)action+='<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>';if(isSuper)action+='<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>';if(canTest&&p.type!=='file'&&p.type!=='py')action+='<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>';if(isSuper)action+='<button class="btn btn-danger btn-xs" onclick="uninstallPlugin(\''+esc(String(p.name))+'\')">卸载</button>';const chk=isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'';return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">'+('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chk+'<strong style="font-size:14px">'+esc(dispPluginName(p.name))+'</strong>'+badge+typeTag+enState+'</div>')+'<div style="font-size:12px;color:var(--text2)">v'+esc(p.version||'-')+' · 作者 '+esc(p.author||'-')+'</div><div style="font-size:12px;color:var(--text2);min-height:16px;flex:1">'+esc(p.description||'暂无描述')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+action+'</div></div>';}).join('')||'<div style="color:var(--text2);text-align:center;padding:24px;grid-column:1/-1">暂无插件</div>';}catch(e){docById('pluginList').innerHTML='<div style="color:var(--danger);text-align:center;padding:24px;grid-column:1/-1">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</div>'}}
  async function togglePlugin(id,name,current){const to=current?0:1;if(!confirm('确定'+(to?'启用':'禁用')+'插件「'+name+'」吗？'+(to?'':'禁用后该插件功能将立即停止')))return;try{const r=await api('/api/plugins/'+id+'/toggle',{method:'POST'});if(r&&r.ok){loadPlugins()}else{alert((r&&r.error)||'操作失败')}}catch(e){alert(e.message)}}
 
 // ---- 插件管理 多选/全选/批量启用禁用 ----
@@ -4001,41 +4000,56 @@ function botSelAll(el){const on=el&&el.checked;document.querySelectorAll('.bot-c
 function botClearSel(){botChecked.clear();document.querySelectorAll('.bot-check').forEach(cb=>cb.checked=false);const a=docById('botCheckAll');if(a)a.checked=false;updateBotBar()}
 async function botBulk(action){const ids=[...botChecked];if(!ids.length)return;const label=action==='start'?'启动':'停止';if(!confirm('确定'+(action==='start'?'批量启动':'批量停止')+'所选 '+ids.length+' 个机器人吗？'))return;let okN=0,err='';for(const id of ids){try{const r=await api('/api/bots/'+id+'/'+(action==='start'?'start':'stop'),{method:'POST'});if(r&&r.ok)okN++;else err=(err||'')+((r&&(r.error||r.msg))||'HTTP失败')+'; '}catch(e){err=(err||'')+e.message+'; '}}botClearSel();loadBots();alert(err?('完成 '+okN+'/'+ids.length+'，部分失败：'+err.slice(0,300)):('✅ 已'+label+' '+okN+' 个机器人'))}
 function botResetSel(){botChecked.clear();const a=docById('botCheckAll');if(a)a.checked=false;updateBotBar()}
- function showUploadPlugin(){docById('modalUploadPlugin').classList.add('active')}
-
-let addPluginDirsCache=[];
-async function showAddPlugin(){
-  docById('modalAddPlugin').classList.add('active');
-  docById('addPluginDir').innerHTML='<option value="">-- 加载中 --</option>';
-  docById('addPluginPreview').style.display='none';
-  addPluginDirsCache=[];
-  try{
-    const d=await api('/api/plugins/dirs');
-    addPluginDirsCache=d.dirs||[];
-    docById('addPluginDir').innerHTML=addPluginDirsCache.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+(x.hasManifest?' (已有清单)':x.hasMain?' (缺清单)':' (空目录)')+'</option>').join('')||'<option value="">-- 无可用目录 --</option>';
-  }catch(e){docById('addPluginDir').innerHTML='<option value="">加载失败</option>'}
+// ---- 新建插件（名称/版本/作者/联系方式/简介/图标URL + 上传或粘贴代码） ----
+let npUploadFile=null;
+function showCreatePlugin(){
+  npUploadFile=null;
+  ['npName','npVersion','npAuthor','npContact','npIntro','npIcon','npCode'].forEach(id=>{docById(id).value=''});
+  docById('npFile').value='';
+  openModal('modalAddPlugin');
 }
-function onAddPluginDirChange(){
-  const v=docById('addPluginDir').value;
-  if(!v){docById('addPluginPreview').style.display='none';return}
-  const d=addPluginDirsCache.find(x=>x.name===v);
-  let txt='目录: '+d.name+'\n';
-  if(d.hasManifest)txt+='已存在 plugin.json，将沿用并补全缺失字段\n'+(d.hasMain?'入口 index.js 已存在':'入口 index.js 缺失，将自动创建');
-  else txt+='无 plugin.json，将自动生成 id / name / version / author / main / engine\n'+(d.hasMain?'入口 index.js 已存在':'入口 index.js 缺失，将自动创建');
-  docById('addPluginPreview').textContent=txt;
-  docById('addPluginPreview').style.display='';
+function npFilePicked(input){
+  const f=input.files[0];
+  if(!f)return;
+  if(!/\.(js|php|py|mjs)$/i.test(f.name)){alert('仅支持 .js .php .py .mjs 文件');input.value='';return}
+  npUploadFile=f;
+  const reader=new FileReader();
+  reader.onload=()=>{docById('npCode').value=String(reader.result||'')};
+  reader.readAsText(f,'utf-8');
+  // 未填名称时用文件名（去扩展名）预填
+  if(!docById('npName').value.trim())docById('npName').value=f.name.replace(/\.(js|php|py|mjs)$/i,'');
 }
 async function doCreatePlugin(){
-  const dir=docById('addPluginDir').value;
-  if(!dir){alert('请先选择插件目录');return}
+  const name=docById('npName').value.trim();
+  const code=docById('npCode').value;
+  if(!name){alert('请填写插件名称');return}
+  if(!code.trim()){alert('请粘贴插件代码或上传插件文件');return}
+  // 扩展名：优先上传文件后缀，其次代码语言猜测，默认 .js
+  let ext='.js';
+  if(npUploadFile)ext=npUploadFile.name.slice(npUploadFile.name.lastIndexOf('.')).toLowerCase();
+  else if(/^\s*<\?php/.test(code))ext='.php';
+  else if(/^\s*(#|from |import |def |class |print\()/m.test(code)&&!/function\s|const\s|let\s|=>/.test(code))ext='.py';
+  const form=new FormData();
+  form.append('file',new Blob([code],{type:'text/plain'}),name+ext);
+  form.append('name',name);
+  form.append('overwrite','true');
+  const v=docById('npVersion').value.trim();
+  const a=docById('npAuthor').value.trim();
+  const c=docById('npContact').value.trim();
+  const i=docById('npIcon').value.trim();
+  const intro=docById('npIntro').value.trim();
+  if(v)form.append('version',v);
+  if(a)form.append('author',a);
+  if(c)form.append('contact',c);
+  if(i)form.append('icon',i);
+  if(intro)form.append('description',intro);
   try{
-    const r=await api('/api/plugins/create',{method:'POST',body:{dir}});
-    alert('插件已生成: '+r.name+' v'+r.version);
-    closeModal('modalAddPlugin');loadPlugins();
-  }catch(e){alert('生成失败: '+e.message)}
+    await api('/api/plugins/upload',{method:'POST',body:form});
+    closeModal('modalAddPlugin');
+    alert('✅ 插件「'+name+'」已创建，请启用并分配给机器人后生效');
+    loadPlugins();
+  }catch(e){alert(e.message)}
 }
-
-async function doUploadPlugin(){const fi=docById('uploadPluginFile');if(!fi.files[0])return;const form=new FormData();form.append('file',fi.files[0]);form.append('name',docById('uploadPluginName').value);form.append('overwrite',docById('uploadPluginOverwrite').checked);try{await api('/api/plugins/upload',{method:'POST',body:form});closeModal('modalUploadPlugin');loadPlugins()}catch(e){alert(e.message)}}
 
 async function showPluginDoc(name){currentPluginDocName=name;try{const data=await api('/api/plugins/'+name+'/doc');docById('pluginDocPreview').innerHTML=mdToHtml(data.content);docById('pluginDocEdit').value=data.content;docById('modalPluginDoc').classList.add('active')}catch{alert('文档不存在')}}
 function openPluginWebui(id){window.open('/api/plugins/'+id+'/webui','_blank')}
@@ -4967,7 +4981,7 @@ async function loadHyperlinks(){const data=await api('/api/system/hyperlinks');d
 async function loadHelp(){try{const data=await api('/api/system/help');docById('helpContent').innerHTML=data.sections.map(s=>`<div class="card"><h3>${esc(s.title)}</h3><div class="markdown-body">${mdToHtml(s.content)}</div></div>`).join('')}catch{}}
 
 function fmtSize(b){if(b==null||b<0)return '...';if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';return (b/1048576).toFixed(1)+' MB'}
-function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function dispPluginName(n){return String(n==null?'':n).replace(/\.(php|py|js|mjs)$/i,'')}
 function mdToHtml(md){return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/```[\s\S]*?```/g,m=>'<pre>'+m.slice(3,-3).trim()+'</pre>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>')}
 

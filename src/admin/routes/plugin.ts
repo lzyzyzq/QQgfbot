@@ -419,6 +419,26 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         }
       }
 
+      // 合并「新建插件」元数据（config KV：plugin.meta.<id>），覆盖展示字段
+      try {
+        const metaRows = getDb().prepare("SELECT key, value FROM config WHERE key LIKE 'plugin.meta.%'").all() as any[];
+        const metaById = new Map<string, any>();
+        for (const r of metaRows) {
+          try { metaById.set(String(r.key).slice('plugin.meta.'.length), JSON.parse(r.value)); } catch {}
+        }
+        if (metaById.size) {
+          for (const item of results) {
+            const meta = metaById.get(String((item as any).id || '')) || metaById.get(String((item as any).name || ''));
+            if (meta) {
+              if (meta.version) (item as any).version = meta.version;
+              if (meta.author) (item as any).author = meta.author;
+              if (meta.contact) (item as any).contact = meta.contact;
+              if (meta.icon) (item as any).icon = meta.icon;
+            }
+          }
+        }
+      } catch { /* meta 合并失败不影响列表 */ }
+
       res.json(results);
     } catch (err) {
       // 永不 500：列表异常时返回已收集的结果 + 错误日志，前端正常显示不弹「获取插件列表失败」
@@ -546,17 +566,35 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
       const pluginName = (req.body.name as string) || basename;
       const overwrite = req.body.overwrite === 'true';
       const description = req.body.description || '';
+      // 「新建插件」弹窗元数据：版本/作者/联系方式/图标URL
+      const metaVersion = String(req.body.version || '').trim();
+      const metaAuthor = String(req.body.author || '').trim();
+      const metaContact = String(req.body.contact || '').trim();
+      const metaIcon = String(req.body.icon || '').trim();
+      const savePluginMeta = (pid: string) => {
+        const meta: Record<string, string> = {};
+        if (metaVersion) meta.version = metaVersion;
+        if (metaAuthor) meta.author = metaAuthor;
+        if (metaContact) meta.contact = metaContact;
+        if (metaIcon) meta.icon = metaIcon;
+        if (Object.keys(meta).length) setConfig('plugin.meta.' + pid, JSON.stringify(meta));
+      };
 
       const isSuper = req.adminUser?.role === 'super_master';
       const uploadedBy = isSuper ? '__super__' : (req.adminUser?.username || 'unknown');
 
-      // ---------- 处理 .js 文件 ----------
+        // ---------- 处理 .js 文件 ----------
       if (ext === '.js') {
         let code: string;
         try {
           code = fs.readFileSync(file.path, 'utf-8');
         } catch (e) {
           return sendError(500, 'Failed to read uploaded file', e);
+        }
+
+        // 「新建插件」粘贴的代码常缺 manifest：在代码末尾自动注入（id 由引擎在加载后覆盖为真实 id）
+        if (!code.includes('manifest')) {
+          code = code.replace(/\s*$/, '') + `\n;module.exports.manifest = Object.assign({}, (typeof module.exports === 'object' && module.exports) || {}, { id: 'pending', name: ${JSON.stringify(pluginName)}, version: ${JSON.stringify(metaVersion || '1.0.0')}, author: ${JSON.stringify(metaAuthor || (req.adminUser?.username || 'admin'))}, description: ${JSON.stringify(description || '')} });\n`;
         }
 
         // 检查是否已存在
@@ -601,6 +639,8 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         // 清理临时文件
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
 
+        savePluginMeta(pluginInfo.id || String(pluginName));
+
         return res.status(201).json({
           ok: true,
           name: pluginName,
@@ -640,6 +680,7 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
             approvalStore.approve(pluginName, req.adminUser?.username || 'system');
           }
           if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          savePluginMeta(id);
           return res.status(201).json({
             ok: true,
             name: pluginName,
@@ -677,6 +718,7 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
             approvalStore.approve(pluginName, req.adminUser?.username || 'system');
           }
           if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          savePluginMeta(id);
           return res.status(201).json({
             ok: true,
             name: pluginName,
@@ -685,6 +727,48 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
           });
         } catch (e) {
           return sendError(400, 'Failed to load Python plugin: ' + (e as Error)?.message, e);
+        }
+      }
+
+      // ---------- 处理 .php 文件（落盘 plugins/<名>.php，按扫描规则注册为 php 插件） ----------
+      if (ext === '.php') {
+        let code: string;
+        try {
+          code = fs.readFileSync(file.path, 'utf-8');
+        } catch (e) {
+          return sendError(500, 'Failed to read uploaded file', e);
+        }
+        const destPath = path.join(pluginsDir, pluginName + '.php');
+        if (fs.existsSync(destPath) && !overwrite) {
+          return sendError(409, `Plugin "${pluginName}" already exists. Use overwrite=true to replace.`);
+        }
+        try {
+          fs.writeFileSync(destPath, code, 'utf-8');
+          const id = 'php-' + pluginName;
+          const db = getDb();
+          const existing = db.prepare('SELECT id FROM plugins WHERE id = ?').get(id) as any;
+          if (existing) {
+            db.prepare("UPDATE plugins SET source_path = ?, name = ?, description = COALESCE(NULLIF(?, ''), description), updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+              .run(destPath, pluginName + '.php', description, id);
+          } else {
+            db.prepare(
+              `INSERT INTO plugins (id, name, description, code, enabled, version, type, source_path, approved, owner)
+               VALUES (?, ?, ?, '', 1, 1, 'php', ?, 1, 'system')`
+            ).run(id, pluginName + '.php', description || 'PHP 插件', destPath);
+          }
+          approvalStore.add(pluginName, uploadedBy);
+          if (isSuper) approvalStore.approve(pluginName, req.adminUser?.username || 'system');
+          try { await engine.reload(id); } catch { /* 落盘成功，重启后扫描加载 */ }
+          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          savePluginMeta(id);
+          return res.status(201).json({
+            ok: true,
+            name: pluginName,
+            id,
+            message: 'PHP plugin uploaded and loaded successfully',
+          });
+        } catch (e) {
+          return sendError(400, 'Failed to load PHP plugin: ' + (e as Error)?.message, e);
         }
       }
 

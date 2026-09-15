@@ -2795,8 +2795,11 @@ export class PluginEngine {
         db.prepare("DELETE FROM plugins WHERE name = 'php_helpers.php' OR id = 'php-php_helpers'").run();
       } catch {}
       const dbNamesAll = (db.prepare('SELECT name FROM plugins').all() as any[]).map((r: any) => r.name);
+      const dbIdsAll = new Set((db.prepare('SELECT id FROM plugins').all() as any[]).map((r: any) => r.id));
       const phpFiles = fs.readdirSync(this.pluginsDir).filter(f => f.endsWith('.php') && f !== 'php_helpers.php');
       for (const file of phpFiles) {
+        // 按 id 判重（name 可能不带扩展名，如上传接口写入的记录），避免 UNIQUE 冲突导致启动失败
+        if (dbIdsAll.has('php-' + path.basename(file, '.php'))) continue;
         if (dbNamesAll.includes(file)) continue;
         let desc = 'PHP 插件';
         try {
