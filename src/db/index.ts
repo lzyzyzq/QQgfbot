@@ -35,7 +35,6 @@ export function initDb(): Database.Database {
 
 function createTables() {
   const database = db!;
-
   database.exec(`
     CREATE TABLE IF NOT EXISTS config (
       key TEXT PRIMARY KEY,
@@ -170,6 +169,40 @@ function createTables() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS market_items (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      version TEXT DEFAULT '1.0.0',
+      description TEXT DEFAULT '',
+      category TEXT DEFAULT '通用',
+      author TEXT DEFAULT '',
+      price INTEGER DEFAULT 0,
+      entry_count INTEGER DEFAULT 0,
+      downloads INTEGER DEFAULT 0,
+      content TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      is_builtin INTEGER DEFAULT 0,
+      allowed_roles TEXT DEFAULT 'all',
+      owner TEXT DEFAULT '',
+      file_name TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS market_installs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(item_id, username)
+    );
+
+    CREATE TABLE IF NOT EXISTS market_signins (
+      username TEXT PRIMARY KEY,
+      last_date TEXT NOT NULL,
+      total INTEGER DEFAULT 0
+    );
+
     CREATE INDEX IF NOT EXISTS idx_user_mappings_qq ON user_mappings(qq_number);
     CREATE INDEX IF NOT EXISTS idx_system_logs_category ON system_logs(category);
     CREATE INDEX IF NOT EXISTS idx_system_logs_created ON system_logs(created_at);
@@ -220,6 +253,11 @@ function migrateSchema() {
   const slCols = database.prepare("PRAGMA table_info('system_logs')").all() as any[];
   const slNames = new Set(slCols.map((c: any) => c.name));
   if (!slNames.has('bot_id')) database.exec("ALTER TABLE system_logs ADD COLUMN bot_id TEXT DEFAULT ''");
+
+  // 词库市场条目类型：dict=词库（plugins/词库/） / plugin=插件（plugins/）
+  const mkCols = database.prepare("PRAGMA table_info('market_items')").all() as any[];
+  const mkNames = new Set(mkCols.map((c: any) => c.name));
+  if (!mkNames.has('type')) database.exec("ALTER TABLE market_items ADD COLUMN type TEXT DEFAULT 'dict'");
 
   // 已有插件默认设为已审批
   if (!names.has('approved')) {

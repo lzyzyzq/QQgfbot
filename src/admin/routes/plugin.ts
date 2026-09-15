@@ -7,6 +7,7 @@ import { ROLE_PERMISSIONS } from '../config';
 import { requireSuperMaster, getUserPermissions } from '../middleware';
 import { getPluginEngine } from '../../api/index';
 import { getDb, getConfig, setConfig } from '../../db/index';
+import { readOwnerConfig, writeOwnerConfig } from '../../plugin/owner-gate';
 import { v4 as uuidv4 } from 'uuid';
 import { generatePluginBlockCode, injectCodeSegment, hasUCardSegment, assertInjectableSourceFile } from '../plugin-codegen';
 import { findPluginIdFor as findMenuConfigPluginId, readAll as readMenuConfigAll, mergeConfig as mergeMenuConfig } from '../../api/menu-config';
@@ -243,6 +244,38 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
     } catch {}
     return 'js';
   }
+
+  // 词库文件清单：plugins/词库/*.txt/.cid（新）+ 兼容 plugins 根目录旧词库
+  // 注意：必须注册在 /:name/files 之前，否则 _dict 会被当成插件名截获
+  router.get('/_dict/files', requireSuperMaster, (_req: Request, res: Response) => {
+    try {
+      const collect = (dir: string): string[] => {
+        if (!fs.existsSync(dir)) return [];
+        const names: string[] = [];
+        for (const name of fs.readdirSync(dir)) {
+          if (name.startsWith('.')) continue;
+          const ext = path.extname(name).toLowerCase();
+          if (ext !== '.txt' && ext !== '.cid') continue;
+          try { if (!fs.statSync(path.join(dir, name)).isFile()) continue; } catch { continue; }
+          names.push(name);
+        }
+        return names.sort((a, b) => a.localeCompare(b, 'zh-CN'));
+      };
+      const cidDir = path.join(pluginsDir, CID_DIR);
+      res.json({
+        ok: true,
+        dir: CID_DIR,
+        files: [
+          ...collect(cidDir).map((n) => ({ name: n, path: CID_DIR + '/' + n, inDir: true })),
+          ...collect(pluginsDir)
+            .filter((n) => !fs.existsSync(path.join(cidDir, n)))
+            .map((n) => ({ name: n, path: n, inDir: false })),
+        ],
+      });
+    } catch (e: any) {
+      res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
 
   // ------------------------------------------------------------
   // 1. 获取插件列表
@@ -1707,40 +1740,8 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
     }
   });
 
-  // 词库文件清单：plugins/词库/*.txt/.cid（新）+ 兼容 plugins 根目录旧词库
-  router.get('/_dict/files', requireSuperMaster, (_req: Request, res: Response) => {
-    try {
-      const collect = (dir: string): string[] => {
-        if (!fs.existsSync(dir)) return [];
-        const names: string[] = [];
-        for (const name of fs.readdirSync(dir)) {
-          if (name.startsWith('.')) continue;
-          const ext = path.extname(name).toLowerCase();
-          if (ext !== '.txt' && ext !== '.cid') continue;
-          try { if (!fs.statSync(path.join(dir, name)).isFile()) continue; } catch { continue; }
-          names.push(name);
-        }
-        return names.sort((a, b) => a.localeCompare(b, 'zh-CN'));
-      };
-      const cidDir = path.join(pluginsDir, CID_DIR);
-      res.json({
-        ok: true,
-        dir: CID_DIR,
-        files: [
-          ...collect(cidDir).map((n) => ({ name: n, path: CID_DIR + '/' + n, inDir: true })),
-          ...collect(pluginsDir)
-            .filter((n) => !fs.existsSync(path.join(cidDir, n)))
-            .map((n) => ({ name: n, path: n, inDir: false })),
-        ],
-      });
-    } catch (e: any) {
-      res.status(400).json({ error: String((e && e.message) || e) });
-    }
-  });
-
   // 词库使用统计：读取 plugins/词库/使用统计.json（娱乐群管插件按群/按规则累加）
-  router.get('/_dict/stats', (_req: Request, res: Response) => {
-    try {
+  router.get('/_dict/stats', (_req: Request, res: Response) => {    try {
       const statsFile = path.join(pluginsDir, CID_DIR, '使用统计.json');
       let raw: any = null;
       if (fs.existsSync(statsFile)) {
@@ -1800,6 +1801,62 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         reload = 'warn:' + String((e && e.message) || e);
       }
       res.json({ ok: true, fileName: path.basename(file), count: stats.entries, problems: stats.problems, reload });
+    } catch (e: any) {
+      res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  // ===== 主人与授权（per 插件）：面板配置 + 群内 owner: 指令（event-bus 门禁串联） =====
+  router.get('/owner-config/:id', (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id || '');
+      const db = getDb();
+      const row = db.prepare('SELECT id, name, enabled FROM plugins WHERE id = ?').get(id) as any;
+      if (!row) { res.status(404).json({ error: '插件不存在' }); return; }
+      const cfg = readOwnerConfig(id);
+      const now = Date.now();
+      const auths = Object.entries(cfg.groupAuth || {})
+        .filter(([, v]) => v && (v.expireAt === null || v.expireAt > now))
+        .map(([gid, v]) => ({ groupId: gid, expireAt: v.expireAt }))
+        .sort((a, b) => String(a.groupId).localeCompare(String(b.groupId)));
+      res.json({
+        ok: true,
+        id,
+        name: row.name,
+        enabled: !!row.enabled,
+        ownerCount: cfg.owners.length,
+        authMode: auths.length ? 'restricted' : 'open',
+        owners: cfg.owners,
+        unauthText: cfg.unauthText,
+        auths,
+      });
+    } catch (e: any) {
+      res.status(400).json({ error: String((e && e.message) || e) });
+    }
+  });
+
+  router.put('/owner-config/:id', (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id || '');
+      const db = getDb();
+      const row = db.prepare('SELECT id FROM plugins WHERE id = ?').get(id) as any;
+      if (!row) { res.status(404).json({ error: '插件不存在' }); return; }
+      const body = req.body || {};
+      const cfg = readOwnerConfig(id);
+      if (Array.isArray(body.owners)) {
+        cfg.owners = body.owners.map((x: any) => String(x).trim()).filter(Boolean).slice(0, 100);
+      }
+      if (body.unauthText !== undefined) cfg.unauthText = String(body.unauthText || '').slice(0, 300);
+      if (body.addAuth && typeof body.addAuth === 'object') {
+        const gid = String(body.addAuth.groupId || '').trim();
+        const days = Math.trunc(Number(body.addAuth.days) || 0);
+        if (gid) cfg.groupAuth[gid] = { expireAt: days > 0 ? Date.now() + days * 86400000 : null };
+      }
+      if (body.removeAuth) {
+        delete cfg.groupAuth[String(body.removeAuth)];
+      }
+      writeOwnerConfig(id, cfg);
+      res.json({ ok: true });
     } catch (e: any) {
       res.status(400).json({ error: String((e && e.message) || e) });
     }

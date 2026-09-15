@@ -234,10 +234,12 @@ input[type="file"]{color:var(--text2)}
   <div class="nav-item" data-page="realtime" onclick="openRealtime('')">实时同步消息<span class="nav-badge" style="background:#0ea5e9">实时</span></div>
   <div class="nav-item" data-page="bots" onclick="switchPage('bots')">我的机器人<span class="nav-badge" id="botBadge">0</span></div>
   <div class="nav-item" data-page="ai" onclick="switchPage('ai')">AI 智能回复<span class="nav-badge" style="background:#8b5cf6">Beta</span></div>
+  <div class="nav-item" data-page="market" onclick="switchPage('market')">插件词库市场<span class="nav-badge" style="background:#f59e0b">新</span></div>
   <div class="nav-item" data-page="membersync" onclick="switchPage('membersync')">成员同步</div>
   <div class="nav-item" data-page="channels" onclick="switchPage('channels')">频道管理</div>
   <div class="nav-item" data-page="editor" onclick="switchPage('editor')">代码编辑</div>
   <div class="nav-item" data-page="plugins" onclick="switchPage('plugins')">插件管理</div>
+  <div class="nav-item" data-page="dicts" onclick="switchPage('dicts')">词库管理</div>
   <div class="nav-item" data-page="menueditor" onclick="window.open('/menu-editor.html','_blank')">插件卡片 · 后台编辑器<span class="nav-badge" style="background:#8b5cf6">编辑</span></div>
   <div class="nav-item" data-page="openplatform" onclick="window.open('/open-platform.html','_blank')">QQ 开放平台<span class="nav-badge" style="background:#16a34a">管理</span></div>
   <div class="nav-item" data-page="files" onclick="switchPage('files')">文件管理</div>
@@ -444,6 +446,57 @@ input[type="file"]{color:var(--text2)}
   <div class="card" id="aiUserCard" style="display:none">
     <h3>用户金币与侧边栏权限 <span style="font-size:12px;color:var(--text2);font-weight:400">（仅超级主人）</span></h3>
     <div class="table-wrap"><table><thead><tr><th>用户名</th><th>角色</th><th>金币</th><th>操作</th></tr></thead><tbody id="aiUserList"></tbody></table></div>
+  </div>
+</div>
+
+<div class="page" id="page-market">
+  <h2>插件词库市场</h2>
+  <div class="card">
+    <p style="font-size:13px;color:var(--text2);margin:0 0 8px">浏览并安装其他用户分享的词库，安装后可在「插件管理」「词库管理」中编辑使用</p>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="font-size:14px"><b style="color:#f59e0b" id="mkCoins">-</b> <span style="color:var(--text2);font-size:12px">我的金币</span></div>
+      <button class="btn btn-primary btn-sm" id="mkSignBtn" onclick="mkSignin()">签到领金币</button>
+      <span style="font-size:12px;color:var(--text2)" id="mkSponsor"></span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="mkShowMine()">我的发布</button>
+        <button class="btn btn-outline btn-sm" onclick="mkShowPublish()">分享词库</button>
+        <button class="btn btn-outline btn-sm" id="mkAdminBtn" style="display:none" onclick="mkToggleAdmin()">超主管理</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input id="mkSearch" placeholder="搜索词库 / 作者 / 分类" style="flex:1;min-width:200px;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px" onkeydown="if(event.key==='Enter')mkLoadItems(1)">
+      <button class="btn btn-primary btn-sm" onclick="mkLoadItems(1)">搜索</button>
+      <span style="font-size:12px;color:var(--text2)" id="mkTotal"></span>
+    </div>
+    <div id="mkGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:12px"></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px" id="mkPager">
+      <button class="btn btn-outline btn-xs" onclick="mkPage(-1)">上一页</button>
+      <span style="font-size:13px" id="mkPageInfo">1 / 1</span>
+      <button class="btn btn-outline btn-xs" onclick="mkPage(1)">下一页</button>
+    </div>
+  </div>
+  <div class="card" id="mkMineCard" style="display:none">
+    <h3>我的发布</h3>
+    <div class="table-wrap"><table><thead><tr><th>名称</th><th>版本</th><th>价格</th><th>词条数</th><th>下载</th><th>状态</th><th>操作</th></tr></thead><tbody id="mkMineList"></tbody></table></div>
+  </div>
+  <div class="card" id="mkAdminCard" style="display:none">
+    <h3>超级主人管理</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+      <div><label>平台税率 %（付费词库分成扣减）</label><input id="mkTaxRate" type="number" min="0" max="90" style="width:120px;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
+      <div><label>签到金币</label><input id="mkSigninCoins" type="number" min="1" max="1000" style="width:120px;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
+      <div style="flex:1;min-width:220px"><label>赞助文案</label><input id="mkSponsorText" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
+      <button class="btn btn-primary btn-sm" onclick="mkSaveSettings()">保存设置</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+      <select id="mkStatusFilter" onchange="mkAdminLoad()" style="padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px">
+        <option value="">全部状态</option><option value="pending">待审核</option><option value="approved">已上架</option><option value="rejected">已驳回</option>
+      </select>
+      <select id="mkImportSel" style="padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px"><option value="">选择本地词库导入...</option></select>
+      <button class="btn btn-outline btn-xs" onclick="mkImportLocal()">导入为系统内置</button>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>名称</th><th>作者</th><th>价格</th><th>词条</th><th>下载</th><th>内置</th><th>权限</th><th>状态</th><th>操作</th></tr></thead><tbody id="mkAdminList"></tbody></table></div>
   </div>
 </div>
 
@@ -724,7 +777,25 @@ input[type="file"]{color:var(--text2)}
     <button class="btn btn-warn btn-sm" onclick="plgBulk(0)">⏸ 批量禁用</button>
     <button class="btn btn-outline btn-sm" onclick="plgClearSel()">取消选择</button>
   </div>
-  <div class="table-wrap"><table><thead><tr><th style="width:32px"><input type="checkbox" id="plgCheckAll" title="全选" onchange="plgSelAll(this)"></th><th>插件名</th><th>类型</th><th>版本</th><th>作者</th><th>描述</th><th>状态</th><th>操作</th></tr></thead><tbody id="pluginList"></tbody></table></div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><label style="font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="plgCheckAll" title="全选" onchange="plgSelAll(this)"> 全选</label><span id="plgListHint" style="font-size:12px;color:var(--text2)">插件以卡片展示，勾选后可批量启用/禁用</span></div>
+  <div id="pluginList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px"></div>
+</div>
+
+<!-- 主人与授权弹窗 -->
+<div class="modal-overlay" id="modalOwnerCfg"><div class="modal" style="max-width:640px;max-height:85vh;overflow:auto">
+  <h3 id="ocTitle">主人与授权</h3>
+  <div id="ocBody"></div>
+  <div style="text-align:right;margin-top:12px"><button class="btn btn-outline" onclick="closeModal('modalOwnerCfg')">关闭</button></div>
+</div></div>
+
+<div class="page" id="page-dicts">
+  <h2>词库管理</h2>
+  <div class="action-bar">
+    <button class="btn btn-outline" onclick="loadDictsPage()">刷新</button>
+    <button class="btn btn-outline" onclick="window.open('/menu-editor.html?tab=dict','_blank')">打开词库编辑器</button>
+  </div>
+  <p style="font-size:13px;color:var(--text2);margin:0 0 12px">管理服务器 plugins/词库/ 目录下的本地词库文件；词条编辑请在词库编辑器中完成。</p>
+  <div id="dictsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"><p style="color:var(--text2)">加载中…</p></div>
 </div>
 
 <div class="page" id="page-files">
@@ -1150,6 +1221,63 @@ input[type="file"]{color:var(--text2)}
   <div class="modal-actions">
     <button class="btn btn-outline" onclick="closeModal('modalAiPages')">取消</button>
     <button class="btn btn-primary" onclick="aiPagesSave()">保存</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modalMarketPublish"><div class="modal">
+  <h3>分享到市场</h3>
+  <p style="font-size:12px;color:var(--text2);margin-top:-6px">提交后 24 小时内为免审核测试期（仅自己可见可装）；到期进入待审核，由超级主人审核上架。付费内容售出按平台税率分成。</p>
+  <div class="form-group"><label>类型</label>
+    <div style="display:flex;gap:16px;font-size:14px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="mkPubType" value="dict" checked onchange="mkPubTypeChanged()"> 词库（plugins/词库/*.txt）</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="mkPubType" value="plugin" onchange="mkPubTypeChanged()"> 插件（plugins/*.js|mjs|py）</label>
+    </div>
+  </div>
+  <div class="form-group"><label>名称</label><input id="mkPubName" placeholder="如：娱乐群管"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="form-group"><label>版本</label><input id="mkPubVersion" value="1.0.0"></div>
+    <div class="form-group"><label>价格（金币，0=免费）</label><input id="mkPubPrice" type="number" min="0" value="0"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="form-group"><label>分类</label><input id="mkPubCategory" placeholder="如：QQ群管理"></div>
+    <div class="form-group"><label>简介</label><input id="mkPubDesc" placeholder="一句话介绍"></div>
+  </div>
+  <div class="form-group" id="mkPubFileWrap" style="display:none"><label>插件文件名（含扩展名）</label><input id="mkPubFile" placeholder="如：我的插件.js / 工具.php / 脚本.py"></div>
+  <div class="form-group"><label>内容（词库 lzyqzb/dict 格式，或插件完整源码）</label><textarea id="mkPubContent" rows="8" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-family:monospace;font-size:13px;resize:vertical"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('modalMarketPublish')">取消</button>
+    <button class="btn btn-primary" onclick="mkPublish()">提交</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modalMarketEdit"><div class="modal">
+  <h3>编辑市场词库 <span id="mkEditId" style="font-size:12px;color:var(--text2)"></span></h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="form-group"><label>名称</label><input id="mkEditName"></div>
+    <div class="form-group"><label>版本</label><input id="mkEditVersion"></div>
+    <div class="form-group"><label>价格（金币，0=免费）</label><input id="mkEditPrice" type="number" min="0"></div>
+    <div class="form-group"><label>分类</label><input id="mkEditCategory"></div>
+    <div class="form-group"><label>作者</label><input id="mkEditAuthor"></div>
+    <div class="form-group"><label>安装文件名</label><input id="mkEditFile" placeholder="名称.txt"></div>
+  </div>
+  <div class="form-group"><label>简介</label><input id="mkEditDesc"></div>
+  <div class="form-group"><label>状态</label>
+    <select id="mkEditStatus" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)">
+      <option value="pending">待审核</option><option value="approved">已上架</option><option value="rejected">已驳回</option>
+    </select>
+  </div>
+  <div class="form-group"><label>访问权限（不勾=所有人可见）</label>
+    <div style="display:flex;gap:14px;font-size:14px" id="mkEditRoles">
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" value="master"> 主人</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" value="member"> 会员</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" value="user"> 普通用户</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="mkEditBuiltin"> 系统内置</label>
+    </div>
+  </div>
+  <div class="form-group"><label>词库内容</label><textarea id="mkEditContent" rows="10" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-family:monospace;font-size:13px;resize:vertical"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('modalMarketEdit')">取消</button>
+    <button class="btn btn-primary" onclick="mkEditSave()">保存</button>
   </div>
 </div></div>
 
@@ -1596,6 +1724,7 @@ function setAdminTokenCookie(t){document.cookie='admin_token='+encodeURIComponen
  function hideLogin(){docById('loginOverlay').classList.add('hidden')}
  function docById(id){return document.getElementById(id)}
  function closeModal(id){docById(id).classList.remove('active')}
+ function openModal(id){docById(id).classList.add('active')}
 
  async function applyPanelLoginVisibility(){
    var area=docById('authCodeLoginArea'),note=docById('authCodeLoginNote');
@@ -1692,7 +1821,7 @@ function updateSidebar(){
   if(restartBtn)restartBtn.style.display=currentUser?.role==='super_master'?'':'none';
   docById('botBadge').textContent=botCount;
   const isSuper=currentUser?.role==='super_master';
-  const limited=['dashboard','bots','ai','membersync','plugins','runlog','authcodes'];
+  const limited=['dashboard','bots','ai','market','membersync','plugins','dicts','runlog','authcodes'];
   // 超主设置过 allowedPages 时按其过滤（空/未设置=角色默认 limited），超主不受限
   const allowedPages=isSuper?null:(Array.isArray(currentUser?.allowedPages)&&currentUser.allowedPages.length?currentUser.allowedPages:limited);
   document.querySelectorAll('.nav-item').forEach(n=>{
@@ -1785,9 +1914,9 @@ function switchPage(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const page=docById('page-'+name);if(page)page.classList.add('active');
   const nav=document.querySelector(`.nav-item[data-page="${name}"]`);if(nav)nav.classList.add('active');
-  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',help:'帮助文档'};
+  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',help:'帮助文档'};
   docById('mobilePageTitle').textContent=titles[name]||name;
-  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,help:loadHelp};
+  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
   if(currentBot&&['membersync','users','runlog','feedback','authcodes','channels','plugins'].includes(name)){
     applyBotFilterToPage().then(runLoader);
@@ -2069,6 +2198,257 @@ async function aiPagesSave(){
     const msg=checks.length?('已限制为 '+checks.length+' 项功能。用户刷新页面后生效。'):'已恢复默认（全部可见）。用户刷新页面后生效。';
     alert(msg);
   }catch(e){alert('保存失败：'+e.message)}
+}
+
+// ===== 插件词库市场 =====
+let _mkPage=1,_mkPages=1,_mkAdminOpen=false,_mkEditTarget='';
+
+async function mkLoadPage(){
+  const isSuper=currentUser?.role==='super_master';
+  docById('mkAdminBtn').style.display=isSuper?'':'none';
+  await mkLoadMe();
+  await mkLoadItems(1);
+  if(_mkAdminOpen)mkAdminLoad();
+}
+
+async function mkLoadMe(){
+  try{
+    const d=await api('/api/market/me');
+    docById('mkCoins').textContent=typeof d.coins==='number'?d.coins:'-';
+    docById('mkSponsor').textContent='金币不够？'+(d.sponsor||'').replace(/\n/g,'　');
+    const btn=docById('mkSignBtn');
+    btn.textContent=d.signedToday?'今日已签到':'签到领 '+d.signinCoins+' 金币';
+    btn.disabled=!!d.signedToday;
+    btn.classList.toggle('btn-outline',!!d.signedToday);
+    btn.classList.toggle('btn-primary',!d.signedToday);
+  }catch(e){}
+}
+
+async function mkSignin(){
+  try{
+    const d=await api('/api/market/signin',{method:'POST'});
+    alert('签到成功，+'+d.coins+' 金币，当前余额 '+d.balance);
+    mkLoadMe();refreshSidebarCoins();
+  }catch(e){alert(e.message||'签到失败')}
+}
+
+async function mkLoadItems(page){
+  if(page)_mkPage=page;
+  try{
+    const kw=docById('mkSearch').value.trim();
+    const d=await api('/api/market/items?search='+encodeURIComponent(kw)+'&page='+_mkPage+'&pageSize=12');
+    _mkPages=d.pages||1;
+    _mkPage=d.page||1;
+    docById('mkTotal').textContent='共 '+d.total+' 个词库';
+    docById('mkPageInfo').textContent=_mkPage+' / '+_mkPages;
+    const grid=docById('mkGrid');
+    if(!(d.items||[]).length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text2);padding:24px">暂无词库'+(kw?'（无匹配结果）':'，等待分享')+'</div>';}
+    else grid.innerHTML=d.items.map(mkCardHtml).join('');
+  }catch(e){docById('mkGrid').innerHTML='<div style="grid-column:1/-1;color:var(--danger);padding:12px">加载失败：'+esc(e.message||'')+'</div>'}
+}
+
+function mkPage(delta){
+  const next=Math.min(_mkPages,Math.max(1,_mkPage+delta));
+  if(next!==_mkPage)mkLoadItems(next);
+}
+
+function mkCardHtml(it){
+  const isPlugin=it.type==='plugin';
+  const priceTag=it.price>0
+    ?'<span class="tag" style="background:rgba(245,158,11,.15);color:#f59e0b">'+it.price+' 金币</span>'
+    :'<span class="tag" style="background:rgba(34,197,94,.15);color:var(--success)">免费</span>';
+  const statusTag=it.isBuiltin?'<span class="tag" style="background:rgba(139,92,246,.15);color:#8b5cf6">内置</span>':(it.trial?'<span class="tag" style="background:rgba(245,158,11,.15);color:#f59e0b" title="发布后 24h 内仅自己可见可装，之后进入待审核">测试期</span>':'');
+  const typeTag=isPlugin?'<span class="tag" style="background:rgba(14,165,233,.15);color:#0ea5e9">插件</span>':'<span class="tag" style="background:rgba(100,116,139,.15);color:#64748b">词库</span>';
+  let action='';
+  if(it.installed)action='<button class="btn btn-outline btn-sm" disabled>已安装</button>';
+  else if(it.price>0)action='<button class="btn btn-primary btn-sm" onclick="mkInstall(\''+esc(it.id)+'\')">安装 · '+it.price+'金币</button>';
+  else action='<button class="btn btn-primary btn-sm" onclick="mkInstall(\''+esc(it.id)+'\')">安装</button>';
+  const mineTag=it.mine?'<span class="tag" style="background:rgba(14,165,233,.15);color:#0ea5e9">我的</span>':'';
+  const countLabel=isPlugin?'插件文件':((it.entryCount||0)+'条');
+  return '<div class="card" style="margin:0;display:flex;flex-direction:column;gap:6px">'+
+    '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="font-size:14px">'+esc(it.name)+'</b><span style="font-size:12px;color:var(--text2)">v'+esc(it.version||'1.0.0')+'</span>'+priceTag+typeTag+statusTag+mineTag+'</div>'+
+    '<div style="font-size:12px;color:var(--text2);flex:1;min-height:32px">'+esc(it.description||'')+'</div>'+
+    '<div style="font-size:12px;color:var(--text2)">'+esc(it.author||'未知')+' · '+esc(it.category||'通用')+' · '+countLabel+' · '+(it.downloads||0)+'次安装</div>'+
+    '<div>'+action+'</div></div>';
+}
+
+async function mkInstall(id){
+  const card=[...docById('mkGrid').children].find(c=>c.innerHTML.indexOf("mkInstall('"+id+"')")!==-1);
+  const btn=card?card.querySelector('button'):null;
+  if(btn){btn.disabled=true;btn.textContent='安装中...';}
+  try{
+    const d=await api('/api/market/install/'+encodeURIComponent(id),{method:'POST'});
+    if(card){const b2=card.querySelector('button');if(b2){b2.disabled=true;b2.textContent='已安装';b2.classList.remove('btn-primary');b2.classList.add('btn-outline');}}
+    alert(d.type==='plugin'
+      ?'插件已安装到 plugins 文件夹。请到「插件管理」启用该插件并分配给机器人后生效。'
+      :'词库已安装，可在「词库管理」中编辑使用。');
+    mkLoadMe();refreshSidebarCoins();
+  }catch(e){
+    alert(e.message||'安装失败');
+    if(btn){btn.disabled=false;}
+    mkLoadItems();
+  }
+}
+
+function mkShowPublish(){
+  docById('mkPubName').value='';docById('mkPubVersion').value='1.0.0';docById('mkPubPrice').value=0;docById('mkPubCategory').value='';docById('mkPubDesc').value='';docById('mkPubContent').value='';docById('mkPubFile').value='';
+  mkPubTypeChanged();
+  docById('modalMarketPublish').classList.add('active');
+}
+
+function mkPubTypeChanged(){
+  const isPlugin=document.querySelector('input[name="mkPubType"]:checked')?.value==='plugin';
+  docById('mkPubFileWrap').style.display=isPlugin?'':'none';
+  docById('mkPubContent').placeholder=isPlugin
+    ?'// 插件源码（JS/PHP/Python），粘贴完整代码\nmodule.exports = { manifest: { name: "我的插件" }, ... }'
+    :'词库 娱乐群管\n版本 3\n规则 主菜单\n触发 菜单\n...\n结束规则';
+}
+
+async function mkPublish(){
+  const type=document.querySelector('input[name="mkPubType"]:checked')?.value==='plugin'?'plugin':'dict';
+  const body={
+    type,
+    name:docById('mkPubName').value.trim(),
+    version:docById('mkPubVersion').value.trim()||'1.0.0',
+    price:Number(docById('mkPubPrice').value)||0,
+    category:docById('mkPubCategory').value.trim()||'通用',
+    description:docById('mkPubDesc').value.trim(),
+    content:docById('mkPubContent').value,
+    file_name:docById('mkPubFile').value.trim(),
+  };
+  if(!body.name){alert('请填写名称');return;}
+  if(!body.content.trim()){alert(type==='plugin'?'插件代码不能为空':'词库内容不能为空');return;}
+  try{
+    const d=await api('/api/market/publish',{method:'POST',body});
+    closeModal('modalMarketPublish');
+    alert('已提交审核'+(type==='plugin'?'（插件）':'（'+d.entryCount+' 条词条）')+'，通过后将上架市场。');
+    mkLoadItems(1);
+  }catch(e){alert('提交失败：'+(e.message||e))}
+}
+
+async function mkShowMine(){
+  try{
+    const d=await api('/api/market/mine');
+    const statusCN={pending:'<span style="color:#f59e0b">待审核</span>',approved:'<span style="color:var(--success)">已上架</span>',rejected:'<span style="color:var(--danger)">已驳回</span>'};
+    docById('mkMineList').innerHTML=(d.items||[]).length?d.items.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.version)+'</td><td>'+(r.price>0?r.price+' 金币':'免费')+'</td><td>'+(r.entry_count||0)+'</td><td>'+(r.downloads||0)+'</td><td>'+(statusCN[r.status]||r.status)+'</td><td><button class="btn btn-danger btn-xs" onclick="mkUnpublish(\''+esc(r.id)+'\')">下架</button></td></tr>').join(''):'<tr><td colspan="7" style="color:var(--text2);text-align:center;padding:10px">暂无发布，点击「分享词库」提交</td></tr>';
+    docById('mkMineCard').style.display='';
+    docById('mkMineCard').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){alert('加载失败：'+(e.message||e))}
+}
+
+async function mkUnpublish(id){
+  if(!confirm('确定下架并删除该市场条目？已安装的用户不受影响。'))return;
+  try{await api('/api/market/mine/'+encodeURIComponent(id),{method:'DELETE'});mkShowMine();mkLoadItems();}catch(e){alert('操作失败：'+(e.message||e))}
+}
+
+// ===== 超主管理 =====
+function mkToggleAdmin(){
+  _mkAdminOpen=!_mkAdminOpen;
+  docById('mkAdminCard').style.display=_mkAdminOpen?'':'none';
+  if(_mkAdminOpen)mkAdminLoad();
+}
+
+async function mkAdminLoad(){
+  try{
+    const s=await api('/api/market/admin/settings');
+    docById('mkTaxRate').value=s.taxRate;
+    docById('mkSigninCoins').value=s.signinCoins;
+    docById('mkSponsorText').value=s.sponsor||'';
+  }catch(e){}
+  try{
+    const lf=await api('/api/market/admin/local-files');
+    const prev=docById('mkImportSel').value;
+    docById('mkImportSel').innerHTML='<option value="">选择本地词库导入...</option>'+(lf.files||[]).map(f=>'<option value="'+esc(f)+'">'+esc(f)+'</option>').join('');
+    if(prev)docById('mkImportSel').value=prev;
+  }catch(e){}
+  try{
+    const st=docById('mkStatusFilter').value;
+    const d=await api('/api/market/admin/items'+(st?'?status='+st:''));
+    const statusCN={pending:'<span style="color:#f59e0b">待审核</span>',approved:'<span style="color:var(--success)">已上架</span>',rejected:'<span style="color:var(--danger)">已驳回</span>'};
+    docById('mkAdminList').innerHTML=(d.items||[]).length?d.items.map(r=>{
+      const ar=String(r.allowed_roles||'all');
+      const arCN=ar==='all'?'所有人':ar.split(',').map(x=>({master:'主人',member:'会员',user:'用户'}[x.trim()]||x.trim())).join('、');
+      const review=r.status==='pending'
+        ?'<button class="btn btn-success btn-xs" onclick="mkReview(\''+esc(r.id)+'\',\'approve\')">通过</button> <button class="btn btn-warn btn-xs" onclick="mkReview(\''+esc(r.id)+'\',\'reject\')">驳回</button> '
+        :'';
+      return '<tr><td>'+esc(r.name)+'<div style="font-size:11px;color:var(--text2)">'+esc(r.version)+'</div></td><td>'+esc(r.author||'-')+'</td><td>'+(r.price>0?r.price+' 金币':'免费')+'</td><td>'+(r.entry_count||0)+'</td><td>'+(r.downloads||0)+'</td><td>'+(r.is_builtin?'<span style="color:#8b5cf6">内置</span>':'-')+'</td><td>'+arCN+'</td><td>'+(statusCN[r.status]||r.status)+'</td><td style="white-space:nowrap">'+review+'<button class="btn btn-outline btn-xs" onclick="mkEditOpen(\''+esc(r.id)+'\')">编辑</button> <button class="btn btn-danger btn-xs" onclick="mkAdminDel(\''+esc(r.id)+'\')">删除</button></td></tr>';
+    }).join(''):'<tr><td colspan="9" style="color:var(--text2);text-align:center;padding:10px">暂无词库</td></tr>';
+  }catch(e){}
+}
+
+async function mkSaveSettings(){
+  try{
+    await api('/api/market/admin/settings',{method:'PUT',body:{
+      taxRate:Number(docById('mkTaxRate').value)||0,
+      signinCoins:Number(docById('mkSigninCoins').value)||5,
+      sponsor:docById('mkSponsorText').value,
+    }});
+    alert('已保存');mkLoadMe();
+  }catch(e){alert('保存失败：'+(e.message||e))}
+}
+
+async function mkReview(id,action){
+  try{await api('/api/market/admin/review',{method:'POST',body:{id,action}});mkAdminLoad();mkLoadItems();}catch(e){alert('操作失败：'+(e.message||e))}
+}
+
+async function mkImportLocal(){
+  const file=docById('mkImportSel').value;
+  if(!file){alert('请先选择本地词库文件');return;}
+  try{
+    await api('/api/market/admin/import',{method:'POST',body:{file}});
+    alert('已导入为系统内置条目并上架');mkAdminLoad();mkLoadItems(1);
+  }catch(e){alert('导入失败：'+(e.message||e))}
+}
+
+async function mkAdminDel(id){
+  if(!confirm('确定删除该市场条目？已安装用户不受影响。'))return;
+  try{await api('/api/market/admin/items/'+encodeURIComponent(id),{method:'DELETE'});mkAdminLoad();mkLoadItems();}catch(e){alert('删除失败：'+(e.message||e))}
+}
+
+async function mkEditOpen(id){
+  let item=null;
+  try{
+    const d=await api('/api/market/admin/items');
+    item=(d.items||[]).find(x=>x.id===id);
+  }catch(e){}
+  if(!item){alert('未找到词库');return;}
+  _mkEditTarget=id;
+  docById('mkEditId').textContent='· '+id;
+  docById('mkEditName').value=item.name||'';
+  docById('mkEditVersion').value=item.version||'1.0.0';
+  docById('mkEditPrice').value=item.price||0;
+  docById('mkEditCategory').value=item.category||'通用';
+  docById('mkEditAuthor').value=item.author||'';
+  docById('mkEditFile').value=item.file_name||'';
+  docById('mkEditDesc').value=item.description||'';
+  docById('mkEditStatus').value=item.status||'pending';
+  docById('mkEditContent').value=item.content||'';
+  docById('mkEditBuiltin').checked=!!item.is_builtin;
+  const ar=String(item.allowed_roles||'all');
+  docById('mkEditRoles').querySelectorAll('input[type="checkbox"]:not(#mkEditBuiltin)').forEach(cb=>{cb.checked=ar!=='all'&&ar.split(',').map(x=>x.trim()).includes(cb.value)});
+  docById('modalMarketEdit').classList.add('active');
+}
+
+async function mkEditSave(){
+  const roles=[...docById('mkEditRoles').querySelectorAll('input[type="checkbox"]:checked')].filter(cb=>cb.id!=='mkEditBuiltin').map(cb=>cb.value);
+  const body={
+    name:docById('mkEditName').value.trim(),
+    version:docById('mkEditVersion').value.trim(),
+    price:Number(docById('mkEditPrice').value)||0,
+    category:docById('mkEditCategory').value.trim()||'通用',
+    author:docById('mkEditAuthor').value.trim(),
+    file_name:docById('mkEditFile').value.trim(),
+    description:docById('mkEditDesc').value.trim(),
+    status:docById('mkEditStatus').value,
+    content:docById('mkEditContent').value,
+    is_builtin:docById('mkEditBuiltin').checked,
+    allowed_roles:roles.length?roles.join(','):'all',
+  };
+  try{
+    await api('/api/market/admin/items/'+encodeURIComponent(_mkEditTarget),{method:'PUT',body});
+    closeModal('modalMarketEdit');
+    alert('已保存');mkAdminLoad();mkLoadItems();
+  }catch(e){alert('保存失败：'+(e.message||e))}
 }
 
 // ===== 部署终端 =====
@@ -3599,7 +3979,7 @@ try{
   res.style.display='block';res.style.background='#052e16';res.style.color='var(--success)';res.textContent=data.message||'操作成功';
 }catch(e){res.style.display='block';res.style.background='#450a0a';res.style.color='var(--danger)';res.textContent='操作失败: '+e.message}}
 
- async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canUpload=isSuper||(currentUserPermissions?.canUploadPlugin===true);const canCreate=isSuper||(currentUserPermissions?.canEditPluginCode===true);docById('btnUploadPlugin').style.display=canUpload?'':'none';docById('btnAddPlugin').style.display=canCreate?'':'none';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let action='';let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';const enState=p.enabled?'<span class="tag tag-approved">✅ 已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">⏸ 已禁用</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));if(isSuper&&s==='pending'){action='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';}return'<tr><td style="width:32px;text-align:center">'+(isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'')+'</td><td><strong>'+esc(dispPluginName(p.name))+'</strong> '+badge+'</td><td>'+typeTag+'</td><td>'+(p.version||'-')+'</td><td>'+(p.author||'-')+'</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.description||'-')+'</td><td>'+enState+'</td><td>'+action+(p.has_webui?'<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>':'')+'<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>'+(isSuper&&(/^(词典回复|DIC管理)(\.|$)/.test(p.name||''))?'<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(/^DIC管理/.test(p.name||'')?'DIC':'词典')+'词库</a>':'')+(isSuper&&(p.type==='code'||p.type==='py')?'<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>':'')+(p.canEdit?'<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>':'')+(isSuper?'<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>':'')+(canTest&&p.type!=='file'&&p.type!=='py'?'<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>':'')+(isSuper?'<button class="btn btn-danger btn-xs" onclick="deletePlugin(\''+p.name+'\')">删除</button>':'')+'</td></tr>';}).join('')||'<tr><td colspan="8" style="color:var(--text2);text-align:center">暂无插件</td></tr>';}catch(e){docById('pluginList').innerHTML='<tr><td colspan="8" style="color:var(--danger);text-align:center">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</td></tr>'}}
+ async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canUpload=isSuper||(currentUserPermissions?.canUploadPlugin===true);const canCreate=isSuper||(currentUserPermissions?.canEditPluginCode===true);docById('btnUploadPlugin').style.display=canUpload?'':'none';docById('btnAddPlugin').style.display=canCreate?'':'none';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));const enState=p.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';let action='';if(isSuper&&s==='pending'){action+='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action+='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';}action+='<button class="btn btn-outline btn-xs" onclick="openOwnerCfg(\''+esc(String(p.id||p.name))+'\',\''+esc(String(p.name))+'\')">主人</button>';if(p.has_webui)action+='<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>';action+='<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>';if(isSuper&&(/^(词典回复|DIC管理)(\.|$)/.test(p.name||'')))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(/^DIC管理/.test(p.name||'')?'DIC':'词典')+'词库</a>';if(isSuper&&(p.type==='code'||p.type==='py'))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>';if(p.canEdit)action+='<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>';if(isSuper)action+='<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>';if(canTest&&p.type!=='file'&&p.type!=='py')action+='<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>';if(isSuper)action+='<button class="btn btn-danger btn-xs" onclick="uninstallPlugin(\''+esc(String(p.name))+'\')">卸载</button>';const chk=isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'';return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">'+('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chk+'<strong style="font-size:14px">'+esc(dispPluginName(p.name))+'</strong>'+badge+typeTag+enState+'</div>')+'<div style="font-size:12px;color:var(--text2)">v'+esc(p.version||'-')+' · 作者 '+esc(p.author||'-')+'</div><div style="font-size:12px;color:var(--text2);min-height:16px;flex:1">'+esc(p.description||'暂无描述')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+action+'</div></div>';}).join('')||'<div style="color:var(--text2);text-align:center;padding:24px;grid-column:1/-1">暂无插件</div>';}catch(e){docById('pluginList').innerHTML='<div style="color:var(--danger);text-align:center;padding:24px;grid-column:1/-1">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</div>'}}
  async function togglePlugin(id,name,current){const to=current?0:1;if(!confirm('确定'+(to?'启用':'禁用')+'插件「'+name+'」吗？'+(to?'':'禁用后该插件功能将立即停止')))return;try{const r=await api('/api/plugins/'+id+'/toggle',{method:'POST'});if(r&&r.ok){loadPlugins()}else{alert((r&&r.error)||'操作失败')}}catch(e){alert(e.message)}}
 
 // ---- 插件管理 多选/全选/批量启用禁用 ----
@@ -3667,6 +4047,18 @@ async function savePluginDoc(){const c=docById('pluginDocEdit').value;await api(
 async function editPluginManifest(name){try{const m=await api('/api/plugins/'+name+'/manifest');const n=prompt('编辑 plugin.json',JSON.stringify(m,null,2));if(n){await api('/api/plugins/'+name+'/manifest',{method:'PUT',body:JSON.parse(n)});loadPlugins()}}catch{}}
 
 async function deletePlugin(name){if(confirm('确定删除插件 "'+name+'" ?')){await api('/api/plugins/'+name,{method:'DELETE'});loadPlugins()}}
+async function uninstallPlugin(name){if(confirm('确定卸载插件「'+name+'」吗？卸载后插件将停止运行并从列表移除，重新安装后才能再次使用。')){try{await api('/api/plugins/'+name,{method:'DELETE'});loadPlugins()}catch(e){alert(e.message)}}}
+// ---- 主人与授权 ----
+let ocCurrent=null;
+async function openOwnerCfg(id,name){ocCurrent={id,name};docById('ocTitle').textContent='主人与授权 · '+name;docById('ocBody').innerHTML='<p style="color:var(--text2)">加载中…</p>';openModal('modalOwnerCfg');try{const d=await api('/api/plugins/owner-config/'+encodeURIComponent(id));ocRender(d)}catch(e){docById('ocBody').innerHTML='<p style="color:var(--danger)">'+esc(e.message)+'</p>'}}
+function ocRender(d){ocCurrent.data=d;const en=d.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';const mode=d.authMode==='restricted'?'<span class="tag tag-pending">部分群授权</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">全开放（未配置授权）</span>';const owners=(d.owners||[]).map(o=>'<span class="tag" style="background:var(--bg3);display:inline-flex;align-items:center;gap:6px">'+esc(o)+'<a href="javascript:void(0)" onclick="ocDelOwner(\''+esc(o)+'\')" style="color:var(--danger);text-decoration:none">×</a></span>').join(' ')||'<span style="color:var(--text2);font-size:12px">暂无主人（配置后群内 owner: 指令生效）</span>';const auths=(d.auths||[]).map(a=>{const exp=a.expireAt===null?'永久有效':new Date(a.expireAt).toLocaleString('zh-CN',{hour12:false})+'（剩余 '+Math.max(0,Math.ceil((a.expireAt-Date.now())/86400000))+' 天）';return'<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg2);border-radius:6px;font-size:13px"><code>'+esc(a.groupId)+'</code><span style="color:var(--text2);font-size:12px">'+exp+'</span><span style="flex:1"></span><button class="btn btn-danger btn-xs" onclick="ocDelAuth(\''+esc(a.groupId)+'\')">删除</button></div>'}).join('')||'<span style="color:var(--text2);font-size:12px">暂无群授权记录</span>';docById('ocBody').innerHTML='<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><strong>'+esc(d.name)+'</strong>'+en+'<span style="font-size:12px;color:var(--text2)">主人数量：'+(d.ownerCount||0)+'</span>'+mode+'</div><div style="font-size:12px;color:var(--text2);background:var(--bg2);padding:8px 10px;border-radius:6px;line-height:1.8;margin-bottom:12px">群内指令：<code>owner:开启</code> <code>owner:关闭</code> <code>owner:授权</code> <code>owner:授权:7</code> <code>owner:取消授权</code> <code>owner:查询授权</code><br>说明：仅主人列表中的用户可发送；未配置群授权时所有群聊开放；私聊不受授权限制</div><div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600">主人列表（QQ号 / OpenID）</label><div style="display:flex;gap:6px;margin-top:6px"><input id="ocOwnerInput" placeholder="输入 QQ 号或 OpenID" style="flex:1"><button class="btn btn-primary btn-sm" onclick="ocAddOwner()">添加</button></div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+owners+'</div></div><div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600">群聊未授权提示文字（留空=静默跳过；同群 60 秒仅提示一次）</label><textarea id="ocUnauthText" rows="2" style="width:100%;margin-top:6px" placeholder="例：本群未授权使用该插件，请联系主人开通～">'+esc(d.unauthText||'')+'</textarea></div><div style="margin-bottom:12px"><label style="font-size:13px;font-weight:600">群聊授权记录</label><div style="display:flex;gap:6px;margin-top:6px"><input id="ocAuthGroup" placeholder="群号" style="flex:1"><input id="ocAuthDays" type="number" min="0" placeholder="天数（0=永久）" style="width:130px"><button class="btn btn-primary btn-sm" onclick="ocAddAuth()">添加授权</button></div><div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'+auths+'</div></div><div style="text-align:right"><button class="btn btn-primary" onclick="ocSave()">保存设置</button></div>'}
+async function ocAddOwner(){const v=(docById('ocOwnerInput').value||'').trim();if(!v)return;const d=ocCurrent.data;d.owners=d.owners||[];if(d.owners.includes(v)){alert('该主人已存在');return}d.owners.push(v);docById('ocOwnerInput').value='';try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{owners:d.owners}});const nd=await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id));ocRender(nd)}catch(e){alert(e.message)}}
+async function ocDelOwner(o){const d=ocCurrent.data;d.owners=(d.owners||[]).filter(x=>x!==o);try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{owners:d.owners}});const nd=await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id));ocRender(nd)}catch(e){alert(e.message)}}
+async function ocAddAuth(){const g=(docById('ocAuthGroup').value||'').trim();const days=Math.trunc(Number(docById('ocAuthDays').value)||0);if(!g){alert('请输入群号');return}try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{addAuth:{groupId:g,days}}});docById('ocAuthGroup').value='';docById('ocAuthDays').value='';const nd=await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id));ocRender(nd)}catch(e){alert(e.message)}}
+async function ocDelAuth(g){try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{removeAuth:g}});const nd=await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id));ocRender(nd)}catch(e){alert(e.message)}}
+async function ocSave(){const d=ocCurrent.data;try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{owners:d.owners||[],unauthText:docById('ocUnauthText').value}});alert('✅ 已保存');openOwnerCfg(ocCurrent.id,ocCurrent.name)}catch(e){alert(e.message)}}
+// ---- 词库管理页（骨架：本地词库列表 + 编辑跳转） ----
+async function loadDictsPage(){const el=docById('dictsList');if(!el)return;if(currentUser?.role!=='super_master'){el.innerHTML='<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">词库管理仅超级主人可用；普通管理员请在「插件词库市场」安装词库</div>';return}try{const d=await api('/api/plugins/_dict/files');const files=d.files||[];el.innerHTML=files.length?files.map(f=>'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong style="font-size:14px">'+esc(f.name)+'</strong>'+(f.inDir?'<span class="tag tag-approved">词库目录</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">plugins 根目录</span>')+'</div><div style="font-size:12px;color:var(--text2)">'+esc(f.path)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto"><a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?tab=dict&file='+encodeURIComponent(f.name)+'">编辑词条</a></div></div>').join(''):'<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">暂无词库文件（.txt/.cid），可从市场安装或在词库编辑器中创建</div>'}catch(e){el.innerHTML='<div style="color:var(--danger);padding:24px;grid-column:1/-1;text-align:center">词库列表加载失败：'+esc(e&&e.message||e)+'</div>'}}
 async function approvePlugin(name){await api('/api/plugins/'+name+'/approve',{method:'POST'});loadPlugins()}
 async function rejectPlugin(name){const reason=prompt('拒绝原因 (可选):');await api('/api/plugins/'+name+'/reject',{method:'POST',body:{reason:reason||undefined}});loadPlugins()}
 

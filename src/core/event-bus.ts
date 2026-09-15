@@ -1,8 +1,36 @@
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../utils/logger';
 import { getDb, getConfig, setConfig } from '../db/index';
+import { ownerGate, sendReply } from '../plugin/owner-gate';
 
 const logger = createLogger('event-bus');
+
+// 插件名缓存（owner 指令回复文案用）
+const pluginNameCache = new Map<string, string>();
+function pluginNameOf(pluginId: string): string {
+  let name = pluginNameCache.get(pluginId);
+  if (name !== undefined) return name;
+  try {
+    const row = getDb().prepare('SELECT name FROM plugins WHERE id = ?').get(pluginId) as any;
+    name = String(row?.name || pluginId);
+  } catch { name = pluginId; }
+  pluginNameCache.set(pluginId, name);
+  return name;
+}
+
+// owner: 指令 + 群授权门禁（仅消息事件；pass=false 时按需回复提示）
+function ownerGateFor(pluginId: string, event: string, data: any): boolean {
+  if (event !== 'message.group' && event !== 'message.c2c') return true;
+  try {
+    const gate = ownerGate(pluginId, pluginNameOf(pluginId), data);
+    if (gate.pass) return true;
+    if (gate.replyText) sendReply(pluginId, data, gate.replyText);
+    return false;
+  } catch (e: any) {
+    logger.warn(`ownerGate failed for ${pluginId}: ${e.message}`);
+    return true;
+  }
+}
 
 type EventHandler = (data: any) => void | Promise<void>;
 
@@ -252,6 +280,11 @@ export class EventBus {
           skippedByPlugin++;
           continue;
         }
+      }
+      // 主人与授权门禁：owner: 指令处理 + 群授权检查（未授权群按配置提示并跳过插件）
+      if (listener.meta?.pluginId && !ownerGateFor(String(listener.meta.pluginId), event, data)) {
+        skippedByPlugin++;
+        continue;
       }
       ran++;
       // 并发执行监听者：单个监听者内部慢操作（HTTP/上传）不得阻塞其他监听者与后续消息
