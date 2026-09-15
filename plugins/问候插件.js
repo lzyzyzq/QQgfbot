@@ -111,6 +111,39 @@ module.exports = {
       return greeting + '！有什么可以帮助你的吗？';
     }
 
+    // ===== 自回声防护 =====
+    // 机器人回复内容（如「早上好！…」）本身包含触发词「早上好」，回复被 QQ 回推为群消息后会
+    // 再次命中触发词 → 无限自回声刷屏。防护：记录每会话最近发出的回复全文，回推消息若与之
+    // 精确一致或以其为前缀（回推可能带小尾巴）则跳过；并叠加同会话 3 秒冷却，双保险防刷屏。
+    var recentReplies = new Map(); // key -> [{c, t}]
+    function sessionKey(data) {
+      return (data.botId || '') + '|' + (data.groupId || data.channelId || 'c2c') + '|' + ((data.author && (data.author.openid || data.author.id)) || '');
+    }
+    function isSelfEcho(key, content) {
+      var arr = recentReplies.get(key);
+      if (!arr) return false;
+      var now = Date.now();
+      arr = arr.filter(function (r) { return now - r.t < 120000; });
+      recentReplies.set(key, arr);
+      for (var i = 0; i < arr.length; i++) {
+        if (content === arr[i].c) return true;
+        if (content.length > arr[i].c.length && content.indexOf(arr[i].c) === 0) return true;
+      }
+      return false;
+    }
+    function rememberReply(key, text) {
+      var arr = recentReplies.get(key) || [];
+      arr.push({ c: text, t: Date.now() });
+      if (arr.length > 20) arr = arr.slice(-20);
+      recentReplies.set(key, arr);
+    }
+    var lastReplyAt = new Map(); // key -> ts，同会话 3 秒冷却
+    function isCoolingDown(key) {
+      var last = lastReplyAt.get(key) || 0;
+      return Date.now() - last < 3000;
+    }
+    function markReplied(key) { lastReplyAt.set(key, Date.now()); }
+
     function greetingNow() {
       var hour = new Date().getHours();
       return hour < 6 ? '夜深了' : hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
@@ -119,19 +152,27 @@ module.exports = {
     function handleMsg(data) {
       var content = (data.content || '').trim();
       var greetings = ['你好', 'hello', 'hi', '嗨', '在吗', '早上好', '下午好', '晚上好'];
-      if (greetings.some(function(g) { return content.toLowerCase().includes(g.toLowerCase()); })) {
-        var g = greetingNow();
-        var d = baseData(data);
-        d.greeting = g;
-        var text = rsRender('greet', d, curSpec, linkFn);
-        if (!text) text = fbGreet(g);
-        if (data.channelId) {
-          ctx.bot.sendMessage(data.channelId, text, data.id);
-        } else if (data.groupId) {
-          ctx.bot.sendGroupMessage(data.groupId, text, data.id);
-        } else if (data.author && data.author.id) {
-          ctx.bot.sendPrivateMessage(data.author.id, text, data.id);
-        }
+      var hit = greetings.some(function(g) { return content.toLowerCase().includes(g.toLowerCase()); });
+      if (!hit) return;
+      var sKey = sessionKey(data);
+      if (isSelfEcho(sKey, content)) return;
+      if (isCoolingDown(sKey)) return;
+      var g = greetingNow();
+      var d = baseData(data);
+      d.greeting = g;
+      var text = rsRender('greet', d, curSpec, linkFn);
+      if (!text) text = fbGreet(g);
+      var sent = false;
+      if (data.channelId) {
+        sent = ctx.bot.sendMessage(data.channelId, text, data.id);
+      } else if (data.groupId) {
+        sent = ctx.bot.sendGroupMessage(data.groupId, text, data.id);
+      } else if (data.author && data.author.id) {
+        sent = ctx.bot.sendPrivateMessage(data.author.id, text, data.id);
+      }
+      if (sent !== null && sent !== undefined && sent !== false) {
+        rememberReply(sKey, text);
+        markReplied(sKey);
       }
     }
 

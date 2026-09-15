@@ -447,6 +447,19 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         }
       } catch { /* meta 合并失败不影响列表 */ }
 
+      // 合并封插件状态（config KV：plugin.blocked.<id>），供卡片显示「已封禁」并渲染解封按钮
+      try {
+        const blockedRows = getDb().prepare("SELECT key FROM config WHERE key LIKE 'plugin.blocked.%' AND value = '1'").all() as any[];
+        const blockedIds = new Set(blockedRows.map((r) => String(r.key).slice('plugin.blocked.'.length)));
+        if (blockedIds.size) {
+          for (const item of results) {
+            if (blockedIds.has(String((item as any).id || '')) || blockedIds.has(String((item as any).name || ''))) {
+              (item as any).blocked = true;
+            }
+          }
+        }
+      } catch { /* blocked 合并失败不影响列表 */ }
+
       res.json(results);
     } catch (err) {
       // 永不 500：列表异常时返回已收集的结果 + 错误日志，前端正常显示不弹「获取插件列表失败」
@@ -981,12 +994,40 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
   router.post('/:id/toggle', requireSuperMaster, async (req: Request, res: Response) => {
     const id = req.params.id;
     try {
+      // 封插件锁定：被封禁的插件禁止启用，需超主先解封
+      if (getConfig(`plugin.blocked.${id}`) === '1') {
+        const p = getDb().prepare('SELECT enabled FROM plugins WHERE id = ? OR name = ?').get(id, id) as any;
+        if (!p || !p.enabled) {
+          res.status(403).json({ error: '该插件已被封禁，请先在插件管理中解封后再启用' });
+          return;
+        }
+      }
       const engine = getPluginEngine();
       const nowEnabled = await engine.toggleEnabled(id);
       res.json({ ok: true, enabled: nowEnabled });
     } catch (err: any) {
       res.status(400).json({ error: err.message || '操作失败' });
     }
+  });
+
+  // 封禁插件（超主）：立即禁用并锁定，锁定期间无法启用；用于紧急止损（如插件刷屏）
+  router.post('/:id/block', requireSuperMaster, async (req: Request, res: Response) => {
+    const id = req.params.id;
+    try {
+      const row = getDb().prepare('SELECT enabled FROM plugins WHERE id = ? OR name = ?').get(id, id) as any;
+      if (!row) { res.status(404).json({ error: '插件不存在' }); return; }
+      if (row.enabled === 1) await getPluginEngine().toggleEnabled(id);
+      setConfig(`plugin.blocked.${id}`, '1');
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message || '封禁失败' });
+    }
+  });
+
+  // 解封插件（超主）：解除锁定后可正常启用
+  router.post('/:id/unblock', requireSuperMaster, (req: Request, res: Response) => {
+    setConfig(`plugin.blocked.${req.params.id}`, '');
+    res.json({ ok: true });
   });
 
   // ------------------------------------------------------------
@@ -1538,7 +1579,7 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
       const capRe = /ctx\.bot\.([A-Za-z_$][\w$]*)/g;
       while ((mm = capRe.exec(code))) { if (caps.indexOf(mm[1]) < 0) caps.push(mm[1]); }
     }
-    const date = new Date().toISOString().slice(0, 10);
+    const date = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
     const readmePath = path.join(dirPath, 'README.md');
     const clPath = path.join(dirPath, 'CHANGELOG.md');
     const readmeExisted = fs.existsSync(readmePath);
@@ -1978,6 +2019,15 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
         const gid = String(body.addAuth.groupId || '').trim();
         const days = Math.trunc(Number(body.addAuth.days) || 0);
         if (gid) cfg.groupAuth[gid] = { expireAt: days > 0 ? Date.now() + days * 86400000 : null };
+      }
+      // 批量群授权：addAuths 数组一次写入多个群（插件/词库批量设置群授权用）
+      if (Array.isArray(body.addAuths)) {
+        for (const a of body.addAuths) {
+          if (!a || typeof a !== 'object') continue;
+          const gid = String(a.groupId || '').trim();
+          const days = Math.trunc(Number(a.days) || 0);
+          if (gid) cfg.groupAuth[gid] = { expireAt: days > 0 ? Date.now() + days * 86400000 : null };
+        }
       }
       if (body.removeAuth) {
         delete cfg.groupAuth[String(body.removeAuth)];

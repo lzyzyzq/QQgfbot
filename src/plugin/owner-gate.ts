@@ -87,7 +87,7 @@ function developerIds(): { qqs: Set<string>; openids: Set<string> } {
   return { qqs, openids };
 }
 
-function isDeveloper(userId: string): boolean {
+export function isDeveloper(userId: string): boolean {
   const uid = String(userId || '');
   if (!uid) return false;
   const dev = developerIds();
@@ -210,8 +210,8 @@ export function ownerGate(pluginId: string, pluginName: string, data: any): Gate
     const cfg = readOwnerConfig(pluginId);
     const hasOwners = cfg.owners.length > 0;
 
-    // owner: 指令（配置了主人列表才生效）
-    if (hasOwners && content.startsWith('owner:')) {
+    // owner: 指令（配置了主人列表才生效；开发者（超级主人）无需配置即可在群聊/私聊直接使用）
+    if ((hasOwners || isDeveloper(userId)) && content.startsWith('owner:')) {
       const reply = handleOwnerCommand(pluginId, data, content, pluginName);
       return { pass: false, replyText: reply || undefined };
     }

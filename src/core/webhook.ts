@@ -6,6 +6,8 @@ import { createLogger } from '../utils/logger';
 import { getConfig, getDb, setUserMapping, addSystemLog } from '../db/index';
 import { recordGroupActivity } from '../api/groups';
 import { isSelfEcho } from './self-echo';
+import { isBlocked } from './blocklist';
+import { isDeveloper } from '../plugin/owner-gate';
 import { reviveGroupUnreachable } from './group-reach';
 import nacl from 'tweetnacl';
 
@@ -193,6 +195,20 @@ export class WebhookManager {
     const rawQqId = d.author?.id || '';
     // 开放平台下 author.id 是 OpenID（含字母），仅当其为真实纯数字 QQ 时才作为 QQ 写入，避免污染 user_mappings/group_members
     const qqId = isRealQq(rawQqId) ? rawQqId : '';
+
+    // 封用户黑名单：命中后丢弃消息事件（群聊/私聊均不响应），其他类型事件照常
+    if ((eventType === 'C2C_MESSAGE_CREATE' || eventType === 'GROUP_AT_MESSAGE_CREATE' || eventType === 'GROUP_MESSAGE_CREATE' || eventType === 'AT_MESSAGE_CREATE' || eventType === 'DIRECT_MESSAGE_CREATE')
+      && isBlocked(authorId, qqId)) {
+      logger.info(`Blocked user message ignored: authorId=${authorId} type=${eventType}`);
+      return;
+    }
+
+    // 开发者（超级主人）消息在日志中标注，便于在系统日志确认「机器人读取到开发者」：
+    // 识别链 = admin.json openid 直接命中，或 openid 经 user_mappings 反查 QQ 与 admin.json qq 匹配
+    let devTag = '';
+    try {
+      if (authorId && isDeveloper(String(authorId))) devTag = ' [开发者]';
+    } catch { /* 识别失败不影响消息流 */ }
     const authorData = {
       id: authorId,
       openid: d.author?.user_openid || d.author?.member_openid || authorId,
@@ -222,7 +238,7 @@ export class WebhookManager {
           timestamp: d.timestamp,
           botId: this.botId,
         });
-        logger.info(`C2C event dispatched: content="${(d.content || '').substring(0, 40)}"`);
+        logger.info(`C2C event dispatched${devTag}: content="${(d.content || '').substring(0, 40)}"`);
         break;
       case 'GROUP_AT_MESSAGE_CREATE':
       case 'GROUP_MESSAGE_CREATE': {
@@ -232,7 +248,7 @@ export class WebhookManager {
           logger.info(`Group self-echo ignored: content="${(d.content || '').substring(0, 40)}" group=${gid}`);
           break;
         }
-        logger.info(`Group event: groupId=${gid} authorId=${authorId} content="${(d.content || '').substring(0, 40)}"`);
+        logger.info(`Group event${devTag}: groupId=${gid} authorId=${authorId} content="${(d.content || '').substring(0, 40)}"`);
         recordGroupActivity(gid);
         // 群OpenID 与真实群号绑定：d.group_id 为纯数字时记录群号，自动生成群头像，并补群名
         if (d.group_openid && d.group_id && /^\d{6,15}$/.test(String(d.group_id))) {

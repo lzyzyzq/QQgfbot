@@ -172,6 +172,40 @@ input[type="file"]{color:var(--text2)}
   .editor-gutter{width:30px;font-size:12px}
   .editor-gutter div{padding-right:5px}
   .code-editor-textarea{min-height:300px}
+
+  /* ===== 手机端显示完全 + 美化增强 ===== */
+  /* 全局横向溢出防护 + 安全区（刘海屏） */
+  html,body{overflow-x:hidden;max-width:100vw}
+  .main{padding:12px 12px calc(16px + env(safe-area-inset-bottom));padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .sidebar{padding-top:calc(10px + env(safe-area-inset-top))}
+  /* 卡片网格窄屏单列，避免 320/340px 模板宽度溢出 */
+  #pluginList,#dictsList,#mkGrid{grid-template-columns:1fr!important}
+  .card{padding:14px;word-break:break-word}
+  .page>div[style*="grid-template-columns"]{grid-template-columns:1fr!important}
+  /* 弹窗接近全屏，滚动顺畅 */
+  .modal-overlay{padding:10px;align-items:flex-end}
+  .modal{max-height:92dvh;max-width:100%;border-radius:14px 14px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  .modal.wide{max-width:100%}
+  .modal-actions{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom));background:var(--bg2);padding:10px 0;margin-top:14px}
+  /* 批量操作条可换行、按钮可换行触控 */
+  .batch-bar{flex-wrap:wrap;row-gap:8px;padding:10px 12px}
+  .action-bar{flex-wrap:wrap}
+  .btn{min-height:34px}
+  .btn-xs{padding:5px 10px;min-height:26px;font-size:11px}
+  /* 表格改为可滚动 + 行内多按钮纵向排列不截断 */
+  .table-wrap{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  table{min-width:560px}
+  td{white-space:normal;word-break:break-all}
+  td[style*="white-space:nowrap"],td .btn{white-space:nowrap}
+  /* 头部标题与汉堡按钮不重叠 */
+  .main-header{flex-wrap:wrap;gap:8px}
+  .main-header h1{font-size:17px;max-width:calc(100vw - 120px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* 市场与弹窗内的筛选行在窄屏纵向堆叠 */
+  #mkSearch{min-width:0!important;width:100%}
+  .form-row{gap:8px}
+  /* AI 教程与说明文字完整展示 */
+  .markdown-body,.card h3{word-break:break-word}
+  .card{overflow-wrap:anywhere}
 }
 
 @media (min-width:769px) {
@@ -339,6 +373,20 @@ input[type="file"]{color:var(--text2)}
 
 <div class="page" id="page-ai">
   <h2>AI 智能回复</h2>
+  <div class="card" style="background:linear-gradient(135deg,rgba(139,92,246,.08),rgba(59,130,246,.05));border-color:rgba(139,92,246,.3)">
+    <h3 style="display:flex;align-items:center;gap:8px">AI 设置教程</h3>
+    <div style="font-size:13px;line-height:1.9;color:var(--text)">
+      <b>三步启用 AI 兜底回复：</b><br>
+      <b style="color:#8b5cf6">第 1 步</b>　选择机器人 → 勾选「启用 AI 兜底回复」，设置「生效场景」（群聊 / 私聊；群聊建议保持「仅 @机器人时回复」省金币）。<br>
+      <b style="color:#8b5cf6">第 2 步</b>　选择「模型接口（供应商）」并配置密钥：<br>
+      <span style="margin-left:18px">· <b>使用系统共享密钥</b>：超级主人已在「模型供应商管理」录入密钥，普通用户选择后直接可用（按次扣机器人所有者的金币）；</span><br>
+      <span style="margin-left:18px">· <b>使用我自己的密钥</b>：填入你自己申请的 API Key（如 DeepSeek / 通义 / OpenAI），密钥仅保存在本服务器，调用费用由你的供应商账户承担，不扣面板金币。</span><br>
+      <b style="color:#8b5cf6">第 3 步</b>　按需调整「AI 人设 / 系统提示词」「记忆轮数」「最大回复 tokens」→ 点击「保存配置」→ 用「在线测试」发一条消息验证（测试不扣金币）。<br>
+      <b>金币规则：</b>仅当消息未命中任何词库指令、且开启了 AI 兜底时才触发；每次成功调用按「机器人所有者金币余额」扣 1 金币，余额不足自动停用并提示充值。<br>
+      <b>常见问题：</b>① 群里 @机器人没反应 → 检查是否启用、群聊场景是否勾选、触发方式是否为 @；② 回复很慢或报错 → 检查密钥是否有效、Base URL 是否带 <code>/v1</code>；③ 想让 AI 记住上下文 → 把「记忆轮数」调大（每多一轮更耗 tokens）。<br>
+      <span style="font-size:12px;color:var(--text2)">超级主人可在本页底部「模型供应商管理」维护共享接口，在「用户金币与侧边栏权限」中充值/扣减金币并控制菜单可见性。</span>
+    </div>
+  </div>
   <div class="card">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="min-width:240px">
@@ -486,7 +534,7 @@ input[type="file"]{color:var(--text2)}
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
       <div><label>平台税率 %（付费词库分成扣减）</label><input id="mkTaxRate" type="number" min="0" max="90" style="width:120px;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
       <div><label>签到金币</label><input id="mkSigninCoins" type="number" min="1" max="1000" style="width:120px;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
-      <div style="flex:1;min-width:220px"><label>赞助文案</label><input id="mkSponsorText" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
+      <div style="flex:1;min-width:220px"><label>赞助文案</label><input id="mkSponsorText" placeholder="支持 [文字](https://链接) 使指定文字可点击跳转" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"></div>
       <button class="btn btn-primary btn-sm" onclick="mkSaveSettings()">保存设置</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
@@ -774,6 +822,8 @@ input[type="file"]{color:var(--text2)}
     <span class="batch-count" id="plgBatchCount">已选 0 个插件</span>
     <button class="btn btn-success btn-sm" onclick="plgBulk(1)">✅ 批量启用</button>
     <button class="btn btn-warn btn-sm" onclick="plgBulk(0)">⏸ 批量禁用</button>
+    <button class="btn btn-outline btn-sm" onclick="plgBulkOwnerCfg('owners')">👑 批量设置主人</button>
+    <button class="btn btn-outline btn-sm" onclick="plgBulkOwnerCfg('groupauth')">🔐 批量设置群授权</button>
     <button class="btn btn-outline btn-sm" onclick="plgClearSel()">取消选择</button>
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><label style="font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="plgCheckAll" title="全选" onchange="plgSelAll(this)"> 全选</label><span id="plgListHint" style="font-size:12px;color:var(--text2)">插件以卡片展示，勾选后可批量启用/禁用</span></div>
@@ -795,6 +845,13 @@ input[type="file"]{color:var(--text2)}
     <button class="btn btn-outline" onclick="window.open('/menu-editor.html?tab=dict','_blank')">打开词库编辑器</button>
   </div>
   <p style="font-size:13px;color:var(--text2);margin:0 0 12px">管理服务器 plugins/词库/ 目录下的本地词库文件；词条编辑请在词库编辑器中完成。</p>
+  <div class="batch-bar" id="dictBatchBar" style="display:none">
+    <span class="batch-count" id="dictBatchCount">已选 0 个词库</span>
+    <button class="btn btn-outline btn-sm" onclick="dictBulkOwnerCfg('owners')">👑 批量设置主人</button>
+    <button class="btn btn-outline btn-sm" onclick="dictBulkOwnerCfg('groupauth')">🔐 批量设置群授权</button>
+    <button class="btn btn-outline btn-sm" onclick="dictClearSel()">取消选择</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><label style="font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px"><input type="checkbox" id="dictCheckAll" title="全选" onchange="dictSelAll(this)"> 全选</label><span style="font-size:12px;color:var(--text2)">勾选词库后可批量设置主人/群授权（对同名词库插件生效）</span></div>
   <div id="dictsList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"><p style="color:var(--text2)">加载中…</p></div>
 </div>
 
@@ -2228,11 +2285,19 @@ async function mkLoadPage(){
   if(_mkAdminOpen)mkAdminLoad();
 }
 
+// 赞助文案渲染：支持 [文字](https://url) 指定跳转链接，独立 http(s) 链接也自动可点；先 esc 再替换防 XSS
+function sponsorHtml(t){
+  return esc(String(t||''))
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">$1</a>')
+    .replace(/(^|[\s　])(https?:\/\/[^\s<　]+)/g,'$1<a href="$2" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">$2</a>')
+    .replace(/\n/g,'　');
+}
+
 async function mkLoadMe(){
   try{
     const d=await api('/api/market/me');
     docById('mkCoins').textContent=typeof d.coins==='number'?d.coins:'-';
-    docById('mkSponsor').textContent='金币不够？'+(d.sponsor||'').replace(/\n/g,'　');
+    docById('mkSponsor').innerHTML='金币不够？'+sponsorHtml(d.sponsor);
     const btn=docById('mkSignBtn');
     btn.textContent=d.signedToday?'今日已签到':'签到领 '+d.signinCoins+' 金币';
     btn.disabled=!!d.signedToday;
@@ -3558,6 +3623,33 @@ async function goiDel(openid){
 }
 
 // 群信息 + 成员 统一行渲染（成员同步 / 用户管理共用）：群头像/群名/群号/群OpenID + 成员头像/昵称/QQ/来源/OpenID/授权码/权限/操作
+// ===== 封用户黑名单 / 禁言（用户管理行内操作）=====
+let _blocklist=new Set();
+async function loadBlocklist(){try{const d=await api('/api/system/blocklist');_blocklist=new Set(d.list||[])}catch(e){_blocklist=new Set()}}
+async function toggleBlockUser(id,nick,blocked){
+  const to=blocked?0:1;
+  if(!confirm('确定'+(to?'解封':'封禁')+'用户「'+nick+'」吗？'+(to?'解封后恢复正常响应':'封禁后该用户（OpenID/QQ）的所有消息机器人不再响应')))return;
+  try{
+    let r;
+    if(to)r=await api('/api/system/blocklist',{method:'POST',body:{id}});
+    else r=await api('/api/system/blocklist/'+encodeURIComponent(id),{method:'DELETE'});
+    if(r&&r.ok){_blocklist=new Set(r.list||[]);loadUserGroups()}else{alert((r&&r.error)||'操作失败')}
+  }catch(e){alert(e.message)}
+}
+async function muteMemberRow(botId,groupOpenid,memberOpenid){
+  const mins=prompt('禁言时长（分钟，0=解除禁言）：','10');
+  if(mins===null)return;
+  const n=parseInt(mins)||0;
+  try{
+    if(n<=0){
+      const r=await api('/api/bots/'+encodeURIComponent(botId)+'/groups/unmute',{method:'POST',body:{groupOpenid,memberOpenid}});
+      if(r&&r.ok){alert(r.message||'已解除禁言')}else{alert((r&&r.error)||'操作失败')}
+    }else{
+      const r=await api('/api/bots/'+encodeURIComponent(botId)+'/groups/mute',{method:'POST',body:{groupOpenid,memberOpenid,duration:n*60}});
+      if(r&&r.ok){alert(r.message||('已禁言 '+n+' 分钟'))}else{alert((r&&r.error)||'操作失败')}
+    }
+  }catch(e){alert(e.message)}
+}
 function buildMemberRowHtml(m){
   const srcMap={napcat:'<span class="tag tag-success" style="background:rgba(34,197,94,.15);color:var(--success)">NapCat同步</span>',mapped:'<span class="tag" style="background:rgba(59,130,246,.15);color:var(--accent)">已映射</span>',interact:'<span class="tag" style="background:rgba(139,92,246,.15);color:#a78bfa">互动用户</span>',none:'<span class="tag tag-warn" style="background:rgba(245,158,11,.15);color:var(--warn)">暂无QQ号</span>'};
   const nickname=m.nickname||'?';
@@ -3589,12 +3681,16 @@ function buildMemberRowHtml(m){
     const qqEsc=String(m.qq_id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const botEsc=String(x.bot_id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const botTag=bName?' <span class="tag" style="background:rgba(59,130,246,.15);color:var(--accent);font-size:10px">'+esc(bName)+'</span>':'';
+    const bid=String((_botsCache.find(b=>b.appId===x.bot_id)||{}).id||x.bot_id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const isBlk=_blocklist.has(oid);
+    const blkBtn='<button class="btn btn-xs '+(isBlk?'btn-success':'btn-danger')+'" onclick="toggleBlockUser(\''+oidEsc+'\',\''+nickEsc+'\','+(isBlk?1:0)+')">'+(isBlk?'解封':'封禁')+'</button>';
+    const muteBtn=(mainGid&&bid)?'<button class="btn btn-outline btn-xs" onclick="muteMemberRow(\''+bid+'\',\''+gidEsc+'\',\''+oidEsc+'\')">禁言</button>':'';
     // 后台群角色下拉：owner/admin 直接认可，member/user 明确为普通成员，空=未设置（回退实时判定）
     const curRole=x.role||'';
     const roleLabels={owner:'群主',admin:'群管理',member:'群成员',user:'普通用户','':'未设置'};
     const xGid=String(x.group_openid||mainGid||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const roleOpts=['','owner','admin','member','user'].map(v=>'<option value="'+v+'"'+(curRole===v?' selected':'')+'>'+esc(roleLabels[v]||v)+'</option>').join('');
-    return '<div style="margin:2px 0"><span style="font-family:monospace;font-size:11px;word-break:break-all" title="'+esc(oid)+'">'+esc(oid)+'</span>'+botTag+' <select data-gid="'+xGid+'" data-oid="'+oidEsc+'" data-cur="'+curRole+'" onchange="setMemberRole(this)" class="btn btn-xs role-sel" style="padding:1px 4px;font-size:11px" title="后台群角色（优先级最高；空=按实时群角色自动判定）">'+roleOpts+'</select> <button class="btn btn-outline btn-xs" onclick="copyText(\''+oidEsc+'\')">复制</button> <button class="btn btn-outline btn-xs" onclick="bindMemberQq(\''+oidEsc+'\',\''+nickEsc+'\')">扫码绑定</button> <button class="btn btn-outline btn-xs" onclick="editMemberQq(\''+oidEsc+'\',\''+nickEsc+'\')">改QQ</button> <button class="btn btn-outline btn-xs" onclick="editMember(\''+oidEsc+'\',\''+nickEsc+'\',\''+qqEsc+'\',\''+botEsc+'\',\''+gidEsc+'\')">编辑</button> <button class="btn btn-danger btn-xs" onclick="delMember(\''+oidEsc+'\',\''+nickEsc+'\')">删除</button></div>';
+    return '<div style="margin:2px 0"><span style="font-family:monospace;font-size:11px;word-break:break-all" title="'+esc(oid)+'">'+esc(oid)+'</span>'+(isBlk?' <span class="tag" style="background:rgba(239,68,68,.18);color:var(--danger);font-size:10px">已封禁</span>':'')+botTag+' <select data-gid="'+xGid+'" data-oid="'+oidEsc+'" data-cur="'+curRole+'" onchange="setMemberRole(this)" class="btn btn-xs role-sel" style="padding:1px 4px;font-size:11px" title="后台群角色（优先级最高；空=按实时群角色自动判定）">'+roleOpts+'</select> <button class="btn btn-outline btn-xs" onclick="copyText(\''+oidEsc+'\')">复制</button> <button class="btn btn-outline btn-xs" onclick="bindMemberQq(\''+oidEsc+'\',\''+nickEsc+'\')">扫码绑定</button> <button class="btn btn-outline btn-xs" onclick="editMemberQq(\''+oidEsc+'\',\''+nickEsc+'\')">改QQ</button> <button class="btn btn-outline btn-xs" onclick="editMember(\''+oidEsc+'\',\''+nickEsc+'\',\''+qqEsc+'\',\''+botEsc+'\',\''+gidEsc+'\')">编辑</button> '+muteBtn+' '+blkBtn+' <button class="btn btn-danger btn-xs" onclick="delMember(\''+oidEsc+'\',\''+nickEsc+'\')">删除</button></div>';
   }).join('');
   const actions=oids.length?oidHtml:'<span style="color:var(--text2);font-size:11px">-</span>';
   const selKeys=JSON.stringify(oids.map(x=>x.openid).filter(Boolean)).replace(/'/g,'&#39;');
@@ -4012,8 +4108,9 @@ try{
   res.style.display='block';res.style.background='#052e16';res.style.color='var(--success)';res.textContent=data.message||'操作成功';
 }catch(e){res.style.display='block';res.style.background='#450a0a';res.style.color='var(--danger)';res.textContent='操作失败: '+e.message}}
 
- async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));const enState=p.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';let action='';if(isSuper&&s==='pending'){action+='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action+='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';}action+='<button class="btn btn-outline btn-xs" onclick="openOwnerCfg(\''+esc(String(p.id||p.name))+'\',\''+esc(String(p.name))+'\')">主人</button>';if(p.has_webui)action+='<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>';action+='<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>';if(isSuper&&(/^(词典回复|DIC管理)(\.|$)/.test(p.name||'')))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(/^DIC管理/.test(p.name||'')?'DIC':'词典')+'词库</a>';if(isSuper&&(p.type==='code'||p.type==='py'))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>';if(p.canEdit)action+='<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>';if(isSuper)action+='<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>';if(canTest&&p.type!=='file'&&p.type!=='py')action+='<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>';if(isSuper)action+='<button class="btn btn-danger btn-xs" onclick="uninstallPlugin(\''+esc(String(p.name))+'\')">卸载</button>';const chk=isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'';return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">'+('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chk+'<strong style="font-size:14px">'+esc(dispPluginName(p.name))+'</strong>'+badge+typeTag+enState+'</div>')+'<div style="font-size:12px;color:var(--text2)">v'+esc(p.version||'-')+' · 作者 '+esc(p.author||'-')+'</div><div style="font-size:12px;color:var(--text2);min-height:16px;flex:1">'+esc(p.description||'暂无描述')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+action+'</div></div>';}).join('')||'<div style="color:var(--text2);text-align:center;padding:24px;grid-column:1/-1">暂无插件</div>';}catch(e){docById('pluginList').innerHTML='<div style="color:var(--danger);text-align:center;padding:24px;grid-column:1/-1">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</div>'}}
+ async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';if(p.blocked)badge+=' <span class="tag" style="background:rgba(239,68,68,.18);color:var(--danger)">已封禁</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));const enState=p.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';let action='';if(isSuper&&s==='pending'){action+='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action+='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';action+='<button class="btn btn-xs '+(p.blocked?'btn-success':'btn-danger')+'" onclick="blockPlugin(\''+p.id+'\',\''+esc(p.name)+'\','+(p.blocked?1:0)+')">'+(p.blocked?'解封':'封禁')+'</button>';}action+='<button class="btn btn-outline btn-xs" onclick="openOwnerCfg(\''+esc(String(p.id||p.name))+'\',\''+esc(String(p.name))+'\')">主人</button>';if(p.has_webui)action+='<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>';action+='<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>';if(isSuper&&(/^(词典回复|DIC管理)(\.|$)/.test(p.name||'')))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(/^DIC管理/.test(p.name||'')?'DIC':'词典')+'词库</a>';if(isSuper&&(p.type==='code'||p.type==='py'))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>';if(p.canEdit)action+='<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>';if(isSuper)action+='<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>';if(canTest&&p.type!=='file'&&p.type!=='py')action+='<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>';if(isSuper)action+='<button class="btn btn-danger btn-xs" onclick="uninstallPlugin(\''+esc(String(p.name))+'\')">卸载</button>';const chk=isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'';return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">'+('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chk+'<strong style="font-size:14px">'+esc(dispPluginName(p.name))+'</strong>'+badge+typeTag+enState+'</div>')+'<div style="font-size:12px;color:var(--text2)">v'+esc(p.version||'-')+' · 作者 '+esc(p.author||'-')+'</div><div style="font-size:12px;color:var(--text2);min-height:16px;flex:1">'+esc(p.description||'暂无描述')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+action+'</div></div>';}).join('')||'<div style="color:var(--text2);text-align:center;padding:24px;grid-column:1/-1">暂无插件</div>';}catch(e){docById('pluginList').innerHTML='<div style="color:var(--danger);text-align:center;padding:24px;grid-column:1/-1">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</div>'}}
  async function togglePlugin(id,name,current){const to=current?0:1;if(!confirm('确定'+(to?'启用':'禁用')+'插件「'+name+'」吗？'+(to?'':'禁用后该插件功能将立即停止')))return;try{const r=await api('/api/plugins/'+id+'/toggle',{method:'POST'});if(r&&r.ok){loadPlugins()}else{alert((r&&r.error)||'操作失败')}}catch(e){alert(e.message)}}
+ async function blockPlugin(id,name,blocked){const to=blocked?0:1;if(!confirm('确定'+(to?'解封':'封禁')+'插件「'+name+'」吗？'+(to?'解封后可正常启用':'封禁后插件立即停用且无法启用，直到解封（用于紧急止损，如插件刷屏）')))return;try{const r=await api('/api/plugins/'+encodeURIComponent(id)+'/'+(to?'unblock':'block'),{method:'POST'});if(r&&r.ok){loadPlugins()}else{alert((r&&r.error)||'操作失败')}}catch(e){alert(e.message)}}
 
 // ---- 插件管理 多选/全选/批量启用禁用 ----
 let plgChecked=new Set();
@@ -4024,6 +4121,59 @@ function plgUpd(el){const id=el.getAttribute('data-id');if(el.checked)plgChecked
 function plgSelAll(el){const on=el&&el.checked;const cbs=document.querySelectorAll('.plg-check');cbs.forEach(cb=>{cb.checked=on;if(on)plgChecked.add(cb.getAttribute('data-id'));else plgChecked.delete(cb.getAttribute('data-id'))});updatePlgBar()}
 function plgClearSel(){plgChecked.clear();document.querySelectorAll('.plg-check').forEach(cb=>cb.checked=false);const a=docById('plgCheckAll');if(a)a.checked=false;updatePlgBar()}
 async function plgBulk(enabled){const ids=[...plgChecked];if(!ids.length)return;if(!confirm('确定'+(enabled?'批量启用':'批量禁用')+'所选 '+ids.length+' 个插件吗？'))return;let okN=0,err='';for(const id of ids){try{const r=await api('/api/plugins/'+id+'/toggle',{method:'POST'});if(r&&r.ok)okN++;else err=(err||'')+((r&&r.error)||'HTTP失败')+'; '}catch(e){err=(err||'')+e.message+'; '}}plgClearSel();loadPlugins();alert(err?('完成 '+okN+'/'+ids.length+'，部分失败：'+err.slice(0,300)):('✅ 已'+ (enabled?'启用':'禁用')+' '+okN+' 个插件'))}
+// ---- 批量设置主人 / 批量设置群授权（超主）：对所选插件逐个读现有配置后合并写入，覆盖式清空可用「-」开头表示移除 ----
+async function plgBulkOwnerCfg(mode){
+  const ids=[...plgChecked];
+  if(!ids.length){alert('请先勾选插件');return}
+  const res=await bulkOwnerCfgDialog(mode,ids);
+  if(res===null)return;
+  plgClearSel();loadPlugins();
+}
+// 词库管理批量入口：ids 为词库文件名，映射同名 file-<名> 插件（不存在时后端报 404 并在结果中体现）
+async function dictBulkOwnerCfg(mode){
+  const names=[...dictChecked];
+  if(!names.length){alert('请先勾选词库');return}
+  const ids=names.map(n=>'file-'+String(n).replace(/\.(txt|cid)$/i,''));
+  const res=await bulkOwnerCfgDialog(mode,ids);
+  if(res===null)return;
+  loadDictsPage();
+}
+async function bulkOwnerCfgDialog(mode,ids){
+  let owners=[],gids=[],days=0;
+  if(mode==='owners'){
+    const v=prompt('批量设置主人（共 '+ids.length+' 个条目）：\n输入 QQ 号或 OpenID，多个用逗号/空格分隔；将与各条目已有主人合并','')
+    if(v===null)return null;
+    owners=v.split(/[,，\s]+/).map(s=>s.trim()).filter(Boolean);
+    if(!owners.length){alert('未输入有效主人');return null}
+  }else{
+    const v=prompt('批量设置群授权（共 '+ids.length+' 个条目）：\n输入群 OpenID（可输入多个，逗号分隔）；可从群内发送「查群id」获取','')
+    if(v===null)return null;
+    gids=v.split(/[,，\s]+/).map(s=>s.trim()).filter(Boolean);
+    if(!gids.length){alert('未输入有效群ID');return null}
+    const dv=prompt('授权天数（数字；留空或 0 = 永久）','30');
+    if(dv===null)return null;
+    days=parseInt(dv,10)||0;
+  }
+  if(!confirm('确定为 '+ids.length+' 个条目'+(mode==='owners'?('添加主人 '+owners.length+' 个'):('添加群授权 '+gids.length+' 个（'+(days>0?days+' 天':'永久')+'）'))+' 吗？\n（已有配置会保留，仅合并新增）'))return null;
+  let okN=0,err='';
+  for(const id of ids){
+    try{
+      if(mode==='owners'){
+        let cur={owners:[]};
+        try{cur=await api('/api/plugins/owner-config/'+encodeURIComponent(id))||{owners:[]}}catch(e){}
+        const merged=Array.isArray(cur.owners)?cur.owners.slice():[];
+        owners.forEach(o=>{if(!merged.includes(o))merged.push(o)});
+        const r=await api('/api/plugins/owner-config/'+encodeURIComponent(id),{method:'PUT',body:{owners:merged.slice(0,100)}});
+        if(r&&r.ok!==false&&r.error===undefined)okN++;else err+=(err?'; ':'')+((r&&r.error)||id);
+      }else{
+        const r=await api('/api/plugins/owner-config/'+encodeURIComponent(id),{method:'PUT',body:{addAuths:gids.map(g=>({groupId:g,days}))}});
+        if(r&&r.ok!==false&&r.error===undefined)okN++;else err+=(err?'; ':'')+((r&&r.error)||id);
+      }
+    }catch(e){err+=(err?'; ':'')+e.message}
+  }
+  alert('完成 '+okN+'/'+ids.length+(err?('，失败：'+err.slice(0,300)):''));
+  return true;
+}
 function plgResetSel(){plgChecked.clear();const a=docById('plgCheckAll');if(a)a.checked=false;updatePlgBar()}
 
 // ---- 机器人列表 多选/全选/批量启停 ----
@@ -4123,7 +4273,26 @@ async function ocDelAuth(g){try{await api('/api/plugins/owner-config/'+encodeURI
 async function ocSave(){const d=ocCurrent.data;try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{owners:d.owners||[],unauthText:docById('ocUnauthText').value}});alert('✅ 已保存');openOwnerCfg(ocCurrent.id,ocCurrent.name,ocCurrent.kind)}catch(e){alert(e.message)}}
 async function ocSaveText(){try{await api('/api/plugins/owner-config/'+encodeURIComponent(ocCurrent.id),{method:'PUT',body:{unauthText:docById('ocUnauthText').value}});alert('✅ 提示文字已保存')}catch(e){alert(e.message)}}
 // ---- 词库管理页（骨架：本地词库列表 + 编辑跳转） ----
-async function loadDictsPage(){const el=docById('dictsList');if(!el)return;if(currentUser?.role!=='super_master'){el.innerHTML='<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">词库管理仅超级主人可用；普通管理员请在「插件词库市场」安装词库</div>';return}try{const d=await api('/api/plugins/_dict/files');const files=d.files||[];el.innerHTML=files.length?files.map(f=>{const m=f.meta||{};const metaLine=[m.version?'v'+esc(m.version):'',m.author?'作者 '+esc(m.author):'',m.contact?esc(m.contact):''].filter(Boolean).join(' · ');return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong style="font-size:14px">'+esc(f.name)+'</strong>'+(f.inDir?'<span class="tag tag-approved">词库目录</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">plugins 根目录</span>')+'</div>'+(metaLine?'<div style="font-size:12px;color:var(--text2)">'+metaLine+'</div>':'')+(m.description?'<div style="font-size:12px;color:var(--text2)">'+esc(m.description)+'</div>':'')+'<div style="font-size:12px;color:var(--text2)">'+esc(f.path)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto"><a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?tab=dict&file='+encodeURIComponent(f.name)+'">编辑词条</a></div></div>'}).join(''):'<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">暂无词库文件（.txt/.cid），可从市场安装或点击「新建词库」创建</div>'}catch(e){el.innerHTML='<div style="color:var(--danger);padding:24px;grid-column:1/-1;text-align:center">词库列表加载失败：'+esc(e&&e.message||e)+'</div>'}}
+// ---- 词库管理 多选/批量设置主人/群授权（映射同名 file-<名> 插件） ----
+let dictChecked=new Set();
+function updateDictBar(){const cnt=dictChecked.size;const c=docById('dictBatchCount');if(c)c.textContent='已选 '+cnt+' 个词库';const bar=docById('dictBatchBar');if(bar)bar.style.display=cnt>0?'':'none'}
+function dictUpd(el){const name=el.getAttribute('data-name');if(el.checked)dictChecked.add(name);else dictChecked.delete(name);updateDictBar()}
+function dictSelAll(el){const on=el&&el.checked;document.querySelectorAll('.dict-check').forEach(cb=>{cb.checked=on;const n=cb.getAttribute('data-name');if(on)dictChecked.add(n);else dictChecked.delete(n)});updateDictBar()}
+function dictClearSel(){dictChecked.clear();document.querySelectorAll('.dict-check').forEach(cb=>cb.checked=false);const a=docById('dictCheckAll');if(a)a.checked=false;updateDictBar()}
+async function loadDictsPage(){const el=docById('dictsList');if(!el)return;if(currentUser?.role!=='super_master'){el.innerHTML='<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">词库管理仅超级主人可用；普通管理员请在「插件词库市场」安装词库</div>';return}try{const d=await api('/api/plugins/_dict/files');const files=d.files||[];const bar=docById('dictBatchBar');if(bar)bar.style.display=dictChecked.size>0?'':'none';el.innerHTML=files.length?files.map(f=>{const m=f.meta||{};const metaLine=[m.version?'v'+esc(m.version):'',m.author?'作者 '+esc(m.author):'',m.contact?esc(m.contact):''].filter(Boolean).join(' · ');return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><input type="checkbox" class="dict-check" data-name="'+esc(f.name)+'" onchange="dictUpd(this)"><strong style="font-size:14px">'+esc(f.name)+'</strong>'+(f.inDir?'<span class="tag tag-approved">词库目录</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">plugins 根目录</span>')+'</div>'+(metaLine?'<div style="font-size:12px;color:var(--text2)">'+metaLine+'</div>':'')+(m.description?'<div style="font-size:12px;color:var(--text2)">'+esc(m.description)+'</div>':'')+'<div style="font-size:12px;color:var(--text2)">'+esc(f.path)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto"><a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?tab=dict&file='+encodeURIComponent(f.name)+'">编辑词条</a><button class="btn btn-outline btn-xs" onclick="dictOpenOwner(\''+esc(f.name)+'\')">主人</button></div></div>'}).join(''):'<div style="color:var(--text2);padding:24px;grid-column:1/-1;text-align:center">暂无词库文件（.txt/.cid），可从市场安装或点击「新建词库」创建</div>'}catch(e){el.innerHTML='<div style="color:var(--danger);padding:24px;grid-column:1/-1;text-align:center">词库列表加载失败：'+esc(e&&e.message||e)+'</div>'}}
+// 词库主人配置：优先映射同名 file-<名> 插件（如 娱乐群管.txt → file-娱乐群管）；不存在时提示改在插件管理中配置引擎插件
+async function dictOpenOwner(name){
+  const base=String(name).replace(/\.(txt|cid)$/i,'');
+  const pid='file-'+base;
+  try{
+    const list=await api('/api/plugins');
+    const hit=(list||[]).find(p=>String(p.id||'')===pid);
+    if(hit){openOwnerCfg(pid,hit.name||base,'dict');return}
+    const engine=(list||[]).find(p=>/娱乐群管|词典回复|DIC管理/.test(String(p.name||'')));
+    if(engine&&confirm('词库「'+name+'」由引擎插件「'+engine.name+'」加载（同一时刻仅激活一个词库）。\n\n直接对该引擎插件设置主人与群授权？（生效于当前激活的词库）')){openOwnerCfg(engine.id,engine.name,'dict');return}
+    alert('未找到与词库同名的插件（'+pid+'），也无词库引擎插件可配置');
+  }catch(e){alert(e.message)}
+}
 // ---- 新建词库（名称/版本/作者/联系方式/简介/图标URL + 上传或粘贴 txt） ----
 function showCreateDict(){
   ['ndName','ndVersion','ndAuthor','ndContact','ndIntro','ndIcon','ndContent'].forEach(id=>{docById(id).value=''});
@@ -4384,6 +4553,7 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
 
  async function loadUserGroups(){
    try{
+      await loadBlocklist();
       // 机器人筛选下拉（保留当前选择）
       try{
         const prev=docById('uBotFilter').value;

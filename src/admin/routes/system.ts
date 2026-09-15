@@ -6,6 +6,7 @@ import type { AdminAuth } from '../auth';
 import type { BotRegistry } from '../registry';
 import { getBot, getBotInstance } from '../../core/bot';
 import { querySystemLogs, querySystemLogsCount, deleteSystemLogs, clearSystemLogs, getDb, getConfig, setConfig } from '../../db/index';
+import { getBlocklist, addBlocked, removeBlocked } from '../../core/blocklist';
 import {
   getSwitchStates,
   setSwitchState,
@@ -358,6 +359,21 @@ export function createSystemRoutes(
       bot_name: l.bot_id ? (botNameMap.get(String(l.bot_id)) || '') : '',
     }));
     res.json({ logs: enriched, total, filtered: !!botIds });
+  });
+
+  // ===== 封用户黑名单（超主）：config KV 持久化，webhook 消息入口命中即丢弃 =====
+  router.get('/blocklist', (_req, res) => {
+    res.json({ list: getBlocklist() });
+  });
+  router.post('/blocklist', requireSuperMaster, (req: Request, res: Response) => {
+    const ids: string[] = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : (req.body?.id ? [String(req.body.id)] : []);
+    if (!ids.length) { res.status(400).json({ error: '缺少 id' }); return; }
+    ids.forEach((id) => addBlocked(id));
+    res.json({ ok: true, list: getBlocklist() });
+  });
+  router.delete('/blocklist/:id', requireSuperMaster, (req: Request, res: Response) => {
+    removeBlocked(decodeURIComponent(req.params.id));
+    res.json({ ok: true, list: getBlocklist() });
   });
 
   // 删除运行记录：body {ids:[...]} 批量删除；?all=1 或 body {all:true} 清空全部

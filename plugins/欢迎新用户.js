@@ -239,6 +239,24 @@ module.exports = {
     },
 
     // ========== 入群欢迎（markdown 卡片发送到群） ==========
+    // ===== 防重复欢迎 =====
+    // group.member.add 可能被平台重复派发（webhook 重试/成员短时间内反复进出），
+    // 同群同人 10 分钟内只欢迎一次，防止欢迎语刷屏。
+    welcomedMap: new Map(), // key -> ts
+    welcomeOnce: function(gid, memberId) {
+      var key = String(gid) + '|' + String(memberId || '');
+      var last = this.welcomedMap.get(key) || 0;
+      var now = Date.now();
+      if (now - last < 10 * 60 * 1000) return false;
+      this.welcomedMap.set(key, now);
+      if (this.welcomedMap.size > 500) {
+        var cutoff = now - 10 * 60 * 1000;
+        var self = this;
+        this.welcomedMap.forEach(function (t, k) { if (t < cutoff) self.welcomedMap.delete(k); });
+      }
+      return true;
+    },
+
     welcome: async function(ctx, data) {
       // 功能开关门控：欢迎语总开关（后台「功能开关」可停用）
       try {
@@ -249,6 +267,7 @@ module.exports = {
       if (!gid) return;
       var nick = (data.member && data.member.nickname) || '';
       var memberId = (data.member && data.member.id) || '';
+      if (!this.welcomeOnce(gid, memberId)) return;
       var md = this.buildMd(ctx, data, nick);
       if (!md) return;
       var sent = null;

@@ -94,7 +94,8 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     const me = req.adminUser!;
     const u = auth.getUser(me.username);
     const db = getDb();
-    const today = new Date().toISOString().slice(0, 10);
+    // 签到按北京时间自然日计算（UTC+8），避免北京时间 0-8 点间 UTC 日期滞后导致无法签到
+    const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
     const s = db.prepare('SELECT last_date, total FROM market_signins WHERE username = ?').get(me.username) as any;
     res.json({
       coins: typeof u?.coins === 'number' ? u.coins : 0,
@@ -109,7 +110,8 @@ export function createMarketRoutes(auth: AdminAuth): Router {
   router.post('/signin', (req: Request, res: Response) => {
     const me = req.adminUser!;
     const db = getDb();
-    const today = new Date().toISOString().slice(0, 10);
+    // 与 /me 一致：按北京时间自然日判定签到
+    const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
     const s = db.prepare('SELECT last_date, total FROM market_signins WHERE username = ?').get(me.username) as any;
     if (s?.last_date === today) { res.status(400).json({ error: '今日已签到，明天再来吧' }); return; }
     const coins = Math.max(1, Math.trunc(getMarketSetting('signin_coins', 5)));
