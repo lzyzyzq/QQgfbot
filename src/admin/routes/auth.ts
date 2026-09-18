@@ -1,4 +1,7 @@
 import { Router, type Request, type Response } from 'express';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 import { AdminAuth } from '../auth';
 import { requireSuperMaster } from '../middleware';
 import { getDb, getConfig, setConfig, setUserMapping, updateQqNumber } from '../../db/index';
@@ -7,6 +10,78 @@ import type { UserPermission, AdminUser } from '../config';
 
 export function createAuthRoutes(auth: AdminAuth): Router {
   const router = Router();
+
+  // ===== 个人中心：头像上传（PNG/JPG/GIF/WebP ≤2MB，落盘 data/avatars/）=====
+  const avatarsDir = path.resolve('data', 'avatars');
+  if (!fs.existsSync(avatarsDir)) fs.mkdirSync(avatarsDir, { recursive: true });
+  const avatarUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (/^image\/(png|jpe?g|gif|webp)$/i.test(String(file.mimetype || ''))) cb(null, true);
+      else cb(new Error('仅支持 PNG / JPG / GIF / WebP 图片'));
+    },
+  });
+  const avatarExt = (mime: string): string => (/png/i.test(mime) ? 'png' : /gif/i.test(mime) ? 'gif' : /webp/i.test(mime) ? 'webp' : 'jpg');
+  // 用户名 → 安全文件名（激活码 code_XXX 等仅保留字母数字下划线连字符）
+  const safeName = (u: string): string => String(u || '').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 64) || 'user';
+
+  // 上传/更新本人头像
+  router.post('/avatar', (req: Request, res: Response) => {
+    if (!req.adminUser) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    avatarUpload.single('file')(req as any, res as any, (err: any) => {
+      if (err) {
+        const msg = err && err.code === 'LIMIT_FILE_SIZE' ? '图片超过 2MB，请更换' : (err.message || '上传失败');
+        res.status(400).json({ error: msg });
+        return;
+      }
+      const file = (req as any).file;
+      if (!file || !file.buffer || !file.buffer.length) { res.status(400).json({ error: '请选择图片文件' }); return; }
+      try {
+        const name = safeName(req.adminUser!.username);
+        // 清理旧头像（扩展名可能变化）
+        for (const old of fs.readdirSync(avatarsDir)) {
+          if (old === name + '.png' || old === name + '.jpg' || old === name + '.gif' || old === name + '.webp') {
+            try { fs.unlinkSync(path.join(avatarsDir, old)); } catch {}
+          }
+        }
+        const ext = avatarExt(String(file.mimetype || 'image/png'));
+        fs.writeFileSync(path.join(avatarsDir, name + '.' + ext), file.buffer);
+        const url = '/api/auth/avatar/' + encodeURIComponent(req.adminUser!.username) + '?v=' + Date.now();
+        auth.updateUser(req.adminUser!.username, { avatar: url });
+        res.json({ ok: true, avatar: url });
+      } catch (e: any) {
+        res.status(500).json({ error: '保存头像失败: ' + e.message });
+      }
+    });
+  });
+
+  // 读取头像（无文件时 404，前端回退默认头像）
+  router.get('/avatar/:username', (req: Request, res: Response) => {
+    const name = safeName(String(req.params.username || ''));
+    for (const ext of ['png', 'jpg', 'webp', 'gif']) {
+      const f = path.join(avatarsDir, name + '.' + ext);
+      if (fs.existsSync(f)) {
+        const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+        res.setHeader('Content-Type', mime);
+        res.setHeader('Cache-Control', 'public, max-age=60');
+        res.send(fs.readFileSync(f));
+        return;
+      }
+    }
+    res.status(404).json({ error: '无头像' });
+  });
+
+  // 修改本人昵称
+  router.put('/nickname', (req: Request, res: Response) => {
+    if (!req.adminUser) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const nick = String((req.body || {}).nickname || '').trim();
+    if (!nick) { res.status(400).json({ error: '昵称不能为空' }); return; }
+    if (nick.length > 24) { res.status(400).json({ error: '昵称最长 24 个字符' }); return; }
+    const ok = auth.updateUser(req.adminUser.username, { nickname: nick });
+    if (!ok) { res.status(404).json({ error: '用户不存在' }); return; }
+    res.json({ ok: true, nickname: nick });
+  });
 
   router.post('/login', (req: Request, res: Response) => {
     const body = req.body || {};
@@ -139,9 +214,30 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       permissions: user?.permissions,
       shouldRemind,
       passwordChangedAt,
+      // 个人中心：昵称/头像/注册时间/机器人额度
+      nickname: user?.nickname || '',
+      avatar: user?.avatar || '',
+      createdAt: user?.createdAt || null,
+      quota: user?.permissions ? Math.max(0, Math.trunc(Number(user.permissions.maxBots) || 0)) : null,
       // 金币余额与可用侧边栏页面（超级主人 allowedPages 恒为 null=不受限）
       coins: typeof user?.coins === 'number' ? user.coins : 0,
       allowedPages: auth.getAllowedPages(req.adminUser.username),
+    });
+  });
+
+  // 个人中心：本人资料（与 /me 相比多昵称与邮箱别名展示，供页面单独刷新）
+  router.get('/profile', (req: Request, res: Response) => {
+    if (!req.adminUser) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const user = auth.getUser(req.adminUser.username);
+    res.json({
+      username: req.adminUser.username,
+      role: req.adminUser.role,
+      nickname: user?.nickname || '',
+      avatar: user?.avatar || '',
+      qq: user?.qq || '',
+      createdAt: user?.createdAt || null,
+      coins: typeof user?.coins === 'number' ? user.coins : 0,
+      quota: user?.permissions ? Math.max(0, Math.trunc(Number(user.permissions.maxBots) || 0)) : null,
     });
   });
 

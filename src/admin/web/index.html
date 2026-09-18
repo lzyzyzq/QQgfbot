@@ -287,6 +287,7 @@ input[type="file"]{color:var(--text2)}
   <div class="nav-item" data-page="authcodes" onclick="switchPage('authcodes')">授权码</div>
   <div class="nav-item" data-page="updatelog" onclick="switchPage('updatelog')">更新日志</div>
   <div class="nav-item" data-page="hyperlinks" onclick="switchPage('hyperlinks')">超链接</div>
+  <div class="nav-item" data-page="profile" onclick="switchPage('profile')">个人中心</div>
   <div class="nav-item" data-page="help" onclick="switchPage('help')">帮助文档</div>
   <div class="user-info">
     <div id="sidebarUser">未登录</div>
@@ -1186,6 +1187,53 @@ input[type="file"]{color:var(--text2)}
   <div class="stats-grid" id="linksGrid"></div>
 </div>
 
+<div class="page" id="page-profile">
+  <h2>个人中心设置</h2>
+  <p style="color:var(--text2);margin-top:-8px;margin-bottom:16px">修改你的个人信息和密码</p>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:14px;color:var(--text2)">账号</span>
+      <b id="pfUsername" style="font-size:15px">-</b>
+    </div>
+    <div style="margin-top:10px;font-size:13px;color:var(--text2)">
+      额度: <b id="pfQuota" style="color:var(--text)">-</b>
+      <span style="margin:0 8px;color:var(--border)">|</span>
+      金币: <b id="pfCoins" style="color:var(--text)">-</b>
+      <span style="margin:0 8px;color:var(--border)">|</span>
+      注册时间: <b id="pfCreated" style="color:var(--text)">-</b>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 4px">我的头像</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--text2)">PNG/JPG/GIF/WebP 图片，最大 2MB</p>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <img id="pfAvatarImg" src="" alt="头像" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid var(--border);background:var(--bg2);display:none">
+      <div id="pfAvatarEmpty" style="width:64px;height:64px;border-radius:50%;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:12px;background:var(--bg2)">无头像</div>
+      <div>
+        <input type="file" id="pfAvatarFile" accept=".png,.jpg,.jpeg,.gif,.webp,image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="profilePickAvatar(this)">
+        <button class="btn" onclick="docById('pfAvatarFile').click()">选择图片</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 4px">修改昵称</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--text2)">昵称将展示给机器人管理面板的用户</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="pfNickname" maxlength="24" placeholder="请输入昵称" style="width:260px">
+      <button class="btn" onclick="profileSaveNickname()">保存昵称</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 4px">修改密码</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--text2)">新密码至少 6 位；修改成功后本次会话仍可继续使用</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="pfOldPwd" type="password" placeholder="当前密码" style="width:200px">
+      <input id="pfNewPwd" type="password" placeholder="新密码（至少 6 位）" style="width:200px">
+      <button class="btn" onclick="profileChangePassword()">修改密码</button>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-help">
   <h2>帮助文档</h2>
   <div id="helpContent"></div>
@@ -1900,6 +1948,7 @@ function updateSidebar(){
   const allowedPages=isSuper?null:(Array.isArray(currentUser?.allowedPages)&&currentUser.allowedPages.length?currentUser.allowedPages:limited);
   document.querySelectorAll('.nav-item').forEach(n=>{
     const p=n.getAttribute('data-page');
+    if(p==='profile')return; // 个人中心对所有角色可见
     n.style.display=(isSuper||allowedPages.includes(p))?'':'none';
   });
   const genBtn=docById('authCodeGenBtn');
@@ -1988,9 +2037,9 @@ function switchPage(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const page=docById('page-'+name);if(page)page.classList.add('active');
   const nav=document.querySelector(`.nav-item[data-page="${name}"]`);if(nav)nav.classList.add('active');
-  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',help:'帮助文档'};
+  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
   docById('mobilePageTitle').textContent=titles[name]||name;
-  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,help:loadHelp};
+  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
   if(currentBot&&['membersync','users','runlog','feedback','authcodes','channels','plugins'].includes(name)){
     applyBotFilterToPage().then(runLoader);
@@ -5226,6 +5275,60 @@ async function loadUpdateLog(){const data=await api('/api/system/updatelog');doc
 async function toggleEditUpdateLog(){const editing=docById('updateLogEditor').style.display!=='none';docById('updateLogContent').style.display=editing?'':'none';docById('updateLogEditor').style.display=editing?'none':'';docById('btnEditUpdateLog').style.display=editing?'':'none';docById('btnSaveUpdateLog').style.display=editing?'none':'';docById('btnCancelUpdateLog').style.display=editing?'none':'';if(!editing){const data=await api('/api/system/updatelog');docById('updateLogEditor').value=data.content}}
 async function saveUpdateLog(){const content=docById('updateLogEditor').value;try{await api('/api/system/updatelog',{method:'PUT',body:{content}});docById('btnSaveUpdateLog').textContent='已保存';setTimeout(()=>{docById('btnSaveUpdateLog').textContent='保存';toggleEditUpdateLog();loadUpdateLog()},800)}catch(e){alert('保存失败: '+e.message)}}
 async function loadHyperlinks(){const data=await api('/api/system/hyperlinks');docById('linksGrid').innerHTML=`<div class="stat-card" onclick="window.open('${data.official}')" style="cursor:pointer"><div class="label">官方后台</div><div class="value blue">q.qq.com</div></div><div class="stat-card" onclick="window.open('${data.docs}')" style="cursor:pointer"><div class="label">开发文档</div><div class="value blue">文档中心</div></div><div class="stat-card" style="cursor:pointer"><div class="label">回调地址帮助</div><div class="value green">查看说明</div></div>`}
+// ===== 个人中心 =====
+function pfApplyProfile(d){
+  docById('pfUsername').textContent=d.username||'-';
+  docById('pfQuota').textContent=(d.quota===null||d.quota===undefined)?'默认':String(d.quota);
+  docById('pfCoins').textContent=String(typeof d.coins==='number'?d.coins:0);
+  let created='-';
+  if(d.createdAt){try{created=new Date(d.createdAt).toLocaleString('zh-CN')}catch{}}
+  docById('pfCreated').textContent=created;
+  docById('pfNickname').value=d.nickname||'';
+  const img=docById('pfAvatarImg'),empty=docById('pfAvatarEmpty');
+  let src=d.avatar||'';
+  // 本地头像端点需鉴权：img 标签无法带 header，用 query token
+  if(src&&src.indexOf('/api/auth/avatar')===0)src+=(src.includes('?')?'&':'?')+'token='+encodeURIComponent(token);
+  if(src){img.src=src;img.style.display='';empty.style.display='none'}
+  else{img.style.display='none';empty.style.display='flex'}
+}
+async function loadProfilePage(){
+  try{
+    const d=await api('/api/auth/profile');
+    if(d&&d.username)pfApplyProfile(d);
+  }catch(e){alert('加载个人中心失败：'+e.message)}
+}
+async function profilePickAvatar(input){
+  const file=input&&input.files&&input.files[0];
+  input.value='';
+  if(!file)return;
+  if(file.size>2*1024*1024){alert('图片超过 2MB，请更换');return}
+  try{
+    const fd=new FormData();
+    fd.append('file',file);
+    const r=await api('/api/auth/avatar',{method:'POST',body:fd});
+    if(r&&r.ok&&r.avatar){pfApplyProfile(await api('/api/auth/profile'));alert('✅ 头像已更新')}
+    else alert('上传失败：'+((r&&(r.error))||'未知错误'));
+  }catch(e){alert('头像上传失败：'+e.message)}
+}
+async function profileSaveNickname(){
+  const nick=docById('pfNickname').value.trim();
+  if(!nick){alert('昵称不能为空');return}
+  try{
+    const r=await api('/api/auth/nickname',{method:'PUT',body:{nickname:nick}});
+    if(r&&r.ok)alert('✅ 昵称已保存');
+    else alert('保存失败：'+((r&&r.error)||'未知错误'));
+  }catch(e){alert('保存昵称失败：'+e.message)}
+}
+async function profileChangePassword(){
+  const old=docById('pfOldPwd').value,next=docById('pfNewPwd').value;
+  if(!old||!next){alert('请填写当前密码和新密码');return}
+  if(next.length<6){alert('新密码至少 6 位');return}
+  try{
+    const r=await api('/api/auth/password',{method:'PUT',body:{old,next}});
+    if(r&&r.ok){docById('pfOldPwd').value='';docById('pfNewPwd').value='';alert('✅ 密码已修改')}
+    else alert('修改失败：'+((r&&r.error)||'未知错误'));
+  }catch(e){alert('修改密码失败：'+e.message)}
+}
 async function loadHelp(){try{const data=await api('/api/system/help');docById('helpContent').innerHTML=data.sections.map(s=>`<div class="card"><h3>${esc(s.title)}</h3><div class="markdown-body">${mdToHtml(s.content)}</div></div>`).join('')}catch{}}
 
 function fmtSize(b){if(b==null||b<0)return '...';if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';return (b/1048576).toFixed(1)+' MB'}
