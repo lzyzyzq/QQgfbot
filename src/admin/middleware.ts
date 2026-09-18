@@ -32,6 +32,8 @@ export function authMiddleware(auth: AdminAuth) {
         req.path === '/api/auth-codes/qq-by-openid' || req.path === '/api/auth-codes/openid-by-qq' ||
         req.path === '/auth/code' || req.path === '/auth/code/verify' ||
         req.path === '/api/auth/code' || req.path === '/api/auth/code/verify' ||
+        req.path === '/auth/register' || req.path === '/api/auth/register' ||
+        req.path === '/auth/register/send-code' || req.path === '/api/auth/register/send-code' ||
         req.path === '/system/panel-login-status' || req.path === '/api/system/panel-login-status' ||
         req.path === '/health' || req.path === '/api/health' ||
         req.path === '/api/click' || req.path === '/click') {

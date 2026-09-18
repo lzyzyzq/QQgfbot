@@ -6,6 +6,7 @@ import { AdminAuth } from '../auth';
 import { requireSuperMaster } from '../middleware';
 import { getDb, getConfig, setConfig, setUserMapping, updateQqNumber } from '../../db/index';
 import { syncPermConfig } from '../../api/bot-system';
+import { sendEmailCode, verifyEmailCode, isValidEmail, isMailConfigured } from '../email';
 import type { UserPermission, AdminUser } from '../config';
 
 export function createAuthRoutes(auth: AdminAuth): Router {
@@ -81,6 +82,124 @@ export function createAuthRoutes(auth: AdminAuth): Router {
     const ok = auth.updateUser(req.adminUser.username, { nickname: nick });
     if (!ok) { res.status(404).json({ error: '用户不存在' }); return; }
     res.json({ ok: true, nickname: nick });
+  });
+
+  // ===== 注册与邮箱绑定（邮箱验证码） =====
+  const USERNAME_RE = /^[A-Za-z0-9_]{3,32}$/;
+  // 激活码用户邮箱绑定列（auth_codes.email，按需补列）
+  try {
+    getDb().prepare("ALTER TABLE auth_codes ADD COLUMN email TEXT").run();
+  } catch { /* 列已存在 */ }
+
+  function getCodeUserEmail(username: string): string {
+    try {
+      const row = getDb().prepare('SELECT email FROM auth_codes WHERE code = ?').get(username.replace(/^code_/, '')) as any;
+      return (row && row.email) || '';
+    } catch { return ''; }
+  }
+
+  function setCodeUserEmail(username: string, email: string): boolean {
+    try {
+      getDb().prepare('UPDATE auth_codes SET email = ? WHERE code = ?').run(email, username.replace(/^code_/, ''));
+      return true;
+    } catch { return false; }
+  }
+
+  // 注册：发送邮箱验证码（公开接口，发码前先校验注册信息合法性）
+  router.post('/register/send-code', async (req: Request, res: Response) => {
+    const { username, password, email } = req.body || {};
+    const u = String(username || '').trim();
+    const e = String(email || '').trim();
+    if (!USERNAME_RE.test(u)) { res.status(400).json({ error: '用户名需 3-32 位字母、数字或下划线' }); return; }
+    if (String(password || '').length < 6) { res.status(400).json({ error: '密码至少 6 位' }); return; }
+    if (!isValidEmail(e)) { res.status(400).json({ error: '邮箱格式不正确' }); return; }
+    if (auth.getAdmins().some((a) => a.username.toLowerCase() === u.toLowerCase())) { res.status(400).json({ error: '用户名已被占用' }); return; }
+    if (auth.getAdmins().some((a) => (a.email || '').toLowerCase() === e.toLowerCase())) { res.status(400).json({ error: '该邮箱已被其他账号绑定' }); return; }
+    if (!isMailConfigured()) { res.status(500).json({ error: '管理员尚未配置邮件服务（SMTP），请联系超级主人' }); return; }
+    try {
+      const r = await sendEmailCode('register', e);
+      if (!r.sent) { res.status(429).json({ error: `发送过于频繁，请 ${r.retryAfter} 秒后再试` }); return; }
+      res.json({ ok: true, message: '验证码已发送，请查收邮箱' });
+    } catch (err: any) {
+      res.status(500).json({ error: '发送验证码失败：' + (err.message || '未知错误') });
+    }
+  });
+
+  // 注册：校验验证码并创建账号（role=user，注册即绑定邮箱）
+  router.post('/register', async (req: Request, res: Response) => {
+    const { username, password, email, code } = req.body || {};
+    const u = String(username || '').trim();
+    const e = String(email || '').trim();
+    if (!USERNAME_RE.test(u)) { res.status(400).json({ error: '用户名需 3-32 位字母、数字或下划线' }); return; }
+    if (String(password || '').length < 6) { res.status(400).json({ error: '密码至少 6 位' }); return; }
+    if (!isValidEmail(e)) { res.status(400).json({ error: '邮箱格式不正确' }); return; }
+    if (!code) { res.status(400).json({ error: '请输入邮箱验证码' }); return; }
+    if (auth.getAdmins().some((a) => a.username.toLowerCase() === u.toLowerCase())) { res.status(400).json({ error: '用户名已被占用' }); return; }
+    if (auth.getAdmins().some((a) => (a.email || '').toLowerCase() === e.toLowerCase())) { res.status(400).json({ error: '该邮箱已被其他账号绑定' }); return; }
+    try {
+      verifyEmailCode('register', e, String(code));
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    try {
+      auth.addAdmin({
+        username: u,
+        password: String(password),
+        role: 'user',
+        email: e,
+        loginAble: true,
+        createdBy: 'register',
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: '创建账号失败：' + (err.message || '未知错误') });
+      return;
+    }
+    res.json({ ok: true, message: '注册成功，邮箱已绑定，请使用密码登录' });
+  });
+
+  // 本人改绑邮箱：发送验证码到新邮箱（所有登录用户，含超级主人本人）
+  router.post('/email/send-code', async (req: Request, res: Response) => {
+    if (!req.adminUser) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const e = String((req.body || {}).email || '').trim();
+    if (!isValidEmail(e)) { res.status(400).json({ error: '邮箱格式不正确' }); return; }
+    // 邮箱被他人绑定时拒绝（绑定回自己当前邮箱也提示，改绑应填新邮箱）
+    if (auth.getAdmins().some((a) => a.username !== req.adminUser!.username && (a.email || '').toLowerCase() === e.toLowerCase())) {
+      res.status(400).json({ error: '该邮箱已被其他账号绑定' }); return;
+    }
+    if (!isMailConfigured()) { res.status(500).json({ error: '管理员尚未配置邮件服务（SMTP），请联系超级主人' }); return; }
+    try {
+      const r = await sendEmailCode('bind', e);
+      if (!r.sent) { res.status(429).json({ error: `发送过于频繁，请 ${r.retryAfter} 秒后再试` }); return; }
+      res.json({ ok: true, message: '验证码已发送，请查收邮箱' });
+    } catch (err: any) {
+      res.status(500).json({ error: '发送验证码失败：' + (err.message || '未知错误') });
+    }
+  });
+
+  // 本人改绑邮箱：校验验证码并绑定（所有登录用户，含超级主人本人）
+  router.post('/email/bind', async (req: Request, res: Response) => {
+    if (!req.adminUser) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const e = String((req.body || {}).email || '').trim();
+    const code = String((req.body || {}).code || '').trim();
+    if (!isValidEmail(e)) { res.status(400).json({ error: '邮箱格式不正确' }); return; }
+    if (!code) { res.status(400).json({ error: '请输入邮箱验证码' }); return; }
+    if (auth.getAdmins().some((a) => a.username !== req.adminUser!.username && (a.email || '').toLowerCase() === e.toLowerCase())) {
+      res.status(400).json({ error: '该邮箱已被其他账号绑定' }); return;
+    }
+    try {
+      verifyEmailCode('bind', e, code);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    if (req.adminUser.username.startsWith('code_')) {
+      if (!setCodeUserEmail(req.adminUser.username, e)) { res.status(500).json({ error: '绑定失败：激活码记录不存在' }); return; }
+    } else {
+      const ok = auth.updateUser(req.adminUser.username, { email: e });
+      if (!ok) { res.status(404).json({ error: '用户不存在' }); return; }
+    }
+    res.json({ ok: true, message: '邮箱已绑定', email: e });
   });
 
   router.post('/login', (req: Request, res: Response) => {
@@ -214,11 +333,12 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       permissions: user?.permissions,
       shouldRemind,
       passwordChangedAt,
-      // 个人中心：昵称/头像/注册时间/机器人额度
+      // 个人中心：昵称/头像/注册时间/机器人额度/绑定邮箱
       nickname: user?.nickname || '',
       avatar: user?.avatar || '',
       createdAt: user?.createdAt || null,
       quota: user?.permissions ? Math.max(0, Math.trunc(Number(user.permissions.maxBots) || 0)) : null,
+      email: user?.email || '',
       // 金币余额与可用侧边栏页面（超级主人 allowedPages 恒为 null=不受限）
       coins: typeof user?.coins === 'number' ? user.coins : 0,
       allowedPages: auth.getAllowedPages(req.adminUser.username),
@@ -238,6 +358,7 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       createdAt: user?.createdAt || null,
       coins: typeof user?.coins === 'number' ? user.coins : 0,
       quota: user?.permissions ? Math.max(0, Math.trunc(Number(user.permissions.maxBots) || 0)) : null,
+      email: user?.email || (req.adminUser.username.startsWith('code_') ? getCodeUserEmail(req.adminUser.username) : ''),
     });
   });
 
@@ -288,6 +409,7 @@ export function createAuthRoutes(auth: AdminAuth): Router {
     res.json(auth.getAdmins().map(a => ({
       username: a.username, role: a.role, qq: a.qq || '',
       nickname: a.nickname || '', openid: a.openid || '', avatar: a.avatar || '',
+      email: a.email || '',
       loginAble: a.loginAble, expireAt: a.expireAt,
       permissions: a.permissions,
       createdAt: a.createdAt,
@@ -337,7 +459,7 @@ export function createAuthRoutes(auth: AdminAuth): Router {
   });
 
   router.put('/admins/:username', requireSuperMaster, (req: Request, res: Response) => {
-    const { loginAble, password, qq, nickname, openid, avatar, role, expireAt } = req.body;
+    const { loginAble, password, qq, nickname, openid, avatar, role, expireAt, email } = req.body;
     const user = auth.getUser(String(req.params.username));
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
     const patch: Record<string, unknown> = {};
@@ -350,6 +472,16 @@ export function createAuthRoutes(auth: AdminAuth): Router {
     if (avatar !== undefined) patch.avatar = avatar;
     if (role !== undefined) patch.role = role as AdminUser['role'];
     if (expireAt !== undefined) patch.expireAt = expireAt || undefined;
+    // 超级主人可直接修改任意用户邮箱（免验证码）；清空=传空串
+    if (email !== undefined) {
+      const e = String(email).trim();
+      if (e && !isValidEmail(e)) { res.status(400).json({ error: '邮箱格式不正确' }); return; }
+      if (e && auth.getAdmins().some((a) => a.username !== String(req.params.username) && (a.email || '').toLowerCase() === e.toLowerCase())) {
+        res.status(400).json({ error: '该邮箱已被其他账号绑定' });
+        return;
+      }
+      patch.email = e;
+    }
     auth.updateUser(String(req.params.username), patch);
     // OpenID/QQ 任一变化时同步 user_mappings，保证用户管理 OpenID 绑定列与机器人身份识别一致
     const finalQq = String(patch.qq || user.qq || '').trim();

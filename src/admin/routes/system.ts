@@ -396,6 +396,51 @@ export function createSystemRoutes(
     }
   });
 
+  // ===== 邮件服务（SMTP）配置：仅超级主人 =====
+  router.get('/smtp', requireSuperMaster, (_req: Request, res: Response) => {
+    const configured = Boolean(String(getConfig('smtp.host') || '').trim() && String(getConfig('smtp.user') || '').trim() && String(getConfig('smtp.pass') || '').trim());
+    res.json({
+      configured,
+      host: getConfig('smtp.host') || '',
+      port: getConfig('smtp.port') || 465,
+      secure: String(getConfig('smtp.secure') || '') === '1',
+      user: getConfig('smtp.user') || '',
+      pass: configured ? '******' : '',
+      from: getConfig('smtp.from') || '',
+    });
+  });
+
+  router.put('/smtp', requireSuperMaster, (req: Request, res: Response) => {
+    const { host, port, secure, user, pass, from } = req.body || {};
+    if (!String(host || '').trim() || !String(user || '').trim() || !String(pass || '').trim()) {
+      res.status(400).json({ error: 'host、user、pass 均必填' });
+      return;
+    }
+    try {
+      setConfig('smtp.host', String(host).trim());
+      setConfig('smtp.port', String(Math.trunc(Number(port) || 465)));
+      setConfig('smtp.secure', secure ? '1' : '0');
+      setConfig('smtp.user', String(user).trim());
+      setConfig('smtp.pass', String(pass).trim());
+      setConfig('smtp.from', String(from || '').trim());
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  router.post('/smtp/test', requireSuperMaster, async (req: Request, res: Response) => {
+    const to = String(req.body?.to || '').trim();
+    if (!to) { res.status(400).json({ error: '请填写测试收件邮箱' }); return; }
+    try {
+      const { sendTestMail } = await import('../email');
+      await sendTestMail(to);
+      res.json({ ok: true, message: '测试邮件已发送，请查收' });
+    } catch (e: any) {
+      res.status(500).json({ error: '发送失败：' + (e.message || '未知错误') });
+    }
+  });
+
   router.get('/updatelog', (_req: Request, res: Response) => {
     res.json({ content: getUpdateLog() });
   });

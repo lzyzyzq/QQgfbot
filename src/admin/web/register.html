@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>注册账号 - QQ Bot 管理面板</title>
+<style>
+:root{--bg:#0f1419;--bg2:#1a1f2e;--bg3:#222840;--text:#d9e0e8;--text2:#8892a4;--accent:#3b82f6;--accent2:#2563eb;--danger:#ef4444;--success:#22c55e;--border:#2a3040;--radius:8px}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.reg-box{background:var(--bg2);padding:36px;border-radius:12px;width:90%;max-width:400px;border:1px solid var(--border)}
+.reg-box h1{font-size:22px;text-align:center;margin:0 0 8px}
+.reg-box .sub{color:var(--text2);text-align:center;margin-bottom:22px;font-size:13px}
+.reg-box label{display:block;font-size:12px;color:var(--text2);margin:0 0 6px}
+.reg-box input{width:100%;padding:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:15px;margin-bottom:14px}
+.reg-box input:focus{border-color:var(--accent);outline:none}
+.reg-row{display:flex;gap:8px}
+.reg-row input{flex:1;margin-bottom:14px}
+.reg-row button{white-space:nowrap;align-self:flex-start;height:41px;padding:0 14px;background:var(--bg3);color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius);font-size:13px;cursor:pointer}
+.reg-row button:disabled{opacity:.5;cursor:not-allowed}
+.reg-box .btn-primary{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:16px;cursor:pointer;font-weight:600}
+.reg-box .btn-primary:hover{background:var(--accent2)}
+.reg-box .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.reg-box .err{color:var(--danger);text-align:center;margin-top:12px;font-size:13px;min-height:18px}
+.reg-box .ok{color:var(--success);text-align:center;margin-top:12px;font-size:13px;min-height:18px}
+.reg-box .foot{text-align:center;margin-top:16px;font-size:13px;color:var(--text2)}
+.reg-box .foot a{color:var(--accent);text-decoration:none;cursor:pointer}
+.reg-tip{font-size:12px;color:var(--text2);margin:-8px 0 14px}
+@media (max-width:480px){.reg-box{padding:24px 18px}}
+</style>
+</head>
+<body>
+<div class="reg-box">
+  <h1>注册账号</h1>
+  <div class="sub">注册需通过邮箱验证码验证，验证通过后自动绑定邮箱</div>
+  <label>用户名（3-32 位字母、数字或下划线）</label>
+  <input type="text" id="regUsername" placeholder="设置登录用户名" maxlength="32" autocomplete="username">
+  <label>密码（至少 6 位，登录用授权码）</label>
+  <input type="password" id="regPassword" placeholder="设置登录密码" maxlength="64" autocomplete="new-password">
+  <label>邮箱（用于接收验证码与账号绑定）</label>
+  <input type="email" id="regEmail" placeholder="例如 you@example.com" maxlength="128" autocomplete="email">
+  <div class="reg-tip">验证码将发送到该邮箱，10 分钟内有效</div>
+  <label>邮箱验证码</label>
+  <div class="reg-row">
+    <input type="text" id="regCode" placeholder="6 位验证码" maxlength="6" inputmode="numeric">
+    <button id="regSendBtn" onclick="regSendCode()">发送验证码</button>
+  </div>
+  <button class="btn-primary" id="regSubmitBtn" onclick="regSubmit()">注 册</button>
+  <div class="err" id="regErr"></div>
+  <div class="ok" id="regOk"></div>
+  <div class="foot">已有账号？<a href="/index.html">返回登录</a></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+function regErr(msg){ $('regErr').textContent = msg || ''; $('regOk').textContent = ''; }
+function regOk(msg){ $('regOk').textContent = msg || ''; $('regErr').textContent = ''; }
+
+let sendCd = 0, sendTimer = null;
+function startCd(sec){
+  sendCd = sec;
+  const btn = $('regSendBtn');
+  btn.disabled = true;
+  const tick = () => {
+    if (sendCd <= 0) { btn.disabled = false; btn.textContent = '发送验证码'; clearInterval(sendTimer); return; }
+    btn.textContent = '重新发送(' + sendCd + 's)';
+    sendCd--;
+  };
+  tick();
+  sendTimer = setInterval(tick, 1000);
+}
+
+async function apiJson(url, body){
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(body || {}),
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  return { status: res.status, data: data || {} };
+}
+
+async function regSendCode(){
+  const username = $('regUsername').value.trim();
+  const password = $('regPassword').value;
+  const email = $('regEmail').value.trim();
+  regErr('');
+  if (!username) { regErr('请先填写用户名'); return; }
+  if (password.length < 6) { regErr('密码至少 6 位'); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { regErr('请填写正确的邮箱'); return; }
+  $('regSendBtn').disabled = true;
+  $('regSendBtn').textContent = '发送中...';
+  try {
+    const r = await apiJson('/api/auth/register/send-code', { username, password, email });
+    if (r.data && r.data.ok) {
+      regOk('验证码已发送，请查收邮箱（含垃圾箱）');
+      startCd(60);
+    } else {
+      regErr((r.data && r.data.error) || '发送失败');
+      $('regSendBtn').disabled = false;
+      $('regSendBtn').textContent = '发送验证码';
+    }
+  } catch (e) {
+    regErr('网络错误：' + e.message);
+    $('regSendBtn').disabled = false;
+    $('regSendBtn').textContent = '发送验证码';
+  }
+}
+
+async function regSubmit(){
+  const username = $('regUsername').value.trim();
+  const password = $('regPassword').value;
+  const email = $('regEmail').value.trim();
+  const code = $('regCode').value.trim();
+  regErr('');
+  if (!username || password.length < 6 || !email) { regErr('请完整填写用户名、密码和邮箱'); return; }
+  if (!code) { regErr('请输入邮箱验证码'); return; }
+  $('regSubmitBtn').disabled = true;
+  $('regSubmitBtn').textContent = '注册中...';
+  try {
+    const r = await apiJson('/api/auth/register', { username, password, email, code });
+    if (r.data && r.data.ok) {
+      regOk('注册成功，邮箱已绑定！即将跳转登录...');
+      setTimeout(() => { window.location.href = '/index.html'; }, 1500);
+    } else {
+      regErr((r.data && r.data.error) || '注册失败');
+      $('regSubmitBtn').disabled = false;
+      $('regSubmitBtn').textContent = '注 册';
+    }
+  } catch (e) {
+    regErr('网络错误：' + e.message);
+    $('regSubmitBtn').disabled = false;
+    $('regSubmitBtn').textContent = '注 册';
+  }
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter') regSubmit(); });
+</script>
+</body>
+</html>

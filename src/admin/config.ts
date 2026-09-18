@@ -25,6 +25,8 @@ export interface AdminUser {
   coins?: number;
   // 侧边栏可用页面列表（值为页面 id）；未设置或空数组=按角色默认全部可用；超级主人始终不受限
   allowedPages?: string[];
+  // 绑定邮箱：注册时验证码验证绑定；本人改绑需邮箱验证码；超级主人可直接修改他人邮箱
+  email?: string;
 }
 
 export interface UserPermission {

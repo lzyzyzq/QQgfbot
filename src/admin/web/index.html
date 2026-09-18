@@ -247,6 +247,7 @@ input[type="file"]{color:var(--text2)}
       <button onclick="doLogin()" style="width:100%">授权码登录</button>
     </div>
     <div id="authCodeLoginNote" style="display:none;text-align:center;color:var(--text2);font-size:13px;padding:6px 0">授权码登录已关闭，需超级主人在系统设置开启</div>
+    <div style="text-align:center;margin-top:4px;font-size:13px"><a href="/register.html" style="color:var(--accent);text-decoration:none">没有账号？注册新账号</a></div>
     <div class="err" id="loginErr"></div>
   </div>
 </div>
@@ -494,7 +495,7 @@ input[type="file"]{color:var(--text2)}
   </div>
   <div class="card" id="aiUserCard" style="display:none">
     <h3>用户金币与侧边栏权限 <span style="font-size:12px;color:var(--text2);font-weight:400">（仅超级主人）</span></h3>
-    <div class="table-wrap"><table><thead><tr><th>用户名</th><th>角色</th><th>金币</th><th>操作</th></tr></thead><tbody id="aiUserList"></tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>用户名</th><th>角色</th><th>绑定邮箱</th><th>金币</th><th>操作</th></tr></thead><tbody id="aiUserList"></tbody></table></div>
   </div>
 </div>
 
@@ -932,6 +933,26 @@ input[type="file"]{color:var(--text2)}
     <div class="form-group"><label>QQ号绑定</label><div style="display:flex;gap:8px"><input id="personalQQ" placeholder="输入你的QQ号以绑定" style="flex:1"><button class="btn btn-primary" onclick="bindPersonalQQ()">保存绑定</button></div></div>
     <div id="personalMsg" style="font-size:13px;margin-top:8px"></div>
   </div>
+  <div class="card" id="smtpCard" style="display:none">
+    <h3>邮件服务（SMTP）<span style="font-size:12px;color:var(--text2);font-weight:400">（仅超级主人）</span></h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--text2)">用于注册邮箱验证码与换绑邮箱验证码发送。以 QQ 邮箱为例：host=smtp.qq.com，port=465，secure 勾选，user=QQ 邮箱地址，pass=QQ 邮箱「SMTP 授权码」（非登录密码）</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+      <div class="form-group"><label>SMTP 服务器</label><input id="smtpHost" placeholder="smtp.qq.com"></div>
+      <div class="form-group"><label>端口</label><input id="smtpPort" type="number" placeholder="465"></div>
+      <div class="form-group"><label>SSL/STARTTLS（465 端口勾选）</label><div style="margin-top:8px"><input type="checkbox" id="smtpSecure" style="width:auto"></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+      <div class="form-group"><label>发件账号</label><input id="smtpUser" placeholder="your@qq.com"></div>
+      <div class="form-group"><label>授权码/密码</label><input id="smtpPass" type="password" placeholder="SMTP 授权码"></div>
+      <div class="form-group"><label>发件人地址（可留空=发件账号）</label><input id="smtpFrom" placeholder="your@qq.com"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-primary" onclick="smtpSave()">保存配置</button>
+      <input id="smtpTestTo" type="email" placeholder="测试收件邮箱" style="width:220px">
+      <button class="btn" onclick="smtpTest()">发送测试邮件</button>
+      <span id="smtpState" style="font-size:12px;color:var(--text2)"></span>
+    </div>
+  </div>
   <div class="card">
     <h3>管理面板配置</h3>
     <div class="form-group"><label>服务端口</label><input id="cfgPort" type="number" placeholder="3100"><p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">内部服务监听端口（nginx 反代目标）。注意：不要填网页访问端口 6655，否则会与 nginx 冲突导致 502</p></div>
@@ -1195,6 +1216,10 @@ input[type="file"]{color:var(--text2)}
       <span style="font-size:14px;color:var(--text2)">账号</span>
       <b id="pfUsername" style="font-size:15px">-</b>
     </div>
+    <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:14px;color:var(--text2)">邮箱</span>
+      <b id="pfEmail" style="font-size:14px;word-break:break-all">未绑定</b>
+    </div>
     <div style="margin-top:10px;font-size:13px;color:var(--text2)">
       额度: <b id="pfQuota" style="color:var(--text)">-</b>
       <span style="margin:0 8px;color:var(--border)">|</span>
@@ -1221,6 +1246,16 @@ input[type="file"]{color:var(--text2)}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <input id="pfNickname" maxlength="24" placeholder="请输入昵称" style="width:260px">
       <button class="btn" onclick="profileSaveNickname()">保存昵称</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 4px">绑定邮箱</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--text2)">修改绑定邮箱需输入新邮箱并完成验证码验证（所有用户均需验证，含超级主人）</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="pfEmailInput" type="email" maxlength="128" placeholder="输入新邮箱" style="width:240px">
+      <button class="btn" id="pfEmailSendBtn" onclick="profileEmailSendCode()">发送验证码</button>
+      <input id="pfEmailCode" maxlength="6" inputmode="numeric" placeholder="6 位验证码" style="width:140px">
+      <button class="btn" onclick="profileEmailBind()">验证并绑定</button>
     </div>
   </div>
   <div class="card">
@@ -2262,10 +2297,24 @@ async function aiUserLoad(){
     docById('aiUserList').innerHTML=(admins||[]).map(a=>{
       const isSuper=a.role==='super_master';
       return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
+      '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+' <button class="btn btn-outline btn-xs" onclick="aiEmailEdit(\''+esc(a.username)+'\',\''+esc(a.email||'')+'\')">修改邮箱</button></td>'+
       '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
       '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',-1)">-1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏权限</button>')+'</td></tr>';
     }).join('');
   }catch(e){}
+}
+
+// 超主直接修改任意用户邮箱（免验证码）；清空传空串
+async function aiEmailEdit(username,current){
+  const inp=prompt('修改用户「'+username+'」的绑定邮箱（清空后留空提交即解绑）',current||'');
+  if(inp===null)return;
+  const email=String(inp).trim();
+  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){alert('邮箱格式不正确');return}
+  try{
+    const r=await api('/api/auth/admins/'+encodeURIComponent(username),{method:'PUT',body:{email}});
+    if(r&&r.ok){alert('邮箱已更新');aiUserLoad()}
+    else alert('修改失败：'+((r&&r.error)||'未知错误'));
+  }catch(e){alert('修改失败：'+e.message)}
 }
 
 async function aiCoinAdjust(username,delta){
@@ -4437,7 +4486,42 @@ async function renameFile(path){const nn=prompt('新名称',path.split('/').pop(
 
 async function delFile(path){if(confirm('确定删除 "'+path+'" ?')){await api('/api/files/delete',{method:'POST',body:{path}});loadFiles()}}
 
-async function loadSettings(){loadLinkMode();try{const data=await api('/api/system/config');docById('cfgPort').value=data.serverPort||data.adminPort;docById('cfgPanelHost').value=data.panelHost||'';docById('cfgBotName').value=data.botName||'';docById('cfgChimeTexts').value=data.chimeTexts||'';docById('cfgChimeCity').value=data.chimeCity||'北京';docById('cfgChimeAd').value=data.chimeAd||'';docById('cfgWeatherTextApi').value=data.weatherTextApi||'';docById('cfgWeatherPngApi').value=data.weatherPngApi||'';docById('cfgFooterText').value=data.footerText||'';docById('cfgFooterAds').value=data.footerAds||'';docById('cfgQQLoginToken').value=data.qqLoginToken||'';docById('cfgAuthCodePanelLogin').checked=!!data.authCodePanelLogin;docById('cfgLicenseAutoShutdown').checked=data.licenseAutoShutdown!==false;docById('cfgUpdateVersion').value=data.updateVersion||'4.2.59';docById('cfgUpdatePatchUrl').value=data.updatePatchUrl||'';docById('cfgUpdateFullUrl').value=data.updateFullUrl||'';docById('cfgUpdateFrameworkPatchUrl').value=data.updateFrameworkPatchUrl||'';docById('cfgUpdatePluginPatchUrl').value=data.updatePluginPatchUrl||'';docById('cfgUpdateFrameworkFullUrl').value=data.updateFrameworkFullUrl||'';docById('cfgUpdatePluginFullUrl').value=data.updatePluginFullUrl||'';docById('cfgUpdateChangeLog').value=data.updateChangeLog||'';docById('cfgUpdateConfigUrl').value=data.updateConfigUrl||''}catch{};if(currentUser){const uname=currentUser.username||'';docById('personalUser').value=uname;try{const admins=await api('/api/auth/admins');const self=admins.find(a=>a.username===uname||(currentUser.role==='super_master'&&a.role==='super_master')||a.username===uname.replace('qq_',''));if(self){docById('personalQQ').value=self.qq||'';docById('personalQQ').placeholder='修改QQ号后点保存（超级主人可修改）';}}catch{}}if(currentUser?.role==='super_master'){try{
+// ===== SMTP 邮件服务配置（仅超主） =====
+async function loadSmtpCard(){
+  const card=docById('smtpCard');
+  if(!card)return;
+  if(currentUser?.role!=='super_master'){card.style.display='none';return}
+  card.style.display='';
+  try{
+    const d=await api('/api/system/smtp');
+    docById('smtpHost').value=d.host||'';
+    docById('smtpPort').value=d.port||465;
+    docById('smtpSecure').checked=!!d.secure;
+    docById('smtpUser').value=d.user||'';
+    docById('smtpPass').value=d.pass||'';
+    docById('smtpFrom').value=d.from||'';
+    docById('smtpState').textContent=d.configured?'当前状态：已配置':'当前状态：未配置（注册与换绑邮箱验证码无法发送）';
+    docById('smtpState').style.color=d.configured?'var(--success)':'var(--warn)';
+  }catch{}
+}
+async function smtpSave(){
+  const host=docById('smtpHost').value.trim(),user=docById('smtpUser').value.trim(),pass=docById('smtpPass').value.trim();
+  if(!host||!user||!pass){alert('host、发件账号、授权码均必填');return}
+  try{
+    const r=await api('/api/system/smtp',{method:'PUT',body:{host,port:Number(docById('smtpPort').value)||465,secure:docById('smtpSecure').checked,user,pass,from:docById('smtpFrom').value.trim()}});
+    if(r&&r.ok){alert('✅ SMTP 配置已保存');loadSmtpCard()}
+    else alert('保存失败：'+((r&&r.error)||'未知错误'));
+  }catch(e){alert('保存失败：'+e.message)}
+}
+async function smtpTest(){
+  const to=docById('smtpTestTo').value.trim();
+  if(!to){alert('请填写测试收件邮箱');return}
+  try{
+    const r=await api('/api/system/smtp/test',{method:'POST',body:{to}});
+    alert(r&&r.ok?'✅ '+r.message:'发送失败：'+((r&&r.error)||'未知错误'));
+  }catch(e){alert('发送失败：'+e.message)}
+}
+async function loadSettings(){loadLinkMode();loadSmtpCard();try{const data=await api('/api/system/config');docById('cfgPort').value=data.serverPort||data.adminPort;docById('cfgPanelHost').value=data.panelHost||'';docById('cfgBotName').value=data.botName||'';docById('cfgChimeTexts').value=data.chimeTexts||'';docById('cfgChimeCity').value=data.chimeCity||'北京';docById('cfgChimeAd').value=data.chimeAd||'';docById('cfgWeatherTextApi').value=data.weatherTextApi||'';docById('cfgWeatherPngApi').value=data.weatherPngApi||'';docById('cfgFooterText').value=data.footerText||'';docById('cfgFooterAds').value=data.footerAds||'';docById('cfgQQLoginToken').value=data.qqLoginToken||'';docById('cfgAuthCodePanelLogin').checked=!!data.authCodePanelLogin;docById('cfgLicenseAutoShutdown').checked=data.licenseAutoShutdown!==false;docById('cfgUpdateVersion').value=data.updateVersion||'4.2.59';docById('cfgUpdatePatchUrl').value=data.updatePatchUrl||'';docById('cfgUpdateFullUrl').value=data.updateFullUrl||'';docById('cfgUpdateFrameworkPatchUrl').value=data.updateFrameworkPatchUrl||'';docById('cfgUpdatePluginPatchUrl').value=data.updatePluginPatchUrl||'';docById('cfgUpdateFrameworkFullUrl').value=data.updateFrameworkFullUrl||'';docById('cfgUpdatePluginFullUrl').value=data.updatePluginFullUrl||'';docById('cfgUpdateChangeLog').value=data.updateChangeLog||'';docById('cfgUpdateConfigUrl').value=data.updateConfigUrl||''}catch{};if(currentUser){const uname=currentUser.username||'';docById('personalUser').value=uname;try{const admins=await api('/api/auth/admins');const self=admins.find(a=>a.username===uname||(currentUser.role==='super_master'&&a.role==='super_master')||a.username===uname.replace('qq_',''));if(self){docById('personalQQ').value=self.qq||'';docById('personalQQ').placeholder='修改QQ号后点保存（超级主人可修改）';}}catch{}}if(currentUser?.role==='super_master'){try{
   // 机器人筛选下拉
   try{const bots=await getBotsCached();docById('adminBotFilter').innerHTML='<option value="">全部机器人</option>'+bots.map(b=>'<option value="'+esc(b.appId)+'">'+esc(b.name)+'（'+esc(b.appId)+'）</option>').join('')}catch(e){}
   const botFilter=docById('adminBotFilter').value;
@@ -5278,6 +5362,9 @@ async function loadHyperlinks(){const data=await api('/api/system/hyperlinks');d
 // ===== 个人中心 =====
 function pfApplyProfile(d){
   docById('pfUsername').textContent=d.username||'-';
+  const emailEl=docById('pfEmail');
+  emailEl.textContent=d.email||'未绑定';
+  emailEl.style.color=d.email?'var(--text)':'var(--text2)';
   docById('pfQuota').textContent=(d.quota===null||d.quota===undefined)?'默认':String(d.quota);
   docById('pfCoins').textContent=String(typeof d.coins==='number'?d.coins:0);
   let created='-';
@@ -5318,6 +5405,40 @@ async function profileSaveNickname(){
     if(r&&r.ok)alert('✅ 昵称已保存');
     else alert('保存失败：'+((r&&r.error)||'未知错误'));
   }catch(e){alert('保存昵称失败：'+e.message)}
+}
+// ===== 绑定邮箱（本人，需邮箱验证码；含超级主人本人） =====
+let pfEmailCd=0,pfEmailTimer=null;
+function pfEmailStartCd(sec){
+  pfEmailCd=sec;
+  const btn=docById('pfEmailSendBtn');
+  btn.disabled=true;
+  const tick=()=>{
+    if(pfEmailCd<=0){btn.disabled=false;btn.textContent='发送验证码';clearInterval(pfEmailTimer);return}
+    btn.textContent='重新发送('+pfEmailCd+'s)';
+    pfEmailCd--;
+  };
+  tick();
+  pfEmailTimer=setInterval(tick,1000);
+}
+async function profileEmailSendCode(){
+  const email=docById('pfEmailInput').value.trim();
+  if(!email){alert('请输入新邮箱');return}
+  try{
+    const r=await api('/api/auth/email/send-code',{method:'POST',body:{email}});
+    if(r&&r.ok){alert('验证码已发送，请查收邮箱（含垃圾箱）');pfEmailStartCd(60)}
+    else alert('发送失败：'+((r&&r.error)||'未知错误'));
+  }catch(e){alert('发送验证码失败：'+e.message)}
+}
+async function profileEmailBind(){
+  const email=docById('pfEmailInput').value.trim();
+  const code=docById('pfEmailCode').value.trim();
+  if(!email){alert('请输入新邮箱');return}
+  if(!code){alert('请输入邮箱验证码');return}
+  try{
+    const r=await api('/api/auth/email/bind',{method:'POST',body:{email,code}});
+    if(r&&r.ok){docById('pfEmailCode').value='';pfApplyProfile(await api('/api/auth/profile'));alert('✅ 邮箱已绑定')}
+    else alert('绑定失败：'+((r&&r.error)||'未知错误'));
+  }catch(e){alert('绑定邮箱失败：'+e.message)}
 }
 async function profileChangePassword(){
   const old=docById('pfOldPwd').value,next=docById('pfNewPwd').value;
