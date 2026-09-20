@@ -7,6 +7,7 @@ import type { BotRegistry } from '../registry';
 import { getBot, getBotInstance } from '../../core/bot';
 import { querySystemLogs, querySystemLogsCount, deleteSystemLogs, clearSystemLogs, getDb, getConfig, setConfig } from '../../db/index';
 import { getBlocklist, addBlocked, removeBlocked } from '../../core/blocklist';
+import { isUsingDefaultChannel } from '../email';
 import {
   getSwitchStates,
   setSwitchState,
@@ -401,6 +402,7 @@ export function createSystemRoutes(
     const configured = Boolean(String(getConfig('smtp.host') || '').trim() && String(getConfig('smtp.user') || '').trim() && String(getConfig('smtp.pass') || '').trim());
     res.json({
       configured,
+      useDefault: isUsingDefaultChannel(),
       host: getConfig('smtp.host') || '',
       port: getConfig('smtp.port') || 465,
       secure: String(getConfig('smtp.secure') || '') === '1',

@@ -31,15 +31,36 @@ export interface SmtpConfig {
   from: string;
 }
 
+// 两级配置：超级主人后台配置（smtp.*）优先；未配置时回退系统默认通道（smtp.default.*，由部署者预置）
 export function getSmtpConfig(): SmtpConfig | null {
+  const levels: Array<{ prefix: string; maskedPass?: string }> = [
+    { prefix: 'smtp' },
+    { prefix: 'smtp.default' },
+  ];
+  for (const lv of levels) {
+    const host = String(getConfig(lv.prefix + '.host') || '').trim();
+    const user = String(getConfig(lv.prefix + '.user') || '').trim();
+    const pass = String(getConfig(lv.prefix + '.pass') || '').trim();
+    if (host && user && pass) {
+      const port = Math.trunc(Number(getConfig(lv.prefix + '.port')) || 465);
+      const secure = String(getConfig(lv.prefix + '.secure') || (port === 465 ? '1' : '0')) === '1';
+      const from = String(getConfig(lv.prefix + '.from') || '').trim() || user;
+      return { host, port, secure, user, pass, from };
+    }
+  }
+  return null;
+}
+
+// 当前生效的是否为系统默认通道（超主后台未配置自己的 SMTP 时）
+export function isUsingDefaultChannel(): boolean {
   const host = String(getConfig('smtp.host') || '').trim();
   const user = String(getConfig('smtp.user') || '').trim();
   const pass = String(getConfig('smtp.pass') || '').trim();
-  if (!host || !user || !pass) return null;
-  const port = Math.trunc(Number(getConfig('smtp.port')) || 465);
-  const secure = String(getConfig('smtp.secure') || (port === 465 ? '1' : '0')) === '1';
-  const from = String(getConfig('smtp.from') || '').trim() || user;
-  return { host, port, secure, user, pass, from };
+  if (host && user && pass) return false;
+  const dHost = String(getConfig('smtp.default.host') || '').trim();
+  const dUser = String(getConfig('smtp.default.user') || '').trim();
+  const dPass = String(getConfig('smtp.default.pass') || '').trim();
+  return Boolean(dHost && dUser && dPass);
 }
 
 function getTransport(): Transporter | null {
@@ -68,7 +89,7 @@ export function isValidEmail(email: string): boolean {
 
 async function sendMail(to: string, subject: string, html: string): Promise<void> {
   const transporter = getTransport();
-  if (!transporter) throw new Error('管理员尚未配置邮件服务（SMTP），请联系超级主人');
+  if (!transporter) throw new Error('系统邮件通道未就绪：请超级主人在 系统设置 → 邮件服务（SMTP） 中配置发件邮箱');
   const cfg = getSmtpConfig()!;
   await transporter.sendMail({ from: `"QQ Bot 面板" <${cfg.from}>`, to, subject, html });
 }

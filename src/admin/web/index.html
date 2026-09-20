@@ -1256,6 +1256,7 @@ input[type="file"]{color:var(--text2)}
       <button class="btn" id="pfEmailSendBtn" onclick="profileEmailSendCode()">发送验证码</button>
       <input id="pfEmailCode" maxlength="6" inputmode="numeric" placeholder="6 位验证码" style="width:140px">
       <button class="btn" onclick="profileEmailBind()">验证并绑定</button>
+      <span id="pfEmailMsg" style="font-size:12px;color:var(--danger);display:none"></span>
     </div>
   </div>
   <div class="card">
@@ -4500,8 +4501,8 @@ async function loadSmtpCard(){
     docById('smtpUser').value=d.user||'';
     docById('smtpPass').value=d.pass||'';
     docById('smtpFrom').value=d.from||'';
-    docById('smtpState').textContent=d.configured?'当前状态：已配置':'当前状态：未配置（注册与换绑邮箱验证码无法发送）';
-    docById('smtpState').style.color=d.configured?'var(--success)':'var(--warn)';
+    docById('smtpState').textContent=d.configured?'当前状态：已配置（超主自定义通道）':(d.useDefault?'当前状态：使用系统默认邮件通道':'当前状态：未配置（注册与换绑邮箱验证码无法发送）');
+    docById('smtpState').style.color=d.configured?'var(--success)':(d.useDefault?'var(--success)':'var(--warn)');
   }catch{}
 }
 async function smtpSave(){
@@ -5420,25 +5421,32 @@ function pfEmailStartCd(sec){
   tick();
   pfEmailTimer=setInterval(tick,1000);
 }
+function pfEmailMsg(text,ok){
+  const el=docById('pfEmailMsg');
+  el.textContent=text||'';
+  el.style.display=text?'':'none';
+  el.style.color=ok?'var(--success)':'var(--danger)';
+}
 async function profileEmailSendCode(){
   const email=docById('pfEmailInput').value.trim();
-  if(!email){alert('请输入新邮箱');return}
+  if(!email){pfEmailMsg('请输入新邮箱');return}
+  pfEmailMsg('发送中...',true);
   try{
     const r=await api('/api/auth/email/send-code',{method:'POST',body:{email}});
-    if(r&&r.ok){alert('验证码已发送，请查收邮箱（含垃圾箱）');pfEmailStartCd(60)}
-    else alert('发送失败：'+((r&&r.error)||'未知错误'));
-  }catch(e){alert('发送验证码失败：'+e.message)}
+    if(r&&r.ok){pfEmailMsg('验证码已发送，请查收邮箱（含垃圾箱）',true);pfEmailStartCd(60)}
+    else pfEmailMsg((r&&r.error)||'发送失败');
+  }catch(e){pfEmailMsg('发送验证码失败：'+e.message)}
 }
 async function profileEmailBind(){
   const email=docById('pfEmailInput').value.trim();
   const code=docById('pfEmailCode').value.trim();
-  if(!email){alert('请输入新邮箱');return}
-  if(!code){alert('请输入邮箱验证码');return}
+  if(!email){pfEmailMsg('请输入新邮箱');return}
+  if(!code){pfEmailMsg('请输入邮箱验证码');return}
   try{
     const r=await api('/api/auth/email/bind',{method:'POST',body:{email,code}});
-    if(r&&r.ok){docById('pfEmailCode').value='';pfApplyProfile(await api('/api/auth/profile'));alert('✅ 邮箱已绑定')}
-    else alert('绑定失败：'+((r&&r.error)||'未知错误'));
-  }catch(e){alert('绑定邮箱失败：'+e.message)}
+    if(r&&r.ok){docById('pfEmailCode').value='';pfEmailMsg('邮箱已绑定',true);pfApplyProfile(await api('/api/auth/profile'))}
+    else pfEmailMsg((r&&r.error)||'绑定失败');
+  }catch(e){pfEmailMsg('绑定邮箱失败：'+e.message)}
 }
 async function profileChangePassword(){
   const old=docById('pfOldPwd').value,next=docById('pfNewPwd').value;

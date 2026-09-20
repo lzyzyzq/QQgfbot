@@ -115,7 +115,7 @@ export function createAuthRoutes(auth: AdminAuth): Router {
     if (!isValidEmail(e)) { res.status(400).json({ error: '邮箱格式不正确' }); return; }
     if (auth.getAdmins().some((a) => a.username.toLowerCase() === u.toLowerCase())) { res.status(400).json({ error: '用户名已被占用' }); return; }
     if (auth.getAdmins().some((a) => (a.email || '').toLowerCase() === e.toLowerCase())) { res.status(400).json({ error: '该邮箱已被其他账号绑定' }); return; }
-    if (!isMailConfigured()) { res.status(500).json({ error: '管理员尚未配置邮件服务（SMTP），请联系超级主人' }); return; }
+    if (!isMailConfigured()) { res.status(500).json({ error: '系统邮件通道未就绪：请超级主人在 系统设置 → 邮件服务（SMTP） 中配置发件邮箱' }); return; }
     try {
       const r = await sendEmailCode('register', e);
       if (!r.sent) { res.status(429).json({ error: `发送过于频繁，请 ${r.retryAfter} 秒后再试` }); return; }
@@ -167,7 +167,7 @@ export function createAuthRoutes(auth: AdminAuth): Router {
     if (auth.getAdmins().some((a) => a.username !== req.adminUser!.username && (a.email || '').toLowerCase() === e.toLowerCase())) {
       res.status(400).json({ error: '该邮箱已被其他账号绑定' }); return;
     }
-    if (!isMailConfigured()) { res.status(500).json({ error: '管理员尚未配置邮件服务（SMTP），请联系超级主人' }); return; }
+    if (!isMailConfigured()) { res.status(500).json({ error: '系统邮件通道未就绪：请超级主人在 系统设置 → 邮件服务（SMTP） 中配置发件邮箱' }); return; }
     try {
       const r = await sendEmailCode('bind', e);
       if (!r.sent) { res.status(429).json({ error: `发送过于频繁，请 ${r.retryAfter} 秒后再试` }); return; }
