@@ -946,6 +946,7 @@ input[type="file"]{color:var(--text2)}
       <div class="form-group"><label>授权码/密码</label><input id="smtpPass" type="password" placeholder="SMTP 授权码"></div>
       <div class="form-group"><label>发件人地址（可留空=发件账号）</label><input id="smtpFrom" placeholder="your@qq.com"></div>
     </div>
+    <div class="form-group"><label>发件人显示名（收件箱里展示的平台名字）</label><input id="smtpSenderName" placeholder="QQ Bot 面板" maxlength="40"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-primary" onclick="smtpSave()">保存配置</button>
       <input id="smtpTestTo" type="email" placeholder="测试收件邮箱" style="width:220px">
@@ -4501,6 +4502,7 @@ async function loadSmtpCard(){
     docById('smtpUser').value=d.user||'';
     docById('smtpPass').value=d.pass||'';
     docById('smtpFrom').value=d.from||'';
+    docById('smtpSenderName').value=d.senderName||'';
     docById('smtpState').textContent=d.configured?'当前状态：已配置（超主自定义通道）':(d.useDefault?'当前状态：使用系统默认邮件通道':'当前状态：未配置（注册与换绑邮箱验证码无法发送）');
     docById('smtpState').style.color=d.configured?'var(--success)':(d.useDefault?'var(--success)':'var(--warn)');
   }catch{}
@@ -4509,7 +4511,7 @@ async function smtpSave(){
   const host=docById('smtpHost').value.trim(),user=docById('smtpUser').value.trim(),pass=docById('smtpPass').value.trim();
   if(!host||!user||!pass){alert('host、发件账号、授权码均必填');return}
   try{
-    const r=await api('/api/system/smtp',{method:'PUT',body:{host,port:Number(docById('smtpPort').value)||465,secure:docById('smtpSecure').checked,user,pass,from:docById('smtpFrom').value.trim()}});
+    const r=await api('/api/system/smtp',{method:'PUT',body:{host,port:Number(docById('smtpPort').value)||465,secure:docById('smtpSecure').checked,user,pass,from:docById('smtpFrom').value.trim(),senderName:docById('smtpSenderName').value.trim()}});
     if(r&&r.ok){alert('✅ SMTP 配置已保存');loadSmtpCard()}
     else alert('保存失败：'+((r&&r.error)||'未知错误'));
   }catch(e){alert('保存失败：'+e.message)}

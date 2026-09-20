@@ -409,11 +409,12 @@ export function createSystemRoutes(
       user: getConfig('smtp.user') || '',
       pass: configured ? '******' : '',
       from: getConfig('smtp.from') || '',
+      senderName: getConfig('smtp.senderName') || getConfig('smtp.default.senderName') || 'QQ Bot 面板',
     });
   });
 
   router.put('/smtp', requireSuperMaster, (req: Request, res: Response) => {
-    const { host, port, secure, user, pass, from } = req.body || {};
+    const { host, port, secure, user, pass, from, senderName } = req.body || {};
     if (!String(host || '').trim() || !String(user || '').trim() || !String(pass || '').trim()) {
       res.status(400).json({ error: 'host、user、pass 均必填' });
       return;
@@ -425,6 +426,7 @@ export function createSystemRoutes(
       setConfig('smtp.user', String(user).trim());
       setConfig('smtp.pass', String(pass).trim());
       setConfig('smtp.from', String(from || '').trim());
+      if (senderName !== undefined) setConfig('smtp.senderName', String(senderName).trim());
       res.json({ ok: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });

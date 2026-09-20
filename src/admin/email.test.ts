@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// 持久化 KV 的测试内存实现（emailcode.* 直接落在 kvStore，随测试隔离）
+
 // SMTP 配置固定为已配置状态；nodemailer transporter mock 掉（不真实发信）
+const kvStore = new Map<string, string>();
 vi.mock('../db/index', () => ({
   getConfig: vi.fn((key: string) => {
     const map: Record<string, string> = {
@@ -11,7 +14,12 @@ vi.mock('../db/index', () => ({
       'smtp.pass': 'secret',
       'smtp.from': 'bot@test.local',
     };
-    return map[key] || '';
+    if (key in map) return map[key];
+    return kvStore.get(key) ?? '';
+  }),
+  setConfig: vi.fn((key: string, value: string) => {
+    if (value === '') kvStore.delete(key);
+    else kvStore.set(key, value);
   }),
 }));
 vi.mock('nodemailer', () => ({
@@ -88,7 +96,7 @@ describe('邮箱验证码引擎', () => {
     const html: string = transport.sendMail.mock.calls[(transport.sendMail.mock.calls.length - 1)][0].html;
     const code = (html.match(/(\d{6})/) || [])[1];
     vi.advanceTimersByTime(10 * 60 * 1000 + 1000);
-    expect(() => verifyEmailCode('bind', 'exp@test.com', code)).toThrow('验证码已过期');
+    expect(() => verifyEmailCode('bind', 'exp@test.com', code)).toThrow('验证码不存在或已过期');
   });
 
   it('scene 隔离：register 与 bind 验证码互不通用', async () => {
