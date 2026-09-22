@@ -544,9 +544,25 @@ input[type="file"]{color:var(--text2)}
         <option value="">全部状态</option><option value="pending">待审核</option><option value="approved">已上架</option><option value="rejected">已驳回</option>
       </select>
       <select id="mkImportSel" style="padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px"><option value="">选择本地词库导入...</option></select>
+      <select id="mkImportPluginSel" style="padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px"><option value="">选择本地插件上架...</option></select>
+      <input id="mkImportPrice" type="number" min="0" max="9999" placeholder="定价金币(0=免费)" style="width:130px;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px">
       <button class="btn btn-outline btn-xs" onclick="mkImportLocal()">导入为系统内置</button>
+      <button class="btn btn-outline btn-xs" onclick="mkImportLocal('plugin')">审核并上架插件</button>
     </div>
     <div class="table-wrap"><table><thead><tr><th>名称</th><th>作者</th><th>价格</th><th>词条</th><th>下载</th><th>内置</th><th>权限</th><th>状态</th><th>操作</th></tr></thead><tbody id="mkAdminList"></tbody></table></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalMkSource"><div class="modal wide" style="max-width:920px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+      <h3 style="margin:0;font-size:15px" id="mkSourceTitle">源码预览</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="mkSourceMeta" style="font-size:12px;color:var(--text2)"></span>
+        <button class="btn btn-outline btn-xs" onclick="mkSourceCopy()">复制全部</button>
+        <button class="btn btn-outline btn-xs" onclick="closeModal('modalMkSource')">关闭</button>
+      </div>
+    </div>
+    <pre id="mkSourcePre" style="margin:0;max-height:70vh;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.6;color:var(--text);white-space:pre;tab-size:4"></pre>
   </div>
 </div>
 
@@ -2445,6 +2461,8 @@ function mkCardHtml(it){
   if(it.installed)action='<button class="btn btn-outline btn-sm" disabled>已安装</button>';
   else if(it.price>0)action='<button class="btn btn-primary btn-sm" onclick="mkInstall(\''+esc(it.id)+'\')">安装 · '+it.price+'金币</button>';
   else action='<button class="btn btn-primary btn-sm" onclick="mkInstall(\''+esc(it.id)+'\')">安装</button>';
+  const srcBtn='<button class="btn btn-outline btn-sm" onclick="mkSourceView(\''+esc(it.id)+'\')" title="查看完整源码">源码</button>';
+  action=srcBtn+' '+action;
   const mineTag=it.mine?'<span class="tag" style="background:rgba(14,165,233,.15);color:#0ea5e9">我的</span>':'';
   const countLabel=isPlugin?'插件文件':((it.entryCount||0)+'条');
   return '<div class="card" style="margin:0;display:flex;flex-direction:column;gap:6px">'+
@@ -2542,6 +2560,9 @@ async function mkAdminLoad(){
     const prev=docById('mkImportSel').value;
     docById('mkImportSel').innerHTML='<option value="">选择本地词库导入...</option>'+(lf.files||[]).map(f=>'<option value="'+esc(f)+'">'+esc(f)+'</option>').join('');
     if(prev)docById('mkImportSel').value=prev;
+    const prevP=docById('mkImportPluginSel').value;
+    docById('mkImportPluginSel').innerHTML='<option value="">选择本地插件上架...</option>'+(lf.plugins||[]).map(f=>'<option value="'+esc(f)+'">'+esc(f)+'</option>').join('');
+    if(prevP)docById('mkImportPluginSel').value=prevP;
   }catch(e){}
   try{
     const st=docById('mkStatusFilter').value;
@@ -2553,7 +2574,7 @@ async function mkAdminLoad(){
       const review=r.status==='pending'
         ?'<button class="btn btn-success btn-xs" onclick="mkReview(\''+esc(r.id)+'\',\'approve\')">通过</button> <button class="btn btn-warn btn-xs" onclick="mkReview(\''+esc(r.id)+'\',\'reject\')">驳回</button> '
         :'';
-      return '<tr><td>'+esc(r.name)+'<div style="font-size:11px;color:var(--text2)">'+esc(r.version)+'</div></td><td>'+esc(r.author||'-')+'</td><td>'+(r.price>0?r.price+' 金币':'免费')+'</td><td>'+(r.entry_count||0)+'</td><td>'+(r.downloads||0)+'</td><td>'+(r.is_builtin?'<span style="color:#8b5cf6">内置</span>':'-')+'</td><td>'+arCN+'</td><td>'+(statusCN[r.status]||r.status)+'</td><td style="white-space:nowrap">'+review+'<button class="btn btn-outline btn-xs" onclick="mkEditOpen(\''+esc(r.id)+'\')">编辑</button> <button class="btn btn-danger btn-xs" onclick="mkAdminDel(\''+esc(r.id)+'\')">删除</button></td></tr>';
+      return '<tr><td>'+esc(r.name)+'<div style="font-size:11px;color:var(--text2)">'+esc(r.version)+'</div></td><td>'+esc(r.author||'-')+'</td><td>'+(r.price>0?r.price+' 金币':'免费')+'</td><td>'+(r.entry_count||0)+'</td><td>'+(r.downloads||0)+'</td><td>'+(r.is_builtin?'<span style="color:#8b5cf6">内置</span>':'-')+'</td><td>'+arCN+'</td><td>'+(statusCN[r.status]||r.status)+'</td><td style="white-space:nowrap">'+review+'<button class="btn btn-outline btn-xs" onclick="mkSourceView(\''+esc(r.id)+'\')">源码</button> <button class="btn btn-outline btn-xs" onclick="mkEditOpen(\''+esc(r.id)+'\')">编辑</button> <button class="btn btn-danger btn-xs" onclick="mkAdminDel(\''+esc(r.id)+'\')">删除</button></td></tr>';
     }).join(''):'<tr><td colspan="9" style="color:var(--text2);text-align:center;padding:10px">暂无词库</td></tr>';
   }catch(e){}
 }
@@ -2573,13 +2594,48 @@ async function mkReview(id,action){
   try{await api('/api/market/admin/review',{method:'POST',body:{id,action}});mkAdminLoad();mkLoadItems();}catch(e){alert('操作失败：'+(e.message||e))}
 }
 
-async function mkImportLocal(){
-  const file=docById('mkImportSel').value;
-  if(!file){alert('请先选择本地词库文件');return;}
+// 超主从 plugins 文件夹上架（词库/插件）：审核直接置为已上架，可定价
+async function mkImportLocal(type){
+  const isPlugin=type==='plugin';
+  const sel=docById(isPlugin?'mkImportPluginSel':'mkImportSel');
+  const file=sel.value;
+  if(!file){alert(isPlugin?'请先选择本地插件文件':'请先选择本地词库文件');return;}
+  const price=Math.max(0,Math.min(9999,Math.trunc(Number(docById('mkImportPrice').value)||0)));
+  const name=prompt('上架名称（展示在市场）',file.replace(/\.(txt|js|mjs|py)$/i,''));
+  if(name===null)return;
+  const desc=prompt('上架描述（可留空）','')||'';
   try{
-    await api('/api/market/admin/import',{method:'POST',body:{file}});
-    alert('已导入为系统内置条目并上架');mkAdminLoad();mkLoadItems(1);
-  }catch(e){alert('导入失败：'+(e.message||e))}
+    const r=await api('/api/market/admin/import',{method:'POST',body:{type:isPlugin?'plugin':'dict',file,name:name.trim()||file,description:desc,price}});
+    alert(isPlugin
+      ?('插件已审核上架'+(price>0?('，定价 '+price+' 金币'):'（免费）')+'，源码可在市场卡片「源码」查看')
+      :('词库已导入为系统内置条目'+(price>0?('，定价 '+price+' 金币'):'（免费）')));
+    mkAdminLoad();mkLoadItems(1);
+  }catch(e){alert('上架失败：'+(e.message||e))}
+}
+
+// ===== 市场源码预览（完整展示上架内容代码） =====
+let _mkSourceText='';
+async function mkSourceView(id){
+  try{
+    const d=await api('/api/market/items/'+encodeURIComponent(id)+'/source');
+    _mkSourceText=d.content||'';
+    docById('mkSourceTitle').textContent='源码预览 - '+(d.name||id);
+    docById('mkSourceMeta').textContent=(d.type==='plugin'?'插件':'词库')+(d.fileName?(' · '+d.fileName):'')+' · '+d.lineCount+' 行 · 作者 '+(d.author||'-');
+    // 行号渲染
+    const lines=_mkSourceText.split('\n');
+    const gutter=lines.map((_,i)=>String(i+1)).join('\n');
+    docById('mkSourcePre').innerHTML='<div style="display:flex"><span style="flex:none;padding-right:12px;text-align:right;color:var(--text2);user-select:none;border-right:1px solid var(--border);margin-right:12px">'+esc(gutter)+'</span><span style="white-space:pre-wrap;word-break:break-all;flex:1">'+esc(_mkSourceText)+'</span></div>';
+    openModal('modalMkSource');
+  }catch(e){alert('源码加载失败：'+(e.message||e))}
+}
+function mkSourceCopy(){
+  if(!_mkSourceText)return;
+  const ta=document.createElement('textarea');
+  ta.value=_mkSourceText;
+  document.body.appendChild(ta);
+  ta.select();
+  try{document.execCommand('copy');alert('已复制到剪贴板')}catch(e){}
+  document.body.removeChild(ta);
 }
 
 async function mkAdminDel(id){

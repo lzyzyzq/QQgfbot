@@ -327,7 +327,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     res.json({ items: rows });
   });
 
-  // 从本地导入（词库：plugins/词库/*.txt；插件：plugins/*.js|mjs|py）为系统内置条目
+  // 从本地导入（词库：plugins/词库/*.txt；插件：plugins/*.js|mjs|py）为系统内置条目（超主直接审核上架，可定价）
   router.post('/admin/import', requireSuperMaster, (req: Request, res: Response) => {
     const body = req.body || {};
     const type = body.type === 'plugin' ? 'plugin' : 'dict';
@@ -337,24 +337,51 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     if (!fs.existsSync(full)) {
       res.status(404).json({ error: '文件不存在（plugins' + (type === 'plugin' ? '/' : '/词库/') + file + '）' }); return;
     }
+    // 上架定价：0=免费，最高 9999 金币
+    let price = Math.trunc(Number(body.price) || 0);
+    if (!Number.isFinite(price) || price < 0) price = 0;
+    if (price > 9999) price = 9999;
     const content = fs.readFileSync(full, 'utf-8');
     const db = getDb();
     const id = 'mk_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     db.prepare(
       `INSERT INTO market_items (id, name, type, version, description, category, author, price, entry_count, content, status, is_builtin, allowed_roles, owner, file_name)
-       VALUES (?, ?, ?, '1.0.0', ?, '通用', ?, 0, ?, ?, 'approved', 1, 'all', ?, ?)`
+       VALUES (?, ?, ?, '1.0.0', ?, '通用', ?, ?, ?, ?, 'approved', 1, 'all', ?, ?)`
     ).run(
       id,
       String(body.name || file.replace(/\.(txt|js|mjs|py)$/i, '')).trim(),
       type,
       String(body.description || '').slice(0, 500),
       req.adminUser!.username,
+      price,
       type === 'plugin' ? 0 : countEntries(content),
       content,
       req.adminUser!.username,
       file
     );
-    res.json({ ok: true, id });
+    res.json({ ok: true, id, price });
+  });
+
+  // 市场条目源码预览（把上架内容的完整代码展示出来；approved/内置所有人可看，pending 仅本人与超主）
+  router.get('/items/:id/source', (req: Request, res: Response) => {
+    const me = req.adminUser!;
+    const db = getDb();
+    const item = db.prepare('SELECT * FROM market_items WHERE id = ?').get(String(req.params.id)) as any;
+    if (!item) { res.status(404).json({ error: '条目不存在' }); return; }
+    const isSuper = me.role === 'super_master';
+    const visible = item.status === 'approved' || item.is_builtin || item.owner === me.username || isSuper;
+    if (!visible) { res.status(403).json({ error: '该条目尚未上架，暂不可查看源码' }); return; }
+    const content = String(item.content || '');
+    res.json({
+      id: item.id,
+      name: item.name,
+      type: item.type === 'plugin' ? 'plugin' : 'dict',
+      author: item.author || '',
+      price: item.price || 0,
+      fileName: item.file_name || '',
+      lineCount: content ? content.split('\n').length : 0,
+      content,
+    });
   });
 
   // 本地文件清单（供导入：词库 + 插件）
