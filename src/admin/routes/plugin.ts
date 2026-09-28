@@ -149,6 +149,18 @@ function canEditPlugin(req: Request, name: string, auth?: AdminAuth): boolean {
   return !!owner && owner === username;
 }
 
+// 新建插件门槛：超级主人 / 认证开发者（isDeveloper）/ 持有 canUploadPlugin 权限的用户
+function canCreatePlugin(req: Request, auth?: AdminAuth): boolean {
+  if (req.adminUser?.role === 'super_master') return true;
+  const username = req.adminUser?.username || '';
+  if (auth) {
+    if (auth.getUser(username)?.isDeveloper === true) return true;
+    const perms = getUserPermissions(auth, username);
+    if (perms && perms.canUploadPlugin) return true;
+  }
+  return false;
+}
+
 import type { AdminAuth } from '../auth';
 
 // 定位插件入口文件（供代码读写 GET/PUT /:name/code 与 gen-card 注入共用）：
@@ -567,6 +579,11 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
       }
       res.status(status).json({ error: message, detail: detail?.toString() || undefined });
     };
+
+    // 新建插件必须是认证开发者（或超主/持有上传权限），普通登录用户直接拒绝
+    if (!canCreatePlugin(req, auth)) {
+      return sendError(403, '新建插件需要认证开发者资格，请联系超级主人开通');
+    }
 
     try {
       const file = req.file;
@@ -1940,7 +1957,12 @@ export function createPluginRoutes(pluginsDir: string, auth?: AdminAuth): Router
   });
 
   // 新建词库（词库管理页「新建词库」弹窗）：词库名称/版本/作者/联系方式/简介/图标URL + 上传或粘贴 txt
-  router.post('/_dict/create', requireSuperMaster, async (req: Request, res: Response) => {
+  router.post('/_dict/create', async (req: Request, res: Response) => {
+    // 新建词库门槛与新建插件一致：超级主人 / 认证开发者 / 持有上传插件权限的用户；普通用户走「分享词库」流程
+    if (!canCreatePlugin(req, auth)) {
+      res.status(403).json({ error: '新建词库需要认证开发者资格，请联系超级主人开通' });
+      return;
+    }
     try {
       const body = req.body || {};
       const name = String(body.name || '').trim().replace(/\.txt$/i, '');

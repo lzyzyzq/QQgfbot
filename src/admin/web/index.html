@@ -510,7 +510,7 @@ input[type="file"]{color:var(--text2)}
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn btn-outline btn-sm" onclick="mkShowMine()">我的发布</button>
         <button class="btn btn-outline btn-sm" onclick="mkShowPublish()">分享词库</button>
-        <button class="btn btn-outline btn-sm" id="mkNewDictBtn" onclick="mkNewDict()">新建词库</button>
+        <button class="btn btn-outline btn-sm" id="mkNewDictBtn" style="display:none" onclick="mkNewDict()" title="新建词库需要认证开发者资格，普通用户可使用「分享词库」直接发布">新建词库</button>
         <button class="btn btn-primary btn-sm" id="mkNewPluginBtn" style="display:none" onclick="mkNewPlugin()" title="新建插件需要认证开发者资格，请联系超级主人开通">新建插件</button>
         <button class="btn btn-outline btn-sm" id="mkAdminBtn" style="display:none" onclick="mkToggleAdmin()">超主管理</button>
       </div>
@@ -2451,8 +2451,10 @@ let _mkPage=1,_mkPages=1,_mkAdminOpen=false,_mkEditTarget='',_mkEditSource='admi
 async function mkLoadPage(){
   const isSuper=currentUser?.role==='super_master';
   docById('mkAdminBtn').style.display=isSuper?'':'none';
-  // 新建插件仅认证开发者（或超主）可用；新建词库所有人可用
-  docById('mkNewPluginBtn').style.display=(isSuper||currentUser?.isDeveloper===true)?'':'none';
+  // 新建插件/词库仅认证开发者（或超主）可用；普通用户走「分享词库」直接发布
+  const isDev=isSuper||currentUser?.isDeveloper===true;
+  docById('mkNewPluginBtn').style.display=isDev?'':'none';
+  docById('mkNewDictBtn').style.display=isDev?'':'none';
   await mkLoadMe();
   await mkLoadItems(1);
   if(_mkAdminOpen)mkAdminLoad();
