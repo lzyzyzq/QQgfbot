@@ -545,11 +545,27 @@ input[type="file"]{color:var(--text2)}
       </select>
       <select id="mkImportSel" style="padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px"><option value="">选择本地词库导入...</option></select>
       <select id="mkImportPluginSel" style="padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px"><option value="">选择本地插件上架...</option></select>
-      <input id="mkImportPrice" type="number" min="0" max="9999" placeholder="定价金币(0=免费)" style="width:130px;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px">
       <button class="btn btn-outline btn-xs" onclick="mkImportLocal()">导入为系统内置</button>
       <button class="btn btn-outline btn-xs" onclick="mkImportLocal('plugin')">审核并上架插件</button>
     </div>
     <div class="table-wrap"><table><thead><tr><th>名称</th><th>作者</th><th>价格</th><th>词条</th><th>下载</th><th>内置</th><th>权限</th><th>状态</th><th>操作</th></tr></thead><tbody id="mkAdminList"></tbody></table></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalMkPublish"><div class="modal">
+    <h3>上架到市场 <span id="mkPublishTypeTag" style="font-size:12px;color:var(--accent);font-weight:400"></span></h3>
+    <div class="form-group"><label>本地文件</label><input id="mkPublishFile" disabled style="opacity:.7"></div>
+    <div class="form-group"><label>名称（展示在市场）</label><input id="mkPublishName" maxlength="60" placeholder="例如：报时插件"></div>
+    <div class="form-group"><label>描述</label><input id="mkPublishDesc" maxlength="200" placeholder="功能简介（可留空）"></div>
+    <div class="form-row">
+      <div class="form-group" style="flex:1"><label>定价（金币，0=免费）</label><input id="mkPublishPrice" type="number" min="0" max="9999" placeholder="0"></div>
+      <div class="form-group" style="flex:1"><label>可见/可购权限</label><select id="mkPublishRoles" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)"><option value="all">所有人</option><option value="master">仅主人</option><option value="master,member">主人+会员</option><option value="master,member,user">主人+会员+用户</option></select></div>
+    </div>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--text2)">上架即通过审核为系统内置条目；源码将可在市场直接预览</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('modalMkPublish')">取消</button>
+      <button class="btn btn-primary" id="mkPublishSubmitBtn" onclick="mkPublishSubmit()">审核并上架</button>
+    </div>
   </div>
 </div>
 
@@ -2594,23 +2610,47 @@ async function mkReview(id,action){
   try{await api('/api/market/admin/review',{method:'POST',body:{id,action}});mkAdminLoad();mkLoadItems();}catch(e){alert('操作失败：'+(e.message||e))}
 }
 
-// 超主从 plugins 文件夹上架（词库/插件）：审核直接置为已上架，可定价
-async function mkImportLocal(type){
+// 超主从 plugins 文件夹上架（词库/插件）：打开上架弹窗（名称/描述/定价/权限一次填齐）
+function mkImportLocal(type){
   const isPlugin=type==='plugin';
   const sel=docById(isPlugin?'mkImportPluginSel':'mkImportSel');
   const file=sel.value;
   if(!file){alert(isPlugin?'请先选择本地插件文件':'请先选择本地词库文件');return;}
-  const price=Math.max(0,Math.min(9999,Math.trunc(Number(docById('mkImportPrice').value)||0)));
-  const name=prompt('上架名称（展示在市场）',file.replace(/\.(txt|js|mjs|py)$/i,''));
-  if(name===null)return;
-  const desc=prompt('上架描述（可留空）','')||'';
+  docById('mkPublishTypeTag').textContent=isPlugin?'· 插件':'· 词库';
+  docById('mkPublishFile').value=(isPlugin?'plugins/':'plugins/词库/')+file;
+  docById('mkPublishName').value=file.replace(/\.(txt|js|mjs|py)$/i,'');
+  docById('mkPublishDesc').value='';
+  docById('mkPublishPrice').value='0';
+  docById('mkPublishRoles').value='all';
+  docById('mkPublishSubmitBtn').disabled=false;
+  docById('mkPublishSubmitBtn').textContent='审核并上架';
+  docById('modalMkPublish').setAttribute('data-type',isPlugin?'plugin':'dict');
+  openModal('modalMkPublish');
+}
+async function mkPublishSubmit(){
+  const isPlugin=docById('modalMkPublish').getAttribute('data-type')==='plugin';
+  const file=(isPlugin?docById('mkImportPluginSel'):docById('mkImportSel')).value;
+  if(!file){alert('文件已失效，请重新选择');closeModal('modalMkPublish');return}
+  const name=docById('mkPublishName').value.trim();
+  if(!name){alert('请填写名称');return}
+  const desc=docById('mkPublishDesc').value.trim();
+  const price=Math.max(0,Math.min(9999,Math.trunc(Number(docById('mkPublishPrice').value)||0)));
+  const roles=docById('mkPublishRoles').value||'all';
+  const btn=docById('mkPublishSubmitBtn');
+  btn.disabled=true;
+  btn.textContent='上架中...';
   try{
-    const r=await api('/api/market/admin/import',{method:'POST',body:{type:isPlugin?'plugin':'dict',file,name:name.trim()||file,description:desc,price}});
+    await api('/api/market/admin/import',{method:'POST',body:{type:isPlugin?'plugin':'dict',file,name,description:desc,price,allowed_roles:roles}});
+    closeModal('modalMkPublish');
     alert(isPlugin
       ?('插件已审核上架'+(price>0?('，定价 '+price+' 金币'):'（免费）')+'，源码可在市场卡片「源码」查看')
       :('词库已导入为系统内置条目'+(price>0?('，定价 '+price+' 金币'):'（免费）')));
     mkAdminLoad();mkLoadItems(1);
-  }catch(e){alert('上架失败：'+(e.message||e))}
+  }catch(e){
+    alert('上架失败：'+(e.message||e));
+    btn.disabled=false;
+    btn.textContent='审核并上架';
+  }
 }
 
 // ===== 市场源码预览（完整展示上架内容代码） =====

@@ -341,12 +341,16 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     let price = Math.trunc(Number(body.price) || 0);
     if (!Number.isFinite(price) || price < 0) price = 0;
     if (price > 9999) price = 9999;
+    // 可见/可购权限：all 或角色白名单（master/member/user 逗号分隔），非法值回退 all
+    const rolesRaw = String(body.allowed_roles || 'all').trim();
+    const validRoles = ['master', 'member', 'user'];
+    const roles = rolesRaw === 'all' ? 'all' : (rolesRaw.split(',').map((x: string) => x.trim()).filter((x: string) => validRoles.includes(x)).join(',') || 'all');
     const content = fs.readFileSync(full, 'utf-8');
     const db = getDb();
     const id = 'mk_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     db.prepare(
       `INSERT INTO market_items (id, name, type, version, description, category, author, price, entry_count, content, status, is_builtin, allowed_roles, owner, file_name)
-       VALUES (?, ?, ?, '1.0.0', ?, '通用', ?, ?, ?, ?, 'approved', 1, 'all', ?, ?)`
+       VALUES (?, ?, ?, '1.0.0', ?, '通用', ?, ?, ?, ?, 'approved', 1, ?, ?, ?)`
     ).run(
       id,
       String(body.name || file.replace(/\.(txt|js|mjs|py)$/i, '')).trim(),
@@ -356,6 +360,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
       price,
       type === 'plugin' ? 0 : countEntries(content),
       content,
+      roles,
       req.adminUser!.username,
       file
     );
