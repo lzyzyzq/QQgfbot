@@ -510,6 +510,8 @@ input[type="file"]{color:var(--text2)}
       <div style="margin-left:auto;display:flex;gap:8px">
         <button class="btn btn-outline btn-sm" onclick="mkShowMine()">我的发布</button>
         <button class="btn btn-outline btn-sm" onclick="mkShowPublish()">分享词库</button>
+        <button class="btn btn-outline btn-sm" id="mkNewDictBtn" onclick="mkNewDict()">新建词库</button>
+        <button class="btn btn-primary btn-sm" id="mkNewPluginBtn" style="display:none" onclick="mkNewPlugin()" title="新建插件需要认证开发者资格，请联系超级主人开通">新建插件</button>
         <button class="btn btn-outline btn-sm" id="mkAdminBtn" style="display:none" onclick="mkToggleAdmin()">超主管理</button>
       </div>
     </div>
@@ -854,7 +856,7 @@ input[type="file"]{color:var(--text2)}
 <div class="page" id="page-plugins">
   <h2>插件管理</h2>
   <div class="action-bar">
-    <button class="btn btn-primary" id="btnAddPlugin" onclick="showCreatePlugin()">新建插件</button>
+    <button class="btn btn-primary" id="btnAddPlugin" onclick="showCreatePlugin()" title="新建插件需要认证开发者资格，请联系超级主人开通">新建插件</button>
     <button class="btn btn-outline" onclick="window.open('/docs/BotAPI参考.md','_blank')">开发文档</button>
     <button class="btn btn-outline" onclick="loadPlugins()">刷新</button>
   </div>
@@ -2038,12 +2040,11 @@ function updateSidebar(){
   if(restartBtn)restartBtn.style.display=currentUser?.role==='super_master'?'':'none';
   docById('botBadge').textContent=botCount;
   const isSuper=currentUser?.role==='super_master';
-  const limited=['dashboard','bots','ai','market','membersync','plugins','dicts','runlog','authcodes'];
+  const limited=['dashboard','bots','ai','market','membersync','plugins','dicts','runlog','authcodes','profile'];
   // 超主设置过 allowedPages 时按其过滤（空/未设置=角色默认 limited），超主不受限
   const allowedPages=isSuper?null:(Array.isArray(currentUser?.allowedPages)&&currentUser.allowedPages.length?currentUser.allowedPages:limited);
   document.querySelectorAll('.nav-item').forEach(n=>{
     const p=n.getAttribute('data-page');
-    if(p==='profile')return; // 个人中心对所有角色可见
     n.style.display=(isSuper||allowedPages.includes(p))?'':'none';
   });
   const genBtn=docById('authCodeGenBtn');
@@ -2356,12 +2357,24 @@ async function aiUserLoad(){
     const roleLabels={super_master:'超级主人',master:'主人',member:'会员',user:'普通用户'};
     docById('aiUserList').innerHTML=(admins||[]).map(a=>{
       const isSuper=a.role==='super_master';
-      return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
+      const devTag=isSuper?' <span class="tag tag-approved" style="font-size:11px">开发者</span>':(a.isDeveloper?' <span class="tag tag-approved" style="font-size:11px">认证开发者</span>':'');
+      return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+devTag+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
       '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+' <button class="btn btn-outline btn-xs" onclick="aiEmailEdit(\''+esc(a.username)+'\',\''+esc(a.email||'')+'\')">修改邮箱</button></td>'+
-      '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
-      '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',-1)">-1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏权限</button>')+'</td></tr>';
+      '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
+      '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',-1)">-1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏权限</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button>')+'</td></tr>';
     }).join('');
   }catch(e){}
+}
+
+// 超主授予/撤销「认证开发者」资格：持有者可在市场新建插件并发布
+async function aiDevToggle(username,current){
+  const to=!current;
+  if(!confirm((to?'授予':'撤销')+'用户「'+username+'」的认证开发者资格？'+(to?'授予后其可在插件词库市场新建插件并发布':'撤销后其将无法再新建插件，已发布内容不受影响')+''))return;
+  try{
+    await api('/api/auth/admins/'+encodeURIComponent(username),{method:'PUT',body:{isDeveloper:to}});
+    alert((to?'已授予':'已撤销')+'认证开发者资格');
+    aiUserLoad();
+  }catch(e){alert('操作失败：'+e.message)}
 }
 
 // 超主直接修改任意用户邮箱（免验证码）；清空传空串
@@ -2438,10 +2451,18 @@ let _mkPage=1,_mkPages=1,_mkAdminOpen=false,_mkEditTarget='',_mkEditSource='admi
 async function mkLoadPage(){
   const isSuper=currentUser?.role==='super_master';
   docById('mkAdminBtn').style.display=isSuper?'':'none';
+  // 新建插件仅认证开发者（或超主）可用；新建词库所有人可用
+  docById('mkNewPluginBtn').style.display=(isSuper||currentUser?.isDeveloper===true)?'':'none';
   await mkLoadMe();
   await mkLoadItems(1);
   if(_mkAdminOpen)mkAdminLoad();
 }
+
+// 市场内新建：先走新建弹窗保存到插件/词库管理，成功后自动带入分享弹窗继续发布
+let _npAfterCreate='';
+let _ndAfterCreate='';
+function mkNewPlugin(){showCreatePlugin();_npAfterCreate='market'}
+function mkNewDict(){showCreateDict();_ndAfterCreate='market'}
 
 // 赞助文案渲染：支持 [文字](https://url) 指定跳转链接，独立 http(s) 链接也自动可点；先 esc 再替换防 XSS
 function sponsorHtml(t){
@@ -4374,7 +4395,10 @@ try{
   res.style.display='block';res.style.background='#052e16';res.style.color='var(--success)';res.textContent=data.message||'操作成功';
 }catch(e){res.style.display='block';res.style.background='#450a0a';res.style.color='var(--danger)';res.textContent='操作失败: '+e.message}}
 
- async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);docById('pluginList').innerHTML=data.map(p=>{let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';if(p.blocked)badge+=' <span class="tag" style="background:rgba(239,68,68,.18);color:var(--danger)">已封禁</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));const enState=p.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';let action='';if(isSuper&&s==='pending'){action+='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action+='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';action+='<button class="btn btn-xs '+(p.blocked?'btn-success':'btn-danger')+'" onclick="blockPlugin(\''+p.id+'\',\''+esc(p.name)+'\','+(p.blocked?1:0)+')">'+(p.blocked?'解封':'封禁')+'</button>';}action+='<button class="btn btn-outline btn-xs" onclick="openOwnerCfg(\''+esc(String(p.id||p.name))+'\',\''+esc(String(p.name))+'\')">主人</button>';if(p.has_webui)action+='<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>';action+='<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>';if(isSuper&&(/^(词典回复|DIC管理)(\.|$)/.test(p.name||'')))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(/^DIC管理/.test(p.name||'')?'DIC':'词典')+'词库</a>';if(isSuper&&(p.type==='code'||p.type==='py'))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>';if(p.canEdit)action+='<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>';if(isSuper)action+='<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>';if(canTest&&p.type!=='file'&&p.type!=='py')action+='<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>';if(isSuper)action+='<button class="btn btn-danger btn-xs" onclick="uninstallPlugin(\''+esc(String(p.name))+'\')">卸载</button>';const chk=isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'';return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">'+('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chk+'<strong style="font-size:14px">'+esc(dispPluginName(p.name))+'</strong>'+badge+typeTag+enState+'</div>')+'<div style="font-size:12px;color:var(--text2)">v'+esc(p.version||'-')+' · 作者 '+esc(p.author||'-')+'</div><div style="font-size:12px;color:var(--text2);min-height:16px;flex:1">'+esc(p.description||'暂无描述')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+action+'</div></div>';}).join('')||'<div style="color:var(--text2);text-align:center;padding:24px;grid-column:1/-1">暂无插件</div>';}catch(e){docById('pluginList').innerHTML='<div style="color:var(--danger);text-align:center;padding:24px;grid-column:1/-1">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</div>'}}
+ async function loadPlugins(){plgResetSel();renderBotPluginPanel();try{const data=await api('/api/plugins');const isSuper=currentUser?.role==='super_master';const canTest=isSuper||(currentUserPermissions?.canTestPlugin===true);
+ // 新建插件仅认证开发者（或超主）可见；非开发者悬浮提示认证要求
+ const btnAdd=docById('btnAddPlugin');if(btnAdd)btnAdd.style.display=(isSuper||currentUser?.isDeveloper===true)?'':'none';
+ docById('pluginList').innerHTML=data.map(p=>{let badge='';const s=p.status||(p.approval?p.approval.status:'');if(s==='approved')badge='<span class="tag tag-approved">已批准</span>';else if(s==='pending')badge='<span class="tag tag-pending">待审核</span>';else if(s==='rejected')badge='<span class="tag tag-rejected">已拒绝</span>';if(p.owner&&p.owner!=='system')badge+=' <span class="tag" style="background:var(--bg3)">'+esc(p.owner)+'</span>';if(p.blocked)badge+=' <span class="tag" style="background:rgba(239,68,68,.18);color:var(--danger)">已封禁</span>';const typeTag=p.type==='zip'?'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'·目录</span>':(p.type==='php'?'<span class="tag" style="background:#7f1d1d;color:#fca5a5">PHP</span>':(p.type==='py'?'<span class="tag" style="background:#14532d;color:#86efac">py</span>':(p.type==='file'?'<span class="tag" style="background:#3f3f46;color:#d4d4d8">'+esc(p.fileType||'?')+'</span>':'<span class="tag" style="background:#334155;color:#7dd3fc">'+esc(p.fileType||'js')+'</span>')));const enState=p.enabled?'<span class="tag tag-approved">已启用</span>':'<span class="tag" style="background:var(--bg3);color:var(--text2)">已禁用</span>';let action='';if(isSuper&&s==='pending'){action+='<button class="btn btn-success btn-xs" onclick="approvePlugin(\''+p.name+'\')">批准</button><button class="btn btn-danger btn-xs" onclick="rejectPlugin(\''+p.name+'\')">拒绝</button>';}else if(!isSuper&&s==='pending'){action+='<span style="color:var(--warn);font-size:12px">等待审核</span>';}if(isSuper&&p.id&&p.type!=='file'){action+='<button class="btn btn-xs '+(p.enabled?'btn-warn':'btn-success')+'" onclick="togglePlugin(\''+p.id+'\',\''+p.name+'\','+(p.enabled?1:0)+')">'+(p.enabled?'禁用':'启用')+'</button>';action+='<button class="btn btn-xs '+(p.blocked?'btn-success':'btn-danger')+'" onclick="blockPlugin(\''+p.id+'\',\''+esc(p.name)+'\','+(p.blocked?1:0)+')">'+(p.blocked?'解封':'封禁')+'</button>';}action+='<button class="btn btn-outline btn-xs" onclick="openOwnerCfg(\''+esc(String(p.id||p.name))+'\',\''+esc(String(p.name))+'\')">主人</button>';if(p.has_webui)action+='<button class="btn btn-outline btn-xs" onclick="openPluginWebui(\''+p.id+'\')">设置</button>';action+='<button class="btn btn-outline btn-xs" onclick="showPluginDoc(\''+p.name+'\')">文档</button><button class="btn btn-outline btn-xs" onclick="editPluginManifest(\''+p.name+'\')">编辑</button>';if(isSuper&&(/^(词典回复|DIC管理)(\.|$)/.test(p.name||'')))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'&tab=dict">📖 '+(/^DIC管理/.test(p.name||'')?'DIC':'词典')+'词库</a>';if(isSuper&&(p.type==='code'||p.type==='py'))action+='<a class="btn btn-outline btn-xs" target="_blank" rel="noopener" href="/menu-editor.html?plugin='+encodeURIComponent(p.name)+'">管理页面</a>';if(p.canEdit)action+='<button class="btn btn-outline btn-xs" onclick="showPluginCode(\''+p.name+'\',\''+(p.type||'js')+'\')">'+(p.type==='zip'?'文件':(p.type==='file'?'编辑':'代码'))+'</button>';if(isSuper)action+='<button class="btn btn-outline btn-xs" onclick="showPluginChangelog(\''+p.name+'\')">日志</button>';if(canTest&&p.type!=='file'&&p.type!=='py')action+='<button class="btn btn-outline btn-xs" onclick="showPluginTest(\''+p.name+'\')">测试</button>';if(isSuper)action+='<button class="btn btn-danger btn-xs" onclick="uninstallPlugin(\''+esc(String(p.name))+'\')">卸载</button>';const chk=isSuper&&p.id&&p.type!=='file'?'<input type="checkbox" class="plg-check" data-id="'+esc(String(p.id))+'" onchange="plgUpd(this)">':'';return'<div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">'+('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chk+'<strong style="font-size:14px">'+esc(dispPluginName(p.name))+'</strong>'+badge+typeTag+enState+'</div>')+'<div style="font-size:12px;color:var(--text2)">v'+esc(p.version||'-')+' · 作者 '+esc(p.author||'-')+'</div><div style="font-size:12px;color:var(--text2);min-height:16px;flex:1">'+esc(p.description||'暂无描述')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+action+'</div></div>';}).join('')||'<div style="color:var(--text2);text-align:center;padding:24px;grid-column:1/-1">暂无插件</div>';}catch(e){docById('pluginList').innerHTML='<div style="color:var(--danger);text-align:center;padding:24px;grid-column:1/-1">插件列表加载失败：'+esc(e&&e.message||e)+'（插件应统一放在服务器 plugins 目录，可重试或重启服务）</div>'}}
  async function togglePlugin(id,name,current){const to=current?0:1;if(!confirm('确定'+(to?'启用':'禁用')+'插件「'+name+'」吗？'+(to?'':'禁用后该插件功能将立即停止')))return;try{const r=await api('/api/plugins/'+id+'/toggle',{method:'POST'});if(r&&r.ok){loadPlugins()}else{alert((r&&r.error)||'操作失败')}}catch(e){alert(e.message)}}
  async function blockPlugin(id,name,blocked){const to=blocked?0:1;if(!confirm('确定'+(to?'解封':'封禁')+'插件「'+name+'」吗？'+(to?'解封后可正常启用':'封禁后插件立即停用且无法启用，直到解封（用于紧急止损，如插件刷屏）')))return;try{const r=await api('/api/plugins/'+encodeURIComponent(id)+'/'+(to?'unblock':'block'),{method:'POST'});if(r&&r.ok){loadPlugins()}else{alert((r&&r.error)||'操作失败')}}catch(e){alert(e.message)}}
 
@@ -4453,9 +4477,11 @@ function botResetSel(){botChecked.clear();const a=docById('botCheckAll');if(a)a.
 // ---- 新建插件（名称/版本/作者/联系方式/简介/图标URL + 上传或粘贴代码） ----
 let npUploadFile=null;
 function showCreatePlugin(){
+  _npAfterCreate='';
   npUploadFile=null;
   ['npName','npVersion','npAuthor','npContact','npIntro','npIcon','npCode'].forEach(id=>{docById(id).value=''});
   docById('npFile').value='';
+  docById('npFileNameTag').textContent='';
   openModal('modalAddPlugin');
 }
 function npFilePicked(input){
@@ -4498,8 +4524,22 @@ async function doCreatePlugin(){
   try{
     await api('/api/plugins/upload',{method:'POST',body:form});
     closeModal('modalAddPlugin');
-    alert('✅ 插件「'+name+'」已创建，请启用并分配给机器人后生效');
     loadPlugins();
+    if(_npAfterCreate==='market'){
+      _npAfterCreate='';
+      // 从市场新建：直接带入分享弹窗继续发布（24h 测试期流程）
+      mkShowPublish();
+      document.querySelector('input[name="mkPubType"][value="plugin"]').checked=true;
+      mkPubTypeChanged();
+      docById('mkPubName').value=name;
+      if(v)docById('mkPubVersion').value=v;
+      docById('mkPubFile').value=name+ext;
+      docById('mkPubContent').value=code;
+      if(intro)docById('mkPubDesc').value=intro;
+      alert('✅ 插件「'+name+'」已创建，请核对下方发布信息后提交分享');
+    }else{
+      alert('✅ 插件「'+name+'」已创建，请启用并分配给机器人后生效');
+    }
   }catch(e){alert(e.message)}
 }
 
@@ -4563,8 +4603,10 @@ async function dictOpenOwner(name){
 }
 // ---- 新建词库（名称/版本/作者/联系方式/简介/图标URL + 上传或粘贴 txt） ----
 function showCreateDict(){
+  _ndAfterCreate='';
   ['ndName','ndVersion','ndAuthor','ndContact','ndIntro','ndIcon','ndContent'].forEach(id=>{docById(id).value=''});
   docById('ndFile').value='';
+  docById('ndFileNameTag').textContent='';
   openModal('modalNewDict');
 }
 function ndFilePicked(input){
@@ -4586,8 +4628,23 @@ async function doCreateDict(){
   try{
     const r=await api('/api/plugins/_dict/create',{method:'POST',body:{name,content,version:docById('ndVersion').value.trim(),author:docById('ndAuthor').value.trim(),contact:docById('ndContact').value.trim(),icon:docById('ndIcon').value.trim(),description:docById('ndIntro').value.trim()}});
     closeModal('modalNewDict');
-    alert('✅ 词库「'+(r.fileName||name)+'」已创建'+(r.reload&&r.reload.startsWith('reloaded')?'并已热重载':'，重启服务后由词库加载方插件读取'));
     loadDictsPage();
+    if(_ndAfterCreate==='market'){
+      _ndAfterCreate='';
+      // 从市场新建：直接带入分享弹窗继续发布（24h 测试期流程）
+      mkShowPublish();
+      document.querySelector('input[name="mkPubType"][value="dict"]').checked=true;
+      mkPubTypeChanged();
+      docById('mkPubName').value=name;
+      const v2=docById('ndVersion').value.trim();
+      if(v2)docById('mkPubVersion').value=v2;
+      docById('mkPubContent').value=content;
+      const intro2=docById('ndIntro').value.trim();
+      if(intro2)docById('mkPubDesc').value=intro2;
+      alert('✅ 词库「'+(r.fileName||name)+'」已创建，请核对下方发布信息后提交分享');
+    }else{
+      alert('✅ 词库「'+(r.fileName||name)+'」已创建'+(r.reload&&r.reload.startsWith('reloaded')?'并已热重载':'，重启服务后由词库加载方插件读取'));
+    }
   }catch(e){alert(e.message)}
 }
 async function approvePlugin(name){await api('/api/plugins/'+name+'/approve',{method:'POST'});loadPlugins()}

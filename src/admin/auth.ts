@@ -146,6 +146,7 @@ export class AdminAuth {
       loginAble: a.loginAble,
       expireAt: a.expireAt,
       permissions: a.permissions,
+      isDeveloper: a.isDeveloper === true,
       createdAt: a.createdAt,
       coins: typeof a.coins === 'number' ? a.coins : 0,
       allowedPages: Array.isArray(a.allowedPages) ? a.allowedPages : undefined,

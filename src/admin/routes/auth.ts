@@ -284,6 +284,8 @@ export function createAuthRoutes(auth: AdminAuth): Router {
         username: user.username,
         role: user.role,
         permissions: user.permissions,
+        // 认证开发者（超主恒为 true）：控制「新建插件」入口可见性
+        isDeveloper: user.role === 'super_master' || user.isDeveloper === true,
       },
     });
   });
@@ -339,6 +341,8 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       createdAt: user?.createdAt || null,
       quota: user?.permissions ? Math.max(0, Math.trunc(Number(user.permissions.maxBots) || 0)) : null,
       email: user?.email || '',
+      // 认证开发者（超主恒为 true）
+      isDeveloper: req.adminUser.role === 'super_master' || user?.isDeveloper === true,
       // 金币余额与可用侧边栏页面（超级主人 allowedPages 恒为 null=不受限）
       coins: typeof user?.coins === 'number' ? user.coins : 0,
       allowedPages: auth.getAllowedPages(req.adminUser.username),
@@ -359,6 +363,7 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       coins: typeof user?.coins === 'number' ? user.coins : 0,
       quota: user?.permissions ? Math.max(0, Math.trunc(Number(user.permissions.maxBots) || 0)) : null,
       email: user?.email || (req.adminUser.username.startsWith('code_') ? getCodeUserEmail(req.adminUser.username) : ''),
+      isDeveloper: req.adminUser.role === 'super_master' || user?.isDeveloper === true,
     });
   });
 
@@ -410,6 +415,7 @@ export function createAuthRoutes(auth: AdminAuth): Router {
       username: a.username, role: a.role, qq: a.qq || '',
       nickname: a.nickname || '', openid: a.openid || '', avatar: a.avatar || '',
       email: a.email || '',
+      isDeveloper: a.isDeveloper === true,
       loginAble: a.loginAble, expireAt: a.expireAt,
       permissions: a.permissions,
       createdAt: a.createdAt,
@@ -459,12 +465,14 @@ export function createAuthRoutes(auth: AdminAuth): Router {
   });
 
   router.put('/admins/:username', requireSuperMaster, (req: Request, res: Response) => {
-    const { loginAble, password, qq, nickname, openid, avatar, role, expireAt, email } = req.body;
+    const { loginAble, password, qq, nickname, openid, avatar, role, expireAt, email, isDeveloper } = req.body;
     const user = auth.getUser(String(req.params.username));
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
     const patch: Record<string, unknown> = {};
     if (loginAble !== undefined) patch.loginAble = loginAble;
     if (password) patch.password = password;
+    // 认证开发者标志：仅超主可授予/撤销（super_master 自身恒视为开发者，无需存储）
+    if (isDeveloper !== undefined) patch.isDeveloper = isDeveloper === true;
     // 超级主人可修改 QQ/OpenID（含自己）；空值提交不覆盖已有值
     if (qq !== undefined && String(qq).trim() !== '') patch.qq = String(qq).trim();
     if (nickname !== undefined) patch.nickname = nickname;

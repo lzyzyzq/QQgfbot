@@ -27,6 +27,8 @@ export interface AdminUser {
   allowedPages?: string[];
   // 绑定邮箱：注册时验证码验证绑定；本人改绑需邮箱验证码；超级主人可直接修改他人邮箱
   email?: string;
+  // 认证开发者：仅超主可授予；持有者可在市场内新建插件并发布
+  isDeveloper?: boolean;
 }
 
 export interface UserPermission {
