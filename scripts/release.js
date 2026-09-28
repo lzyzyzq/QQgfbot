@@ -263,10 +263,19 @@ function fullFrameworkFiles() {
 }
 
 const combinedZip = zipName;
-const fwPatchZip = 'qqbot-card-editor-framework-patch-' + ver + '.zip';
-const plgPatchZip = 'qqbot-card-editor-plugin-patch-' + ver + '.zip';
-const fwFullZip = 'qqbot-card-editor-framework-full-' + ver + '.zip';
-const plgFullZip = 'qqbot-card-editor-plugin-full-' + ver + '.zip';
+// 框架/插件版本独立计数：不再跟随补丁版本号，各自在有改动时 patch+1（1.0.18 → 1.0.19）
+const ucPathEarly = path.join(ROOT, 'update-config.json');
+let ucEarly = {};
+try { ucEarly = JSON.parse(fs.readFileSync(ucPathEarly, 'utf8')); } catch (e) {}
+const bumpPatch = (v) => { const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)$/); return m ? (m[1] + '.' + m[2] + '.' + (Number(m[3]) + 1)) : String(v || '1.0.0'); };
+let frameworkVersion = String(ucEarly.frameworkVersion || '1.0.0');
+let pluginVersion = String(ucEarly.pluginVersion || '1.0.0');
+if (frameworkChanged) frameworkVersion = bumpPatch(frameworkVersion);
+if (pluginChanged) pluginVersion = bumpPatch(pluginVersion);
+const fwPatchZip = 'qqbot-card-editor-framework-patch-' + frameworkVersion + '.zip';
+const plgPatchZip = 'qqbot-card-editor-plugin-patch-' + pluginVersion + '.zip';
+const fwFullZip = 'qqbot-card-editor-framework-full-' + frameworkVersion + '.zip';
+const plgFullZip = 'qqbot-card-editor-plugin-full-' + pluginVersion + '.zip';
 
 const nCombined = writeZip(combinedZip, changedFiltered, { dist: true, meta: true });
 console.log('合并补丁包：' + combinedZip + '（' + nCombined + ' 文件）');
@@ -300,11 +309,7 @@ if (!host) {
 }
 const pUrl = host + '/' + zipName;
 const changeLog = (note ? note : '【' + ver + '】见 CHANGELOG：' + commitLines.slice(0, 8).join('；') + '。');
-// 框架版本 / 插件版本：各自只在对应范围有改动时更新为本次发布版本；两者独立于补丁版本
-let frameworkVersion = String(uc.frameworkVersion || '1.0.0');
-let pluginVersion = String(uc.pluginVersion || '1.0.0');
-if (frameworkChanged) frameworkVersion = ver;
-if (pluginChanged) pluginVersion = ver;
+// frameworkVersion / pluginVersion 已在第 5 步提前按独立计数更新，此处直接落盘
 uc.ok = true;
 uc.version = ver;
 uc.frameworkVersion = frameworkVersion;
@@ -317,8 +322,8 @@ uc.frameworkFullUrl = host + '/' + fwFullZip;
 uc.pluginFullUrl = host + '/' + plgFullZip;
 uc.mirrors = [
   { name: '8091（合并补丁）', patchUrl: pUrl },
-  { name: '8091（框架补丁）', patchUrl: uc.frameworkPatchUrl },
-  { name: '8091（插件补丁）', patchUrl: uc.pluginPatchUrl },
+  { name: '8091（框架补丁 ' + frameworkVersion + '）', patchUrl: uc.frameworkPatchUrl },
+  { name: '8091（插件补丁 ' + pluginVersion + '）', patchUrl: uc.pluginPatchUrl },
 ];
 uc.changeLog = changeLog;
 if (frameworkChanged || pluginChanged) {

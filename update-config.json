@@ -1,7 +1,7 @@
 {
   "ok": true,
   "version": "1.0.23",
-  "frameworkVersion": "1.0.23",
+  "frameworkVersion": "1.0.18",
   "pluginVersion": "1.0.17",
   "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.23.zip",
   "fullUrl": "",
@@ -11,18 +11,18 @@
       "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.23.zip"
     },
     {
-      "name": "8091（框架补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.23.zip"
+      "name": "8091（框架补丁 1.0.18）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.18.zip"
     },
     {
       "name": "8091（插件补丁）",
       "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.23.zip"
     }
   ],
-  "changeLog": "安全修复：新建插件/词库增加后端门槛（认证开发者资格），普通用户无法绕过前端直接创建；市场内新建词库与新建插件同门槛显示",
+  "changeLog": "框架 1.0.18：合并 1.0.18~1.0.23 全部框架更新（权限体系/邮箱验证/SMTP/市场超主/文件上传上架/认证开发者），以 1.0.17 为基础一次升级到位",
   "changeType": "框架升级",
-  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.23.zip",
+  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.18.zip",
   "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.23.zip",
-  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.23.zip",
+  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.18.zip",
   "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.23.zip"
 }
