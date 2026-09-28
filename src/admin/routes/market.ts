@@ -328,6 +328,49 @@ export function createMarketRoutes(auth: AdminAuth): Router {
   });
 
   // 从本地导入（词库：plugins/词库/*.txt；插件：plugins/*.js|mjs|py）为系统内置条目（超主直接审核上架，可定价）
+  // 超主上传本地文件内容直接上架（不入 plugins 文件夹，内容落库；支持代码文件与词库文件）
+  router.post('/admin/upload', requireSuperMaster, (req: Request, res: Response) => {
+    const body = req.body || {};
+    const type = body.type === 'plugin' ? 'plugin' : 'dict';
+    const content = String(body.content || '');
+    const rawName = String(body.file_name || '').trim();
+    const validExts = type === 'plugin' ? ['.js', '.mjs', '.py'] : ['.txt'];
+    const ext = path.extname(rawName).toLowerCase();
+    if (!content.trim()) { res.status(400).json({ error: '文件内容为空' }); return; }
+    if (!rawName || !validExts.includes(ext)) {
+      res.status(400).json({ error: type === 'plugin' ? '插件需上传 .js / .mjs / .py 文件' : '词库需上传 .txt 文件' });
+      return;
+    }
+    if (content.length > 2 * 1024 * 1024) { res.status(400).json({ error: '文件内容过大（上限 2MB）' }); return; }
+    const name = String(body.name || rawName.replace(/\.(txt|js|mjs|py)$/i, '')).trim();
+    if (!name) { res.status(400).json({ error: '请填写名称' }); return; }
+    let price = Math.trunc(Number(body.price) || 0);
+    if (!Number.isFinite(price) || price < 0) price = 0;
+    if (price > 9999) price = 9999;
+    const rolesRaw = String(body.allowed_roles || 'all').trim();
+    const validRoles = ['master', 'member', 'user'];
+    const roles = rolesRaw === 'all' ? 'all' : (rolesRaw.split(',').map((x: string) => x.trim()).filter((x: string) => validRoles.includes(x)).join(',') || 'all');
+    const db = getDb();
+    const id = 'mk_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    db.prepare(
+      `INSERT INTO market_items (id, name, type, version, description, category, author, price, entry_count, content, status, is_builtin, allowed_roles, owner, file_name)
+       VALUES (?, ?, ?, '1.0.0', ?, '通用', ?, ?, ?, ?, 'approved', 1, ?, ?, ?)`
+    ).run(
+      id,
+      name,
+      type,
+      String(body.description || '').slice(0, 500),
+      req.adminUser!.username,
+      price,
+      type === 'plugin' ? 0 : countEntries(content),
+      content,
+      roles,
+      req.adminUser!.username,
+      path.basename(rawName)
+    );
+    res.json({ ok: true, id, price });
+  });
+
   router.post('/admin/import', requireSuperMaster, (req: Request, res: Response) => {
     const body = req.body || {};
     const type = body.type === 'plugin' ? 'plugin' : 'dict';

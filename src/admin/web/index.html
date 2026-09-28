@@ -554,7 +554,14 @@ input[type="file"]{color:var(--text2)}
 
 <div class="modal-overlay" id="modalMkPublish"><div class="modal">
     <h3>上架到市场 <span id="mkPublishTypeTag" style="font-size:12px;color:var(--accent);font-weight:400"></span></h3>
-    <div class="form-group"><label>本地文件</label><input id="mkPublishFile" disabled style="opacity:.7"></div>
+    <div class="form-group"><label>本地文件（plugins 文件夹）</label><input id="mkPublishFile" disabled style="opacity:.7"></div>
+    <div class="form-group"><label>或上传本地电脑的文件</label>
+      <input type="file" id="mkPublishUpload" accept=".txt,.js,.mjs,.py,.php" style="display:none" onchange="mkPublishUploadPicked(this)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="docById('mkPublishUpload').click()">上传代码文件 / 词库文件</button>
+        <span id="mkPublishUploadTag" style="font-size:12px;color:var(--text2)"></span>
+      </div>
+    </div>
     <div class="form-group"><label>名称（展示在市场）</label><input id="mkPublishName" maxlength="60" placeholder="例如：报时插件"></div>
     <div class="form-group"><label>描述</label><input id="mkPublishDesc" maxlength="200" placeholder="功能简介（可留空）"></div>
     <div class="form-row">
@@ -900,9 +907,15 @@ input[type="file"]{color:var(--text2)}
     <div class="form-group" style="grid-column:1/-1"><label>词库简介</label><textarea id="ndIntro" rows="2" placeholder="词库功能简介"></textarea></div>
     <div class="form-group" style="grid-column:1/-1"><label>图标 URL（可选）</label><input id="ndIcon" placeholder="https://..."></div>
   </div>
-  <div class="form-group"><label>本地上传</label><input type="file" id="ndFile" accept=".txt" onchange="ndFilePicked(this)"></div>
+  <div class="form-group"><label>本地上传</label>
+    <input type="file" id="ndFile" accept=".txt" style="display:none" onchange="ndFilePicked(this)">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="docById('ndFile').click()">上传txt文件</button>
+      <span id="ndFileNameTag" style="font-size:12px;color:var(--text2)"></span>
+    </div>
+  </div>
   <div class="form-group"><label>词库内容</label><textarea id="ndContent" rows="10" style="font-family:monospace;font-size:12px" placeholder="支持直接粘贴内容或上传 .txt 文件"></textarea></div>
-  <div class="form-group" style="font-size:12px;color:var(--text2)">支持直接粘贴内容或上传 .txt 文件。词条格式：触发词|回复内容，# 开头为注释；规则词库（规则/触发/结束规则）原样保存。</div>
+  <div class="form-group" style="font-size:12px;color:var(--text2)">支持直接粘贴内容或上传 .txt 文件。格式说明见底部。词条格式：触发词|回复内容，# 开头为注释；规则词库（规则/触发/结束规则）原样保存。</div>
   <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modalNewDict')">取消</button><button class="btn btn-primary" onclick="doCreateDict()">保存</button></div>
 </div></div>
 
@@ -1434,7 +1447,14 @@ input[type="file"]{color:var(--text2)}
     <div class="form-group"><label>简介</label><input id="mkPubDesc" placeholder="一句话介绍"></div>
   </div>
   <div class="form-group" id="mkPubFileWrap" style="display:none"><label>插件文件名（含扩展名）</label><input id="mkPubFile" placeholder="如：我的插件.js / 工具.php / 脚本.py"></div>
-  <div class="form-group"><label>内容（词库 lzyqzb/dict 格式，或插件完整源码）</label><textarea id="mkPubContent" rows="8" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-family:monospace;font-size:13px;resize:vertical"></textarea></div>
+  <div class="form-group"><label>内容（词库 lzyqzb/dict 格式，或插件完整源码）</label>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <input type="file" id="mkPubUpload" accept=".txt,.js,.mjs,.py,.php" style="display:none" onchange="mkPubUploadPicked(this)">
+      <button class="btn btn-outline btn-sm" onclick="docById('mkPubUpload').click()">从本地文件导入</button>
+      <span id="mkPubUploadTag" style="font-size:12px;color:var(--text2)">支持 .txt 词库 / .js .mjs .py .php 插件，内容自动填入</span>
+    </div>
+    <textarea id="mkPubContent" rows="8" style="width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-family:monospace;font-size:13px;resize:vertical"></textarea>
+  </div>
   <div class="modal-actions">
     <button class="btn btn-outline" onclick="closeModal('modalMarketPublish')">取消</button>
     <button class="btn btn-primary" onclick="mkPublish()">提交</button>
@@ -1482,9 +1502,15 @@ input[type="file"]{color:var(--text2)}
     <div class="form-group" style="grid-column:1/-1"><label>插件简介</label><textarea id="npIntro" rows="2" placeholder="插件功能简介"></textarea></div>
     <div class="form-group" style="grid-column:1/-1"><label>图标 URL（可选）</label><input id="npIcon" placeholder="https://..."></div>
   </div>
-  <div class="form-group"><label>本地上传</label><input type="file" id="npFile" accept=".js,.php,.py,.mjs" onchange="npFilePicked(this)"></div>
-  <div class="form-group"><label>插件代码</label><textarea id="npCode" rows="10" style="font-family:monospace;font-size:12px" placeholder="支持直接粘贴内容或上传 .js .php .py .mjs 文件"></textarea></div>
-  <div class="form-group" style="font-size:12px;color:var(--text2)">支持直接粘贴内容或上传 .js .php .py .mjs 文件。上传文件后代码自动填入上方编辑区，可直接修改后保存。</div>
+  <div class="form-group"><label>本地上传</label>
+    <input type="file" id="npFile" accept=".js,.php,.py,.mjs,.ts,.iyu,.myu" style="display:none" onchange="npFilePicked(this)">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="docById('npFile').click()">上传.js  .php  .py   .mjs   .ts   .iyu  .myu文件</button>
+      <span id="npFileNameTag" style="font-size:12px;color:var(--text2)"></span>
+    </div>
+  </div>
+  <div class="form-group"><label>代码内容</label><textarea id="npCode" rows="10" style="font-family:monospace;font-size:12px" placeholder="支持直接粘贴内容或上传 .js .php .py .mjs .ts .iyu .myu 文件"></textarea></div>
+  <div class="form-group" style="font-size:12px;color:var(--text2)">支持直接粘贴内容或上传 .js  .php  .py   .mjs   .ts   .iyu  .myu 文件。格式说明见底部。</div>
   <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modalAddPlugin')">取消</button><button class="btn btn-primary" onclick="doCreatePlugin()">保存</button></div>
 </div></div>
 
@@ -2520,6 +2546,23 @@ function mkPubTypeChanged(){
     :'词库 娱乐群管\n版本 3\n规则 主菜单\n触发 菜单\n...\n结束规则';
 }
 
+// 分享弹窗：从本地文件读入内容（.txt 词库 / .js .mjs .py .php 插件）
+function mkPubUploadPicked(input){
+  const f=input.files&&input.files[0];
+  if(!f)return;
+  if(!/\.(txt|js|mjs|py|php)$/i.test(f.name)){alert('仅支持 .txt 词库 / .js .mjs .py .php 插件文件');input.value='';return}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    docById('mkPubContent').value=String(reader.result||'');
+    const type=document.querySelector('input[name="mkPubType"]:checked')?.value==='plugin'?'plugin':'dict';
+    const extOk=type==='plugin'?/\.(js|mjs|py|php)$/i:/\.txt$/i;
+    if(!extOk.test(f.name)){alert('所选文件与发布类型不符（当前类型：'+(type==='plugin'?'插件':'词库')+'）');return}
+    docById('mkPubUploadTag').textContent='已导入：'+f.name+'（'+f.size+' 字节）';
+    if(!docById('mkPubName').value.trim())docById('mkPubName').value=f.name.replace(/\.(txt|js|mjs|py|php)$/i,'');
+    if(type==='plugin'&&!docById('mkPubFile').value.trim())docById('mkPubFile').value=f.name;
+  };
+  reader.readAsText(f,'utf-8');
+}
 async function mkPublish(){
   const type=document.querySelector('input[name="mkPubType"]:checked')?.value==='plugin'?'plugin':'dict';
   const body={
@@ -2625,12 +2668,31 @@ function mkImportLocal(type){
   docById('mkPublishSubmitBtn').disabled=false;
   docById('mkPublishSubmitBtn').textContent='审核并上架';
   docById('modalMkPublish').setAttribute('data-type',isPlugin?'plugin':'dict');
+  docById('mkPublishUpload').value='';
+  docById('mkPublishUploadTag').textContent='';
+  docById('modalMkPublish').setAttribute('data-mode','local');
   openModal('modalMkPublish');
+}
+// 上传本地电脑文件直接上架（代码文件/词库文件，内容读入内存随表单提交）
+let _mkUploadData=null;
+function mkPublishUploadPicked(input){
+  const f=input.files&&input.files[0];
+  if(!f){_mkUploadData=null;docById('mkPublishUploadTag').textContent='';return}
+  const type=docById('modalMkPublish').getAttribute('data-type')==='plugin'?'plugin':'dict';
+  const okExts=type==='plugin'?/\.(js|mjs|py|php)$/i:/\.txt$/i;
+  if(!okExts.test(f.name)){alert(type==='plugin'?'插件仅支持 .js .mjs .py .php 文件':'词库仅支持 .txt 文件');input.value='';_mkUploadData=null;return}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    _mkUploadData={file_name:f.name,content:String(reader.result||'')};
+    docById('modalMkPublish').setAttribute('data-mode','upload');
+    docById('mkPublishUploadTag').textContent='已选择：'+f.name+'（'+f.size+' 字节）';
+    if(!docById('mkPublishName').value.trim())docById('mkPublishName').value=f.name.replace(/\.(txt|js|mjs|py|php)$/i,'');
+  };
+  reader.readAsText(f,'utf-8');
 }
 async function mkPublishSubmit(){
   const isPlugin=docById('modalMkPublish').getAttribute('data-type')==='plugin';
-  const file=(isPlugin?docById('mkImportPluginSel'):docById('mkImportSel')).value;
-  if(!file){alert('文件已失效，请重新选择');closeModal('modalMkPublish');return}
+  const mode=docById('modalMkPublish').getAttribute('data-mode');
   const name=docById('mkPublishName').value.trim();
   if(!name){alert('请填写名称');return}
   const desc=docById('mkPublishDesc').value.trim();
@@ -2640,8 +2702,16 @@ async function mkPublishSubmit(){
   btn.disabled=true;
   btn.textContent='上架中...';
   try{
-    await api('/api/market/admin/import',{method:'POST',body:{type:isPlugin?'plugin':'dict',file,name,description:desc,price,allowed_roles:roles}});
+    if(mode==='upload'){
+      if(!_mkUploadData||!_mkUploadData.content.trim()){alert('上传文件内容为空，请重新选择');btn.disabled=false;btn.textContent='审核并上架';return}
+      await api('/api/market/admin/upload',{method:'POST',body:{type:isPlugin?'plugin':'dict',name,description:desc,price,allowed_roles:roles,file_name:_mkUploadData.file_name,content:_mkUploadData.content}});
+    }else{
+      const file=(isPlugin?docById('mkImportPluginSel'):docById('mkImportSel')).value;
+      if(!file){alert('文件已失效，请重新选择');closeModal('modalMkPublish');return}
+      await api('/api/market/admin/import',{method:'POST',body:{type:isPlugin?'plugin':'dict',file,name,description:desc,price,allowed_roles:roles}});
+    }
     closeModal('modalMkPublish');
+    _mkUploadData=null;
     alert(isPlugin
       ?('插件已审核上架'+(price>0?('，定价 '+price+' 金币'):'（免费）')+'，源码可在市场卡片「源码」查看')
       :('词库已导入为系统内置条目'+(price>0?('，定价 '+price+' 金币'):'（免费）')));
@@ -4391,13 +4461,15 @@ function showCreatePlugin(){
 function npFilePicked(input){
   const f=input.files[0];
   if(!f)return;
-  if(!/\.(js|php|py|mjs)$/i.test(f.name)){alert('仅支持 .js .php .py .mjs 文件');input.value='';return}
+  if(!/\.(js|php|py|mjs|ts|iyu|myu)$/i.test(f.name)){alert('仅支持 .js .php .py .mjs .ts .iyu .myu 文件');input.value='';return}
   npUploadFile=f;
   const reader=new FileReader();
   reader.onload=()=>{docById('npCode').value=String(reader.result||'')};
   reader.readAsText(f,'utf-8');
   // 未填名称时用文件名（去扩展名）预填
-  if(!docById('npName').value.trim())docById('npName').value=f.name.replace(/\.(js|php|py|mjs)$/i,'');
+  if(!docById('npName').value.trim())docById('npName').value=f.name.replace(/\.(js|php|py|mjs|ts|iyu|myu)$/i,'');
+  const tag=docById('npFileNameTag');
+  if(tag)tag.textContent='已选择：'+f.name+'（'+Math.max(1,f.size)+' 字节，内容已填入下方代码区）';
 }
 async function doCreatePlugin(){
   const name=docById('npName').value.trim();
@@ -4503,6 +4575,8 @@ function ndFilePicked(input){
   reader.onload=()=>{docById('ndContent').value=String(reader.result||'')};
   reader.readAsText(f,'utf-8');
   if(!docById('ndName').value.trim())docById('ndName').value=f.name.replace(/\.txt$/i,'');
+  const tag=docById('ndFileNameTag');
+  if(tag)tag.textContent='已选择：'+f.name+'（'+Math.max(1,f.size)+' 字节，内容已填入下方词库区）';
 }
 async function doCreateDict(){
   const name=docById('ndName').value.trim();
