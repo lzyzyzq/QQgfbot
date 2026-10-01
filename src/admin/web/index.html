@@ -1430,6 +1430,45 @@ input[type="file"]{color:var(--text2)}
   </div>
 </div></div>
 
+<div class="modal-overlay" id="modalAiPerms"><div class="modal" style="max-width:640px;max-height:88vh;overflow:auto">
+  <h3>用户权限管理 <span id="aiPermsUser" style="font-size:13px;color:var(--text2)"></span></h3>
+  <p style="font-size:12px;color:var(--text2);margin-top:-6px">集中管理该用户的全部权限：角色 / 登录 / 过期 / 认证开发者 / 插件与机器人权限 / 侧边栏页面。核心文件与部署终端始终仅超级主人可用。</p>
+  <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="form-group" style="flex:1;min-width:140px"><label>角色</label>
+      <select id="aiPermsRole" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)">
+        <option value="user">普通用户</option><option value="member">会员</option><option value="master">主人</option>
+      </select>
+    </div>
+    <div class="form-group" style="flex:1;min-width:140px"><label>机器人额度（maxBots）</label><input id="aiPermsMaxBots" type="number" min="0" max="999" placeholder="0"></div>
+  </div>
+  <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="form-group" style="flex:1;min-width:140px"><label>过期时间（留空=永久）</label><input id="aiPermsExpire" placeholder="2026-12-31 或空"></div>
+    <div class="form-group" style="flex:1;min-width:140px;display:flex;align-items:flex-end;gap:16px;padding-bottom:8px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin:0"><input type="checkbox" id="aiPermsLoginAble"> 允许登录</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin:0"><input type="checkbox" id="aiPermsDev"> 认证开发者</label>
+    </div>
+  </div>
+  <div class="form-group"><label>功能权限</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsAddBot"> 添加机器人</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsEditBot"> 编辑机器人</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsDelBot"> 删除机器人</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsUpPlugin"> 上传插件</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsOwnPlugin"> 管理自己的插件</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsAllPlugin"> 使用全部插件</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsTestPlugin"> 测试插件</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsEditCode"> 编辑插件代码</label>
+    </div>
+  </div>
+  <div class="form-group"><label>侧边栏页面（不勾选 = 按角色默认显示）</label>
+    <div id="aiPermsPages" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:12px;max-height:180px;overflow:auto;background:var(--bg2);padding:8px;border-radius:8px"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('modalAiPerms')">取消</button>
+    <button class="btn btn-primary" id="aiPermsSaveBtn" onclick="aiPermsSave()">保存全部</button>
+  </div>
+</div></div>
+
 <div class="modal-overlay" id="modalMarketPublish"><div class="modal">
   <h3>分享到市场</h3>
   <p style="font-size:12px;color:var(--text2);margin-top:-6px">提交后 24 小时内为免审核测试期（仅自己可见可装）；到期进入待审核，由超级主人审核上架。付费内容售出按平台税率分成。</p>
@@ -2043,9 +2082,11 @@ function updateSidebar(){
   const limited=['dashboard','bots','ai','market','membersync','plugins','dicts','runlog','authcodes','profile'];
   // 超主设置过 allowedPages 时按其过滤（空/未设置=角色默认 limited），超主不受限
   const allowedPages=isSuper?null:(Array.isArray(currentUser?.allowedPages)&&currentUser.allowedPages.length?currentUser.allowedPages:limited);
+  // 核心文件/部署终端为超主专属（可读写服务器任意文件与执行命令），对其他角色一律隐藏
+  const superOnly=['files','deployterminal'];
   document.querySelectorAll('.nav-item').forEach(n=>{
     const p=n.getAttribute('data-page');
-    n.style.display=(isSuper||allowedPages.includes(p))?'':'none';
+    n.style.display=(isSuper||(allowedPages.includes(p)&&!superOnly.includes(p)))?'':'none';
   });
   const genBtn=docById('authCodeGenBtn');
   if(genBtn)genBtn.style.display=(isSuper||currentUser?.role==='master')?'':'none';
@@ -2358,12 +2399,78 @@ async function aiUserLoad(){
     docById('aiUserList').innerHTML=(admins||[]).map(a=>{
       const isSuper=a.role==='super_master';
       const devTag=isSuper?' <span class="tag tag-approved" style="font-size:11px">开发者</span>':(a.isDeveloper?' <span class="tag tag-approved" style="font-size:11px">认证开发者</span>':'');
-      return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+devTag+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
+      const regTag=a.createdBy==='register'?' <span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:11px">注册用户</span>':'';
+      const regInfo=a.createdAt?'<div style="font-size:11px;color:var(--text2)">'+new Date(a.createdAt).toLocaleDateString()+(a.createdBy==='register'?' 注册':' 创建')+'</div>':'';
+      return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+devTag+regTag+regInfo+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
       '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+' <button class="btn btn-outline btn-xs" onclick="aiEmailEdit(\''+esc(a.username)+'\',\''+esc(a.email||'')+'\')">修改邮箱</button></td>'+
       '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
-      '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',-1)">-1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏权限</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button>')+'</td></tr>';
+      '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',-1)">-1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button>')+'</td></tr>';
     }).join('');
   }catch(e){}
+}
+
+// 用户权限集中管理：打开弹窗（角色/登录/过期/开发者/插件与机器人权限/侧边栏页面）
+let _aiPermsTarget='';
+async function aiPermsOpen(username){
+  _aiPermsTarget=username;
+  const admins=await api('/api/auth/admins').catch(()=>[]);
+  const a=(admins||[]).find(x=>x.username===username);
+  if(!a){alert('用户不存在');return}
+  docById('aiPermsUser').textContent='· '+username;
+  docById('aiPermsRole').value=(['user','member','master'].includes(a.role)?a.role:'user');
+  docById('aiPermsMaxBots').value=(a.permissions&&typeof a.permissions.maxBots==='number'?a.permissions.maxBots:0);
+  docById('aiPermsExpire').value=(a.expireAt?new Date(a.expireAt).toISOString().slice(0,10):'');
+  docById('aiPermsLoginAble').checked=a.loginAble!==false;
+  docById('aiPermsDev').checked=a.isDeveloper===true;
+  docById('aiPermsAddBot').checked=!!(a.permissions&&a.permissions.canAddBot);
+  docById('aiPermsEditBot').checked=!!(a.permissions&&a.permissions.canEditBot);
+  docById('aiPermsDelBot').checked=!!(a.permissions&&a.permissions.canDeleteBot);
+  docById('aiPermsUpPlugin').checked=!!(a.permissions&&a.permissions.canUploadPlugin);
+  docById('aiPermsOwnPlugin').checked=!!(a.permissions&&a.permissions.canManageOwnPlugins);
+  docById('aiPermsAllPlugin').checked=!!(a.permissions&&a.permissions.canUseAllPlugins);
+  docById('aiPermsTestPlugin').checked=!!(a.permissions&&a.permissions.canTestPlugin);
+  docById('aiPermsEditCode').checked=!!(a.permissions&&a.permissions.canEditPluginCode);
+  // 侧边栏页面：当前用户 allowedPages（空=默认全选展示但不提交）
+  let cur=[];
+  try{const d=await api('/api/ai/pages?username='+encodeURIComponent(username));cur=d.allowedPages||[]}catch(e){}
+  if(!_aiMeta.pages||!_aiMeta.pages.length){try{const m=await api('/api/ai/meta');if(m)_aiMeta=m}catch(e){}}
+  const eff=(Array.isArray(cur)&&cur.length)?cur:['dashboard','bots','ai','market','membersync','plugins','dicts','runlog','authcodes','profile'];
+  docById('aiPermsPages').innerHTML=(_aiMeta.pages||[]).map(p=>'<label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="ai-perms-page" value="'+esc(p.id)+'" '+(eff.includes(p.id)?'checked':'')+'> '+esc(p.name)+'</label>').join('');
+  docById('aiPermsSaveBtn').disabled=false;
+  docById('aiPermsSaveBtn').textContent='保存全部';
+  docById('modalAiPerms').classList.add('active');
+}
+async function aiPermsSave(){
+  const u=_aiPermsTarget;
+  if(!u)return;
+  const btn=docById('aiPermsSaveBtn');
+  btn.disabled=true;btn.textContent='保存中...';
+  try{
+    const expireRaw=docById('aiPermsExpire').value.trim();
+    const expireAt=expireRaw?(new Date(expireRaw).getTime()||undefined):undefined;
+    await api('/api/auth/admins/'+encodeURIComponent(u),{method:'PUT',body:{
+      role:docById('aiPermsRole').value,
+      loginAble:docById('aiPermsLoginAble').checked,
+      isDeveloper:docById('aiPermsDev').checked,
+      expireAt:expireAt||undefined,
+    }});
+    await api('/api/auth/admins/'+encodeURIComponent(u)+'/permissions',{method:'PUT',body:{
+      canAddBot:docById('aiPermsAddBot').checked,
+      canEditBot:docById('aiPermsEditBot').checked,
+      canDeleteBot:docById('aiPermsDelBot').checked,
+      canUploadPlugin:docById('aiPermsUpPlugin').checked,
+      canManageOwnPlugins:docById('aiPermsOwnPlugin').checked,
+      canUseAllPlugins:docById('aiPermsAllPlugin').checked,
+      canTestPlugin:docById('aiPermsTestPlugin').checked,
+      canEditPluginCode:docById('aiPermsEditCode').checked,
+      maxBots:Math.max(0,Math.trunc(Number(docById('aiPermsMaxBots').value)||0)),
+    }});
+    const pages=[...docById('aiPermsPages').querySelectorAll('input:checked')].map(i=>i.value);
+    await api('/api/ai/pages',{method:'PUT',body:{username:u,pages}});
+    closeModal('modalAiPerms');
+    alert('用户「'+u+'」的全部权限已保存'+(pages.length?('，侧边栏已限制为 '+pages.length+' 项'):'，侧边栏按角色默认显示')+'。用户刷新页面后生效。');
+    aiUserLoad();
+  }catch(e){alert('保存失败：'+(e.message||e));btn.disabled=false;btn.textContent='保存全部'}
 }
 
 // 超主授予/撤销「认证开发者」资格：持有者可在市场新建插件并发布

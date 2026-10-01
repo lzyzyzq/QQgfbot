@@ -7,6 +7,16 @@ import path from 'path';
 export function createFileRoutes(dataDir: string): Router {
   const router = Router();
 
+  // 核心文件保护：文件管理可读写服务器任意文件（含 admin.json/data 库，等同于超主权限），
+  // 仅超级主人可用；普通注册用户/管理员一律 403
+  router.use((req: Request, res: Response, next) => {
+    if (req.adminUser?.role !== 'super_master') {
+      res.status(403).json({ error: '核心文件管理仅超级主人可用' });
+      return;
+    }
+    next();
+  });
+
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
