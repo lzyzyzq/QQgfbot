@@ -114,7 +114,15 @@ console.log('基线 tag：' + fromTag + ' → ' + tag);
 // core.quotepath=false：git 默认会把中文/非 ASCII 文件名转义成八进制，导致
 // addFile 在磁盘上找不到同名文件而静默漏包（4.2.79 事故根因：娱乐群管.js/.txt 缺失）。
 // 另提供 --extra-file <rel>（可重复）：显式把某文件强制打进补丁，不依赖 git diff 判定。
-const changed = sh('git -c core.quotepath=false diff --name-only ' + fromTag + '..HEAD').split('\n').filter(Boolean);
+// --patch-base vX.Y.Z：合并补丁改以该 tag 为基线（客群客户端停留在旧版本时，
+// patchUrl 必须包含基线以来的全部变更，否则逐版增量无法补全）。
+const patchBaseTag = (() => {
+  const i = args.indexOf('--patch-base');
+  return i >= 0 ? String(args[i + 1] || '') : '';
+})();
+const patchDiffFrom = patchBaseTag || fromTag;
+if (patchBaseTag) console.log('合并补丁基线（--patch-base）：' + patchBaseTag + '（CHANGELOG 增量仍基于 ' + fromTag + '）');
+const changed = sh('git -c core.quotepath=false diff --name-only ' + patchDiffFrom + '..HEAD').split('\n').filter(Boolean);
 for (const f of extraFiles) {
   if (!changed.includes(f)) changed.push(f);
 }
