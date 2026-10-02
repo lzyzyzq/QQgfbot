@@ -286,6 +286,7 @@ input[type="file"]{color:var(--text2)}
   <div class="nav-item" data-page="logs" onclick="switchPage('logs')">系统日志</div>
   <div class="nav-item" data-page="runlog" onclick="switchPage('runlog')">运行记录</div>
   <div class="nav-item" data-page="authcodes" onclick="switchPage('authcodes')">授权码</div>
+  <div class="nav-item" data-page="superadmin" onclick="switchPage('superadmin')" style="display:none">超主管理</div>
   <div class="nav-item" data-page="updatelog" onclick="switchPage('updatelog')">更新日志</div>
   <div class="nav-item" data-page="hyperlinks" onclick="switchPage('hyperlinks')">超链接</div>
   <div class="nav-item" data-page="profile" onclick="switchPage('profile')">个人中心</div>
@@ -1256,6 +1257,37 @@ input[type="file"]{color:var(--text2)}
   <div class="stats-grid" id="linksGrid"></div>
 </div>
 
+<div class="page" id="page-superadmin">
+  <h2>超主管理</h2>
+  <p style="color:var(--text2);font-size:13px;margin-top:-8px">超级主人专属：用户与权限集中管理（角色 / 登录 / 过期 / 认证开发者 / 功能权限 / 侧边栏页面 / 金币），注册用户带标记。</p>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <h3 style="margin:0;font-size:15px">用户与权限</h3>
+      <span style="font-size:12px;color:var(--text2)">共 <b id="saUserCount">-</b> 个账号</span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="aiUserLoad()">刷新</button>
+        <button class="btn btn-primary btn-sm" onclick="showAddAdmin()">添加用户</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>用户名</th><th>角色</th><th>绑定邮箱</th><th>金币</th><th>操作</th></tr></thead><tbody id="saUserList"></tbody></table></div>
+    <p style="font-size:12px;color:var(--text2);margin:10px 0 0">「权限管理」弹窗可一次保存：角色 / 机器人额度 / 过期时间 / 允许登录 / 认证开发者 / 8 项功能权限 / 25 项侧边栏页面。文件管理与部署终端始终仅超级主人可用。</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px;font-size:15px">系统管理快捷入口</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="switchPage('files')">核心文件管理</button>
+      <button class="btn btn-outline btn-sm" onclick="switchPage('deployterminal')">部署终端</button>
+      <button class="btn btn-outline btn-sm" onclick="switchPage('settings')">系统设置</button>
+      <button class="btn btn-outline btn-sm" onclick="switchPage('authcodes')">授权码管理</button>
+      <button class="btn btn-outline btn-sm" onclick="switchPage('users')">群用户管理</button>
+      <button class="btn btn-outline btn-sm" onclick="switchPage('updatelog')">更新日志</button>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin:10px 0 0">核心文件与部署终端可读写服务器任意文件并执行命令，仅超级主人可用；普通用户与管理员访问接口一律 403。</p>
+  </div>
+</div>
+
 <div class="page" id="page-profile">
   <h2>个人中心设置</h2>
   <p style="color:var(--text2);margin-top:-8px;margin-bottom:16px">修改你的个人信息和密码</p>
@@ -2083,7 +2115,7 @@ function updateSidebar(){
   // 超主设置过 allowedPages 时按其过滤（空/未设置=角色默认 limited），超主不受限
   const allowedPages=isSuper?null:(Array.isArray(currentUser?.allowedPages)&&currentUser.allowedPages.length?currentUser.allowedPages:limited);
   // 核心文件/部署终端为超主专属（可读写服务器任意文件与执行命令），对其他角色一律隐藏
-  const superOnly=['files','deployterminal'];
+  const superOnly=['files','deployterminal','superadmin'];
   document.querySelectorAll('.nav-item').forEach(n=>{
     const p=n.getAttribute('data-page');
     n.style.display=(isSuper||(allowedPages.includes(p)&&!superOnly.includes(p)))?'':'none';
@@ -2174,9 +2206,9 @@ function switchPage(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const page=docById('page-'+name);if(page)page.classList.add('active');
   const nav=document.querySelector(`.nav-item[data-page="${name}"]`);if(nav)nav.classList.add('active');
-  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
+  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',superadmin:'超主管理',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
   docById('mobilePageTitle').textContent=titles[name]||name;
-  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
+  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,superadmin:saLoadPage,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
   if(currentBot&&['membersync','users','runlog','feedback','authcodes','channels','plugins'].includes(name)){
     applyBotFilterToPage().then(runLoader);
@@ -2392,21 +2424,37 @@ async function aiProvDel(id){
 }
 
 // ===== 用户金币与侧边栏权限（超主） =====
+// 用户列表行渲染（AI 页用户金币列表与「超主管理」页共用，两个容器同步刷新）
+function renderAdminRows(admins){
+  const roleLabels={super_master:'超级主人',master:'主人',member:'会员',user:'普通用户'};
+  const html=(admins||[]).map(a=>{
+    const isSuper=a.role==='super_master';
+    const devTag=isSuper?' <span class="tag tag-approved" style="font-size:11px">开发者</span>':(a.isDeveloper?' <span class="tag tag-approved" style="font-size:11px">认证开发者</span>':'');
+    const regTag=a.createdBy==='register'?' <span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:11px">注册用户</span>':'';
+    const regInfo=a.createdAt?'<div style="font-size:11px;color:var(--text2)">'+new Date(a.createdAt).toLocaleDateString()+(a.createdBy==='register'?' 注册':' 创建')+'</div>':'';
+    return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+devTag+regTag+regInfo+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
+    '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+' <button class="btn btn-outline btn-xs" onclick="aiEmailEdit(\''+esc(a.username)+'\',\''+esc(a.email||'')+'\')">修改邮箱</button></td>'+
+    '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
+    '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button> <button class="btn btn-danger btn-xs" onclick="aiUserDelete(\''+esc(a.username)+'\')">删除</button>')+'</td></tr>';
+  }).join('');
+  ['aiUserList','saUserList'].forEach(id=>{const el=docById(id);if(el)el.innerHTML=html});
+  const cnt=docById('saUserCount');if(cnt)cnt.textContent=(admins||[]).length;
+}
 async function aiUserLoad(){
   try{
-    const admins=await api('/api/auth/admins');
-    const roleLabels={super_master:'超级主人',master:'主人',member:'会员',user:'普通用户'};
-    docById('aiUserList').innerHTML=(admins||[]).map(a=>{
-      const isSuper=a.role==='super_master';
-      const devTag=isSuper?' <span class="tag tag-approved" style="font-size:11px">开发者</span>':(a.isDeveloper?' <span class="tag tag-approved" style="font-size:11px">认证开发者</span>':'');
-      const regTag=a.createdBy==='register'?' <span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:11px">注册用户</span>':'';
-      const regInfo=a.createdAt?'<div style="font-size:11px;color:var(--text2)">'+new Date(a.createdAt).toLocaleDateString()+(a.createdBy==='register'?' 注册':' 创建')+'</div>':'';
-      return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+devTag+regTag+regInfo+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
-      '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+' <button class="btn btn-outline btn-xs" onclick="aiEmailEdit(\''+esc(a.username)+'\',\''+esc(a.email||'')+'\')">修改邮箱</button></td>'+
-      '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
-      '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',-1)">-1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button>')+'</td></tr>';
-    }).join('');
+    renderAdminRows(await api('/api/auth/admins'));
   }catch(e){}
+}
+// 超主管理页入口：直接复用用户列表加载（双容器同步）
+async function saLoadPage(){await aiUserLoad()}
+// 删除用户（超主）：二次确认后走 DELETE /admins/:username
+async function aiUserDelete(username){
+  if(!confirm('确定删除用户「'+username+'」？该账号的登录与授权将立即失效，此操作不可撤销。'))return;
+  try{
+    await api('/api/auth/admins/'+encodeURIComponent(username),{method:'DELETE'});
+    alert('用户「'+username+'」已删除');
+    aiUserLoad();
+  }catch(e){alert('删除失败：'+(e.message||e))}
 }
 
 // 用户权限集中管理：打开弹窗（角色/登录/过期/开发者/插件与机器人权限/侧边栏页面）
@@ -5558,7 +5606,7 @@ async function doChangeCode(){const old=docById('oldAuthCode').value;const n=doc
 async function changeUserCode(username){const p=prompt('为 '+username+' 设置新授权码:');if(p){await api('/api/auth/admins/'+username,{method:'PUT',body:{password:p}});loadSettings()}}
 
  function showAddAdmin(){docById('addAdminUser').value='';docById('addAdminNickname').value='';docById('addAdminAvatar').value='';docById('addAdminOpenid').value='';docById('addAdminQQ').value='';docById('addAdminCode').value='';docById('addAdminExpire').value='';docById('modalAddAdmin').classList.add('active')}
- async function doAddAdmin(){const username=docById('addAdminUser').value.trim();const password=docById('addAdminCode').value;if(!username||!password){alert('用户名和授权码必填');return}const body={username,password,role:docById('addAdminRole').value,loginAble:true,nickname:docById('addAdminNickname').value.trim()||undefined,avatar:docById('addAdminAvatar').value.trim()||undefined,openid:docById('addAdminOpenid').value.trim()||undefined,qq:docById('addAdminQQ').value.trim()||undefined,expireAt:Number(docById('addAdminExpire').value)*1000||undefined};try{await api('/api/auth/admins',{method:'POST',body});closeModal('modalAddAdmin');loadSettings()}catch(e){alert('添加失败: '+e.message)}}
+ async function doAddAdmin(){const username=docById('addAdminUser').value.trim();const password=docById('addAdminCode').value;if(!username||!password){alert('用户名和授权码必填');return}const body={username,password,role:docById('addAdminRole').value,loginAble:true,nickname:docById('addAdminNickname').value.trim()||undefined,avatar:docById('addAdminAvatar').value.trim()||undefined,openid:docById('addAdminOpenid').value.trim()||undefined,qq:docById('addAdminQQ').value.trim()||undefined,expireAt:Number(docById('addAdminExpire').value)*1000||undefined};try{await api('/api/auth/admins',{method:'POST',body});closeModal('modalAddAdmin');loadSettings();aiUserLoad();alert('用户「'+username+'」已添加')}catch(e){alert('添加失败: '+e.message)}}
  let editingAdminUsername='';
  function showEditAdmin(username){editingAdminUsername=username;api('/api/auth/admins').then(admins=>{const a=admins.find(x=>x.username===username);if(!a)return;docById('editAdminUser').value=a.username;docById('editAdminNickname').value=a.nickname||'';docById('editAdminAvatar').value=a.avatar||'';docById('editAdminOpenid').value=a.openid||'';docById('editAdminQQ').value=a.qq||'';docById('editAdminRole').value=a.role||'member';docById('editAdminCode').value='';docById('editAdminLoginAble').checked=a.loginAble!==false;docById('editAdminExpire').value=a.expireAt?String(Math.floor(a.expireAt/1000)):'';docById('modalAdminEdit').classList.add('active')}).catch(e=>alert('加载用户失败: '+e.message))}
  async function doSaveAdmin(){const body={nickname:docById('editAdminNickname').value.trim()||undefined,avatar:docById('editAdminAvatar').value.trim()||undefined,openid:docById('editAdminOpenid').value.trim()||undefined,qq:docById('editAdminQQ').value.trim()||undefined,role:docById('editAdminRole').value,loginAble:docById('editAdminLoginAble').checked};const code=docById('editAdminCode').value.trim();if(code)body.password=code;const ex=docById('editAdminExpire').value.trim();body.expireAt=ex?Number(ex)*1000:null;try{await api('/api/auth/admins/'+editingAdminUsername,{method:'PUT',body});closeModal('modalAdminEdit');loadSettings()}catch(e){alert('保存失败: '+e.message)}}
