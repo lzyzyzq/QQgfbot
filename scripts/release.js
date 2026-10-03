@@ -114,14 +114,15 @@ console.log('基线 tag：' + fromTag + ' → ' + tag);
 // core.quotepath=false：git 默认会把中文/非 ASCII 文件名转义成八进制，导致
 // addFile 在磁盘上找不到同名文件而静默漏包（4.2.79 事故根因：娱乐群管.js/.txt 缺失）。
 // 另提供 --extra-file <rel>（可重复）：显式把某文件强制打进补丁，不依赖 git diff 判定。
-// --patch-base vX.Y.Z：合并补丁改以该 tag 为基线（客群客户端停留在旧版本时，
-// patchUrl 必须包含基线以来的全部变更，否则逐版增量无法补全）。
+// --patch-base vX.Y.Z：合并补丁基线（客群客户端停留在该版本时，patchUrl 必须包含
+// 基线以来的全部变更，逐版增量无法补全）。默认 v1.0.16：线上客群实际部署版本。
+// 框架补丁/插件补丁同样按该基线全量打包（框架版本/插件版本各自独立 bump）。
 const patchBaseTag = (() => {
   const i = args.indexOf('--patch-base');
-  return i >= 0 ? String(args[i + 1] || '') : '';
+  return i >= 0 ? String(args[i + 1] || '') : 'v1.0.16';
 })();
 const patchDiffFrom = patchBaseTag || fromTag;
-if (patchBaseTag) console.log('合并补丁基线（--patch-base）：' + patchBaseTag + '（CHANGELOG 增量仍基于 ' + fromTag + '）');
+if (patchDiffFrom !== fromTag) console.log('合并补丁基线：' + patchDiffFrom + '（CHANGELOG 增量仍基于 ' + fromTag + '）');
 const changed = sh('git -c core.quotepath=false diff --name-only ' + patchDiffFrom + '..HEAD').split('\n').filter(Boolean);
 for (const f of extraFiles) {
   if (!changed.includes(f)) changed.push(f);
@@ -153,8 +154,11 @@ const GEN_EXCLUDE = [
   /^downloads\.html$/, /^index\.html$/, /^releases\.(html|json)$/, /^\.release-body-/, /\.zip$/,
 ];
 const isGenerated = (f) => GEN_EXCLUDE.some((re) => re.test(f));
-const pluginChanged = changedFiltered.some((f) => f.startsWith('plugins/'));
-const frameworkChanged = changedFiltered.some((f) => !f.startsWith('plugins/') && !isGenerated(f));
+// 版本号 bump 判断基于 --from 增量（本次发版真实变更范围）；补丁内容基于基线全量（patchDiffFrom）
+const fromChanged = sh('git -c core.quotepath=false diff --name-only ' + fromTag + '..HEAD').split('\n').filter(Boolean);
+const fromFiltered = fromChanged.filter((f) => !/\.zip$/.test(f) && !/\.png$|\.jpg$|\.jpeg$|\.gif$/.test(f));
+const pluginChanged = fromFiltered.some((f) => f.startsWith('plugins/'));
+const frameworkChanged = fromFiltered.some((f) => !f.startsWith('plugins/') && !isGenerated(f));
 console.log('改动范围：' + (frameworkChanged ? '框架升级 ' : '') + (pluginChanged ? '插件升级' : ''));
 if (!frameworkChanged && !pluginChanged) {
   console.log('警告：未识别到框架或插件源码改动（仅生成物），更新日志将只含提交列表');

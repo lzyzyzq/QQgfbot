@@ -2,7 +2,7 @@
   "ok": true,
   "version": "1.0.25",
   "frameworkVersion": "1.0.20",
-  "pluginVersion": "1.0.17",
+  "pluginVersion": "1.0.18",
   "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.25.zip",
   "fullUrl": "",
   "mirrors": [
@@ -15,14 +15,14 @@
       "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.20.zip"
     },
     {
-      "name": "8091（插件补丁 1.0.17）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.17.zip"
+      "name": "8091（插件补丁 1.0.18）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.18.zip"
     }
   ],
   "changeLog": "新增「超主管理」独立页面（侧边栏，仅超级主人可见）：用户与权限集中管理（权限管理弹窗/金币/侧边栏/开发者/删除用户/添加用户）、注册用户标记、系统管理快捷入口",
   "changeType": "框架升级",
   "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.20.zip",
-  "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.17.zip",
+  "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.18.zip",
   "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.20.zip",
-  "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.17.zip"
+  "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.18.zip"
 }
