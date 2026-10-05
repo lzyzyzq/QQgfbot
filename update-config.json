@@ -1,28 +1,28 @@
 {
   "ok": true,
-  "version": "1.0.26",
-  "frameworkVersion": "1.0.21",
+  "version": "1.0.27",
+  "frameworkVersion": "1.0.22",
   "pluginVersion": "1.0.18",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.26.zip",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.27.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091（合并补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.26.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.27.zip"
     },
     {
-      "name": "8091（框架补丁 1.0.21）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.21.zip"
+      "name": "8091（框架补丁 1.0.22）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.22.zip"
     },
     {
       "name": "8091（插件补丁 1.0.18）",
       "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.18.zip"
     }
   ],
-  "changeLog": "紧急修复：更新后网站打不开（1.0.18 新增的 nodemailer 依赖未随补丁安装，服务启动即崩）。nodemailer 改为惰性加载，缺依赖时服务正常启动、发信时提示安装命令。更新后请务必在面板目录执行一次 npm install。",
+  "changeLog": "新增侧边栏「成员管理」页面：超级主人可搜索成员、添加用户、删除用户、管理全部权限；新增「资料编辑」弹窗，可修改所有用户的昵称/头像/QQ/OpenID/邮箱/密码/角色/过期时间/登录开关/开发者认证（包含超级主人账号自身资料与权限）；用户列表三处（AI页/超主管理/成员管理）同步渲染；注册用户带标记与日期",
   "changeType": "框架升级",
-  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.21.zip",
+  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.22.zip",
   "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.18.zip",
-  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.21.zip",
+  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.22.zip",
   "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.18.zip"
 }
