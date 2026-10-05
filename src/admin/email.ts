@@ -1,6 +1,24 @@
-import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { getConfig, setConfig } from '../db/index';
+
+// nodemailer 惰性加载：旧部署的 node_modules 可能没有该依赖（1.0.18 新增），
+// 顶部 import 会让整个服务启动即崩（网站打不开）；改为用到时才 require，
+// 缺依赖时服务正常启动，仅在真正发信时报错并提示安装命令。
+let _nodemailer: { createTransport: (opts: unknown) => Transporter } | null = null;
+function loadNodemailer(): boolean {
+  if (_nodemailer) return true;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    _nodemailer = require('nodemailer');
+    return true;
+  } catch {
+    return false;
+  }
+}
+// 测试注入点：单测用 vi.mock('nodemailer') 拦截不到 CJS require，通过此函数直接注入 mock 模块
+export function __setNodemailer(mod: { createTransport: (opts: unknown) => Transporter } | null): void {
+  _nodemailer = mod;
+}
 
 // ===== 邮件服务与邮箱验证码 =====
 // SMTP 配置存 config KV（smtp.host/port/secure/user/pass/from/senderName），由超级主人在系统设置维护；
@@ -89,10 +107,11 @@ let cachedConfigKey = '';
 function getTransport(): Transporter | null {
   const cfg = getSmtpConfig();
   if (!cfg) return null;
+  if (!loadNodemailer()) return null;
   // 配置变化时重建连接池
   const key = [cfg.host, cfg.port, cfg.secure, cfg.user, cfg.pass, cfg.from, cfg.senderName].join('|');
   if (cachedTransport && cachedConfigKey === key) return cachedTransport;
-  cachedTransport = nodemailer.createTransport({
+  cachedTransport = _nodemailer!.createTransport({
     host: cfg.host,
     port: cfg.port,
     secure: cfg.secure,
@@ -111,6 +130,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 async function sendMail(to: string, subject: string, html: string): Promise<void> {
+  if (!loadNodemailer()) throw new Error('邮件组件未安装：请在面板目录执行 npm install 后重启服务（或单独安装 nodemailer）');
   const transporter = getTransport();
   if (!transporter) throw new Error('系统邮件通道未就绪：请超级主人在 系统设置 → 邮件服务（SMTP） 中配置发件邮箱');
   const cfg = getSmtpConfig()!;

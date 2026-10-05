@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import nodemailerMod from 'nodemailer';
+import { __setNodemailer } from './email';
 
 // 持久化 KV 的测试内存实现（emailcode.* 直接落在 kvStore，随测试隔离）
 
 // SMTP 配置固定为已配置状态；nodemailer transporter mock 掉（不真实发信）
+// email.ts 用惰性 require 加载 nodemailer（缺依赖时服务不崩），vi.mock 拦截不到，需注入 mock 模块
+__setNodemailer(nodemailerMod as any);
 const kvStore = new Map<string, string>();
 vi.mock('../db/index', () => ({
   getConfig: vi.fn((key: string) => {
