@@ -286,6 +286,7 @@ input[type="file"]{color:var(--text2)}
   <div class="nav-item" data-page="logs" onclick="switchPage('logs')">系统日志</div>
   <div class="nav-item" data-page="runlog" onclick="switchPage('runlog')">运行记录</div>
   <div class="nav-item" data-page="authcodes" onclick="switchPage('authcodes')">授权码</div>
+  <div class="nav-item" data-page="members" onclick="switchPage('members')">成员管理</div>
   <div class="nav-item" data-page="superadmin" onclick="switchPage('superadmin')" style="display:none">超主管理</div>
   <div class="nav-item" data-page="updatelog" onclick="switchPage('updatelog')">更新日志</div>
   <div class="nav-item" data-page="hyperlinks" onclick="switchPage('hyperlinks')">超链接</div>
@@ -1257,6 +1258,24 @@ input[type="file"]{color:var(--text2)}
   <div class="stats-grid" id="linksGrid"></div>
 </div>
 
+<div class="page" id="page-members">
+  <h2>成员管理</h2>
+  <p style="color:var(--text2);font-size:13px;margin-top:-8px">账号成员总表：注册用户带标记；超级主人可添加用户、修改所有用户资料（含超级主人）、管理全部权限与侧边栏显示。</p>
+
+  <div class="card">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <input id="memberSearch" placeholder="搜索 用户名 / 昵称 / QQ / 邮箱" style="flex:1;min-width:200px;padding:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:14px" onkeydown="if(event.key==='Enter')memberFilter()" oninput="memberFilter()">
+      <div style="font-size:13px;color:var(--text2)">共 <b id="memberCount">-</b> 人 · 注册 <b id="memberRegCount">-</b> 人</div>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-outline btn-sm" onclick="aiUserLoad()">刷新</button>
+        <button class="btn btn-primary btn-sm" id="memberAddBtn" onclick="showAddAdmin()">添加用户</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>成员</th><th>角色</th><th>联系方式</th><th>金币</th><th>操作</th></tr></thead><tbody id="membersList"></tbody></table></div>
+    <p id="memberTip" style="font-size:12px;color:var(--text2);margin:10px 0 0">提示：只有超级主人可以进行管理操作。</p>
+  </div>
+</div>
+
 <div class="page" id="page-superadmin">
   <h2>超主管理</h2>
   <p style="color:var(--text2);font-size:13px;margin-top:-8px">超级主人专属：用户与权限集中管理（角色 / 登录 / 过期 / 认证开发者 / 功能权限 / 侧边栏页面 / 金币），注册用户带标记。</p>
@@ -1498,6 +1517,37 @@ input[type="file"]{color:var(--text2)}
   <div class="modal-actions">
     <button class="btn btn-outline" onclick="closeModal('modalAiPerms')">取消</button>
     <button class="btn btn-primary" id="aiPermsSaveBtn" onclick="aiPermsSave()">保存全部</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modalMemberEdit"><div class="modal" style="max-width:560px;max-height:88vh;overflow:auto">
+  <h3>编辑成员资料 <span id="meUsername" style="font-size:13px;color:var(--text2)"></span></h3>
+  <p style="font-size:12px;color:var(--text2);margin-top:-6px">超级主人可修改所有用户的全部资料（包含超级主人账号）；留空的字段保持原值不变。</p>
+  <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="form-group" style="flex:1;min-width:150px"><label>昵称</label><input id="meNickname" placeholder="昵称"></div>
+    <div class="form-group" style="flex:1;min-width:150px"><label>头像 URL</label><input id="meAvatar" placeholder="https://..."></div>
+  </div>
+  <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="form-group" style="flex:1;min-width:150px"><label>QQ 号</label><input id="meQQ" placeholder="QQ 号"></div>
+    <div class="form-group" style="flex:1;min-width:150px"><label>OpenID</label><input id="meOpenid" placeholder="OpenID"></div>
+  </div>
+  <div class="form-group"><label>绑定邮箱（超主修改免验证码；留空不变，输入空格提交即解绑）</label><input id="meEmail" placeholder="user@example.com"></div>
+  <div class="form-group"><label>重置密码（留空=不修改；至少 6 位）</label><input id="mePassword" type="text" placeholder="新密码"></div>
+  <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="form-group" style="flex:1;min-width:150px"><label>角色</label>
+      <select id="meRole" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)">
+        <option value="user">普通用户</option><option value="member">会员</option><option value="master">主人</option><option value="super_master">超级主人</option>
+      </select>
+    </div>
+    <div class="form-group" style="flex:1;min-width:150px"><label>过期时间（留空=永久）</label><input id="meExpire" placeholder="2026-12-31 或空"></div>
+  </div>
+  <div style="display:flex;gap:16px;padding:0 0 8px;flex-wrap:wrap">
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="meLoginAble"> 允许登录</label>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="meDev"> 认证开发者</label>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('modalMemberEdit')">取消</button>
+    <button class="btn btn-primary" id="meSaveBtn" onclick="memberEditSave()">保存资料</button>
   </div>
 </div></div>
 
@@ -2111,7 +2161,7 @@ function updateSidebar(){
   if(restartBtn)restartBtn.style.display=currentUser?.role==='super_master'?'':'none';
   docById('botBadge').textContent=botCount;
   const isSuper=currentUser?.role==='super_master';
-  const limited=['dashboard','bots','ai','market','membersync','plugins','dicts','runlog','authcodes','profile'];
+  const limited=['dashboard','bots','ai','market','membersync','plugins','dicts','runlog','authcodes','profile','members'];
   // 超主设置过 allowedPages 时按其过滤（空/未设置=角色默认 limited），超主不受限
   const allowedPages=isSuper?null:(Array.isArray(currentUser?.allowedPages)&&currentUser.allowedPages.length?currentUser.allowedPages:limited);
   // 核心文件/部署终端为超主专属（可读写服务器任意文件与执行命令），对其他角色一律隐藏
@@ -2206,9 +2256,9 @@ function switchPage(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const page=docById('page-'+name);if(page)page.classList.add('active');
   const nav=document.querySelector(`.nav-item[data-page="${name}"]`);if(nav)nav.classList.add('active');
-  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',superadmin:'超主管理',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
+  const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',members:'成员管理',superadmin:'超主管理',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
   docById('mobilePageTitle').textContent=titles[name]||name;
-  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,superadmin:saLoadPage,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
+  const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,members:saLoadPage,superadmin:saLoadPage,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
   if(currentBot&&['membersync','users','runlog','feedback','authcodes','channels','plugins'].includes(name)){
     applyBotFilterToPage().then(runLoader);
@@ -2424,29 +2474,122 @@ async function aiProvDel(id){
 }
 
 // ===== 用户金币与侧边栏权限（超主） =====
-// 用户列表行渲染（AI 页用户金币列表与「超主管理」页共用，两个容器同步刷新）
+// 用户列表行渲染（AI 页用户金币列表 /「超主管理」/「成员管理」三处共用，同步刷新）
+let _memberAll=[];
 function renderAdminRows(admins){
+  _memberAll=admins||[];
   const roleLabels={super_master:'超级主人',master:'主人',member:'会员',user:'普通用户'};
-  const html=(admins||[]).map(a=>{
+  const buildRow=(a)=>{
     const isSuper=a.role==='super_master';
     const devTag=isSuper?' <span class="tag tag-approved" style="font-size:11px">开发者</span>':(a.isDeveloper?' <span class="tag tag-approved" style="font-size:11px">认证开发者</span>':'');
     const regTag=a.createdBy==='register'?' <span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:11px">注册用户</span>':'';
     const regInfo=a.createdAt?'<div style="font-size:11px;color:var(--text2)">'+new Date(a.createdAt).toLocaleDateString()+(a.createdBy==='register'?' 注册':' 创建')+'</div>':'';
+    const ops=isSuper
+      ?'<button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button>'
+      :'<button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button> <button class="btn btn-danger btn-xs" onclick="aiUserDelete(\''+esc(a.username)+'\')">删除</button>';
     return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+devTag+regTag+regInfo+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
     '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+' <button class="btn btn-outline btn-xs" onclick="aiEmailEdit(\''+esc(a.username)+'\',\''+esc(a.email||'')+'\')">修改邮箱</button></td>'+
     '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
-    '<td>'+(isSuper?'<span style="color:var(--text2)">-</span>':'<button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button> <button class="btn btn-danger btn-xs" onclick="aiUserDelete(\''+esc(a.username)+'\')">删除</button>')+'</td></tr>';
-  }).join('');
-  ['aiUserList','saUserList'].forEach(id=>{const el=docById(id);if(el)el.innerHTML=html});
-  const cnt=docById('saUserCount');if(cnt)cnt.textContent=(admins||[]).length;
+    '<td>'+ops+'</td></tr>';
+  };
+  const htmlAll=_memberAll.map(buildRow).join('');
+  ['aiUserList','saUserList'].forEach(id=>{const el=docById(id);if(el)el.innerHTML=htmlAll});
+  memberApplyFilter();
+  const cnt=docById('saUserCount');if(cnt)cnt.textContent=_memberAll.length;
+  const mc=docById('memberCount');if(mc)mc.textContent=_memberAll.length;
+  const rc=docById('memberRegCount');if(rc)rc.textContent=_memberAll.filter(a=>a.createdBy==='register').length;
+}
+// 成员管理页搜索过滤（用户名/昵称/QQ/邮箱，仅过滤成员管理页列表）
+function memberApplyFilter(){
+  const el=docById('membersList');
+  if(!el)return;
+  const kw=(docById('memberSearch')?.value||'').trim().toLowerCase();
+  const roleLabels={super_master:'超级主人',master:'主人',member:'会员',user:'普通用户'};
+  const rows=_memberAll.filter(a=>{
+    if(!kw)return true;
+    return [a.username,a.nickname,a.qq,a.email,a.openid].some(v=>String(v||'').toLowerCase().includes(kw));
+  });
+  const roleLabelsRef=roleLabels;
+  el.innerHTML=rows.map(a=>{
+    const isSuper=a.role==='super_master';
+    const devTag=isSuper?' <span class="tag tag-approved" style="font-size:11px">开发者</span>':(a.isDeveloper?' <span class="tag tag-approved" style="font-size:11px">认证开发者</span>':'');
+    const regTag=a.createdBy==='register'?' <span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:11px">注册用户</span>':'';
+    const regInfo=a.createdAt?'<div style="font-size:11px;color:var(--text2)">'+new Date(a.createdAt).toLocaleDateString()+(a.createdBy==='register'?' 注册':' 创建')+'</div>':'';
+    return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+devTag+regTag+regInfo+'</td><td>'+(roleLabelsRef[a.role]||a.role)+'</td>'+
+    '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+(a.qq?'<div style="font-size:11px;color:var(--text2)">QQ '+esc(a.qq)+'</div>':'')+'</td>'+
+    '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
+    '<td>'+(isSuper
+      ?'<button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button>'
+      :'<button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button> <button class="btn btn-danger btn-xs" onclick="aiUserDelete(\''+esc(a.username)+'\')">删除</button>')+'</td></tr>';
+  }).join('')||'<tr><td colspan="5" style="color:var(--text2);text-align:center;padding:20px">无匹配成员</td></tr>';
+}
+function memberFilter(){memberApplyFilter()}
+// 成员资料编辑：超主可修改所有用户全部资料（含超级主人账号本身）
+let _meTarget='';
+async function memberEditOpen(username){
+  _meTarget=username;
+  const a=(_memberAll.find(x=>x.username===username))||((await api('/api/auth/admins').catch(()=>[]))||[]).find(x=>x.username===username);
+  if(!a){alert('用户不存在');return}
+  docById('meUsername').textContent='· '+username+(a.role==='super_master'?'（超级主人）':'');
+  docById('meNickname').value=a.nickname||'';
+  docById('meAvatar').value=a.avatar||'';
+  docById('meQQ').value=a.qq||'';
+  docById('meOpenid').value=a.openid||'';
+  docById('meEmail').value=a.email||'';
+  docById('mePassword').value='';
+  docById('meRole').value=a.role;
+  docById('meExpire').value=(a.expireAt?new Date(a.expireAt).toISOString().slice(0,10):'');
+  docById('meLoginAble').checked=a.loginAble!==false;
+  docById('meDev').checked=a.isDeveloper===true;
+  docById('meSaveBtn').disabled=false;
+  docById('meSaveBtn').textContent='保存资料';
+  docById('modalMemberEdit').classList.add('active');
+}
+async function memberEditSave(){
+  const u=_meTarget;
+  if(!u)return;
+  const newRole=docById('meRole').value;
+  if(u===currentUser?.username&&newRole!=='super_master'&&!confirm('你正在修改自己的角色为「'+newRole+'」，保存后将失去超级主人身份，可能无法再进行管理。确定继续？'))return;
+  const btn=docById('meSaveBtn');
+  btn.disabled=true;btn.textContent='保存中...';
+  try{
+    const body={};
+    const nickname=docById('meNickname').value.trim();
+    const avatar=docById('meAvatar').value.trim();
+    const qq=docById('meQQ').value.trim();
+    const openid=docById('meOpenid').value.trim();
+    const email=docById('meEmail').value.trim();
+    const password=docById('mePassword').value;
+    const expireRaw=docById('meExpire').value.trim();
+    if(nickname)body.nickname=nickname;
+    if(avatar)body.avatar=avatar;
+    if(qq)body.qq=qq;
+    if(openid)body.openid=openid;
+    if(email||docById('meEmail').value.startsWith(' '))body.email=email;
+    if(password){if(password.length<6){alert('新密码至少 6 位');btn.disabled=false;btn.textContent='保存资料';return}body.password=password}
+    body.role=newRole;
+    body.loginAble=docById('meLoginAble').checked;
+    body.isDeveloper=docById('meDev').checked;
+    if(expireRaw)body.expireAt=(new Date(expireRaw).getTime()||undefined);
+    await api('/api/auth/admins/'+encodeURIComponent(u),{method:'PUT',body});
+    closeModal('modalMemberEdit');
+    alert('成员「'+u+'」的资料已保存');
+    aiUserLoad();
+  }catch(e){alert('保存失败：'+(e.message||e));btn.disabled=false;btn.textContent='保存资料'}
 }
 async function aiUserLoad(){
   try{
     renderAdminRows(await api('/api/auth/admins'));
   }catch(e){}
 }
-// 超主管理页入口：直接复用用户列表加载（双容器同步）
-async function saLoadPage(){await aiUserLoad()}
+async function saLoadPage(){
+  const isSuper=currentUser?.role==='super_master';
+  const addBtn=docById('memberAddBtn');if(addBtn)addBtn.style.display=isSuper?'':'none';
+  const tip=docById('memberTip');
+  if(tip)tip.textContent=isSuper?'提示：注册用户带「注册用户」标记；点击「资料编辑」可修改全部资料（含超级主人账号），「权限管理」可管理角色、功能权限与侧边栏显示。':'成员管理仅对超级主人开放，请联系超级主人开通权限。';
+  if(!isSuper){_memberAll=[];memberApplyFilter();return}
+  await aiUserLoad();
+}
 // 删除用户（超主）：二次确认后走 DELETE /admins/:username
 async function aiUserDelete(username){
   if(!confirm('确定删除用户「'+username+'」？该账号的登录与授权将立即失效，此操作不可撤销。'))return;

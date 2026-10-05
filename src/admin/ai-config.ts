@@ -103,6 +103,7 @@ export const SIDEBAR_PAGES: Array<{ id: string; name: string }> = [
   { id: 'openids', name: 'ID 映射' },
   { id: 'feedback', name: '意见反馈' },
   { id: 'ai', name: 'AI 智能回复' },
+  { id: 'members', name: '成员管理' },
   { id: 'superadmin', name: '超主管理' },
   { id: 'runlog', name: '运行日志' },
   { id: 'logs', name: '日志' },
