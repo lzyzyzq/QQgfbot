@@ -8,8 +8,8 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "1.0.28",
-    "changeLog": "权限管理弹窗新增「超级主人」角色选项，超主的全部权限（角色/功能权限/侧边栏/额度）均可查看与修改并真实保存；资料编辑弹窗新增金币余额直接设置（自动记入金币流水）；安全防线：系统至少保留一名超级主人（唯一超主禁止降级/删除超主账号禁止删除）"
+    "version": "1.0.29",
+    "changeLog": "功能权限由8项扩展至20项（新增：群管理/授权码/市场/OpenID/反馈/成员同步/系统日志/拦截名单/更新日志/功能开关/定时任务/自定义页面），权限管理弹窗一次勾选保存；超级主人可在网页端新增自定义页面（HTML内容页或外链iframe），自动出现在侧边栏并可按用户授权；安全兜底：以1.0.25为基线全量打包，包含1.0.26~1.0.29全部更新"
   },
   "releases": [
     {
@@ -1441,10 +1441,44 @@
       }
     },
     {
+      "version": "1.0.29",
+      "tag": "v1.0.29",
+      "date": "2026-10-08",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.29/qqbot-card-editor-patch-1.0.29.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.29/qqbot-card-editor-patch-1.0.29.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.29/qqbot-card-editor-patch-1.0.29.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.29.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.29/qqbot-card-editor-1.0.29.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.29/qqbot-card-editor-1.0.29.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.29/qqbot-card-editor-1.0.29.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.29.zip"
+      }
+    },
+    {
       "version": "1.0.28",
       "tag": "v1.0.28",
       "date": "2026-10-08",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.28/qqbot-card-editor-patch-1.0.28.zip",
         "mirrors": [
