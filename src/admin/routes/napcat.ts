@@ -80,7 +80,18 @@ export function createNapcatRoutes(auth?: AdminAuth, eventBus?: EventBus): Route
     if (req.adminUser?.role === 'super_master') return true;
     if (auth) {
       const perms = getUserPermissions(auth, req.adminUser?.username || '');
-      if (perms && perms.canManageGroups) return true;
+      // canManageGroups（群管理）或 canManageMemberSync（成员同步操作）任一授权即可
+      if (perms && (perms.canManageGroups || perms.canManageMemberSync)) return true;
+    }
+    return false;
+  }
+
+  // OpenID 列表管理权限：超主或持有 canManageOpenids 权限点
+  function canManageOpenids(req: Request): boolean {
+    if (req.adminUser?.role === 'super_master') return true;
+    if (auth) {
+      const perms = getUserPermissions(auth, req.adminUser?.username || '');
+      if (perms && perms.canManageOpenids) return true;
     }
     return false;
   }
@@ -677,6 +688,7 @@ export function createNapcatRoutes(auth?: AdminAuth, eventBus?: EventBus): Route
   // 「从用户管理」一键收录+补全：把群成员中已绑定 QQ 的 OpenID 补入本列表，并同步最新昵称/QQ 号/来源机器人
   router.post('/openids/sync', (req: Request, res: Response) => {
     try {
+      if (!canManageOpenids(req)) { res.status(403).json({ ok: false, error: '无权限管理 OpenID（需超管授权 canManageOpenids）' }); return; }
       const r = syncOpenidsFromMembers();
       res.json({
         ok: true,
@@ -693,6 +705,7 @@ export function createNapcatRoutes(auth?: AdminAuth, eventBus?: EventBus): Route
   // 「更新到相应昵称」全量刷新：用群成员最新昵称覆盖 user_mappings 中的旧昵称
   router.post('/openids/sync-nicknames', (req: Request, res: Response) => {
     try {
+      if (!canManageOpenids(req)) { res.status(403).json({ ok: false, error: '无权限管理 OpenID（需超管授权 canManageOpenids）' }); return; }
       const n = syncOpenidNicknames();
       res.json({ ok: true, updated: n, message: n ? `已更新 ${n} 条昵称` : '昵称已是最新' });
     } catch (e: any) {
@@ -704,6 +717,7 @@ export function createNapcatRoutes(auth?: AdminAuth, eventBus?: EventBus): Route
   // openid 可只存在于 group_members（未进 user_mappings），也能直接编辑修复。
   router.put('/openids/:openid', (req: Request, res: Response) => {
     try {
+      if (!canManageOpenids(req)) { res.status(403).json({ ok: false, error: '无权限管理 OpenID（需超管授权 canManageOpenids）' }); return; }
       const openid = String(req.params.openid || '').trim();
       if (!openid) { res.status(400).json({ ok: false, error: 'openid required' }); return; }
       const db = getDb();

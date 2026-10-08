@@ -8,6 +8,7 @@ import {
   listProviders, saveProviders, toProviderView,
   callModel, COIN_COST_PER_CALL,
 } from '../../core/ai-reply';
+import { loadCustomPages } from './custom-pages';
 import { AI_PRESET_PERSONAS, SIDEBAR_PAGES, type AiProvider, type AiBotConfig } from '../ai-config';
 
 // 校验当前用户对机器人是否有管理权（owner 或超级主人）
@@ -199,7 +200,7 @@ export function createAiRoutes(auth: AdminAuth): Router {
     const u = auth.getUser(username);
     if (!u) { res.status(404).json({ error: '用户不存在' }); return; }
     if (u.role === 'super_master') { res.status(400).json({ error: '超级主人不受限制' }); return; }
-    const valid = new Set(SIDEBAR_PAGES.map((p) => p.id));
+    const valid = new Set([...SIDEBAR_PAGES.map((p) => p.id), ...loadCustomPages().filter((p: any) => p.enabled).map((p: any) => p.id)]);
     const filtered = pages.filter((p: string) => valid.has(p));
     // 空列表=恢复默认（全部可用）：写入 null/undefined 移除限制
     auth.updateUser(username, { allowedPages: filtered.length ? filtered : undefined });
@@ -208,7 +209,9 @@ export function createAiRoutes(auth: AdminAuth): Router {
 
   // ===== 元数据：预设人设 / 页面清单 / 默认供应商 =====
   router.get('/meta', (_req: Request, res: Response) => {
-    res.json({ personas: AI_PRESET_PERSONAS, pages: SIDEBAR_PAGES, coinCost: COIN_COST_PER_CALL });
+    // 动态合并超主自定义页面（v1.0.29）：自定义页面与内置页面同权参与权限勾选
+    const custom = loadCustomPages().filter((p: any) => p.enabled).map((p: any) => ({ id: p.id, name: p.name }));
+    res.json({ personas: AI_PRESET_PERSONAS, pages: [...SIDEBAR_PAGES, ...custom], coinCost: COIN_COST_PER_CALL });
   });
 
   return router;

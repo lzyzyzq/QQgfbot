@@ -14,8 +14,16 @@ function normalizeRole(role?: string | null): 'super_master' | 'master' | 'membe
 
 const ROLE_LABELS: Record<string, string> = { super_master: '超级主人', master: '小主人', member: '会员' };
 
+// 授权码管理权限（v1.0.29）：超主恒可用；其他角色需持有 canManageAuthCodes 权限点
+function canManageCodes(req: Request): boolean {
+  if (req.adminUser?.role === 'super_master') return true;
+  const perms = (req as any).adminUser?.permissions as Record<string, boolean> | undefined;
+  return !!(perms && perms.canManageAuthCodes);
+}
+
 // 生成授权码（支持绑定QQ号）
 router.post('/auth-codes', (req: Request, res: Response) => {
+  if (!canManageCodes(req)) { res.status(403).json({ ok: false, error: '无权限生成授权码（需超管授权 canManageAuthCodes）' }); return; }
   const { expires_in_minutes, qq_number, role } = req.body;
   const db = getDb();
 
@@ -168,7 +176,7 @@ router.put('/auth-codes/:id', (req: Request, res: Response) => {
   const row = db.prepare('SELECT id, code, created_by FROM auth_codes WHERE id = ?').get(req.params.id) as any;
   if (!row) { res.status(404).json({ ok: false, error: '授权码不存在' }); return; }
   const isOwner = row.created_by === req.adminUser?.username;
-  if (req.adminUser?.role !== 'super_master' && !isOwner) {
+  if (!canManageCodes(req) && !isOwner) {
     res.status(403).json({ ok: false, error: '无权限修改他人授权码' });
     return;
   }
@@ -225,7 +233,7 @@ router.delete('/auth-codes/:id', (req: Request, res: Response) => {
   const code = db.prepare('SELECT code, created_by FROM auth_codes WHERE id = ?').get(req.params.id) as any;
   if (code) {
     const isOwner = code.created_by === req.adminUser?.username;
-    if (req.adminUser?.role !== 'super_master' && !isOwner) {
+    if (!canManageCodes(req) && !isOwner) {
       res.status(403).json({ ok: false, error: '无权限删除他人授权码' });
       return;
     }
@@ -346,6 +354,7 @@ router.get('/auth-codes/mappings', (_req: Request, res: Response) => {
 
 // 绑定 OpenID 到 QQ
 router.post('/auth-codes/bind-openid', (req: Request, res: Response) => {
+  if (!canManageCodes(req)) { res.status(403).json({ ok: false, error: '无权限绑定 OpenID（需超管授权 canManageAuthCodes）' }); return; }
   const { openid, qq_number, nickname, bot_id } = req.body || {};
   const openidV = String(openid || '').trim();
   const qqV = String(qq_number || '').trim();
@@ -357,6 +366,7 @@ router.post('/auth-codes/bind-openid', (req: Request, res: Response) => {
 
 // 解绑 OpenID
 router.post('/auth-codes/unbind-openid', (req: Request, res: Response) => {
+  if (!canManageCodes(req)) { res.status(403).json({ ok: false, error: '无权限解绑 OpenID（需超管授权 canManageAuthCodes）' }); return; }
   const openid = String((req.body || {}).openid || '').trim();
   if (!openid) { res.status(400).json({ ok: false, error: '缺少 openid' }); return; }
   const removed = unbindOpenid(openid);

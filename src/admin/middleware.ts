@@ -15,6 +15,7 @@ export function getUserPermissions(auth: AdminAuth, username: string): UserPermi
         adminUser?: {
           username: string;
           role: 'super_master' | 'master' | 'member' | 'user';
+          permissions?: UserPermission;
         };
       }
     }
@@ -60,7 +61,7 @@ export function authMiddleware(auth: AdminAuth) {
       return;
     }
 
-    req.adminUser = { username: payload.username, role: payload.role };
+    req.adminUser = { username: payload.username, role: payload.role, permissions: getUserPermissions(auth, payload.username) || undefined };
     next();
   };
 }
@@ -71,4 +72,16 @@ export function requireSuperMaster(req: Request, res: Response, next: NextFuncti
     return;
   }
   next();
+}
+
+// 权限点门槛（v1.0.29）：超主恒放行；其他角色按其 permissions 中对应权限点判定
+export function requirePerm(perm: keyof UserPermission) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const u = req.adminUser;
+    if (!u) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    if (u.role === 'super_master') { next(); return; }
+    if (u.permissions && (u.permissions as unknown as Record<string, boolean>)[perm] === true) { next(); return; }
+    res.status(403).json({ error: '无权限：需要「' + perm + '」权限（请联系超级主人开通）' });
+    return;
+  };
 }

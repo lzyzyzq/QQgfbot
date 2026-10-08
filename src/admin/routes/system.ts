@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import type { Logger } from '../logger';
-import { requireSuperMaster } from '../middleware';
+import { requireSuperMaster, requirePerm } from '../middleware';
 import { resolveMaxBots } from '../config';
 import type { AdminAuth } from '../auth';
 import type { BotRegistry } from '../registry';
@@ -366,19 +366,19 @@ export function createSystemRoutes(
   router.get('/blocklist', (_req, res) => {
     res.json({ list: getBlocklist() });
   });
-  router.post('/blocklist', requireSuperMaster, (req: Request, res: Response) => {
+  router.post('/blocklist', requirePerm('canManageBlocklist'), (req: Request, res: Response) => {
     const ids: string[] = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : (req.body?.id ? [String(req.body.id)] : []);
     if (!ids.length) { res.status(400).json({ error: '缺少 id' }); return; }
     ids.forEach((id) => addBlocked(id));
     res.json({ ok: true, list: getBlocklist() });
   });
-  router.delete('/blocklist/:id', requireSuperMaster, (req: Request, res: Response) => {
+  router.delete('/blocklist/:id', requirePerm('canManageBlocklist'), (req: Request, res: Response) => {
     removeBlocked(decodeURIComponent(req.params.id));
     res.json({ ok: true, list: getBlocklist() });
   });
 
   // 删除运行记录：body {ids:[...]} 批量删除；?all=1 或 body {all:true} 清空全部
-  router.delete('/system-logs', requireSuperMaster, (req: Request, res: Response) => {
+  router.delete('/system-logs', requirePerm('canManageSystemLogs'), (req: Request, res: Response) => {
     try {
       const ids = req.body?.ids;
       if (Array.isArray(ids)) {
@@ -449,7 +449,7 @@ export function createSystemRoutes(
     res.json({ content: getUpdateLog() });
   });
 
-  router.put('/updatelog', requireSuperMaster, (req: Request, res: Response) => {
+  router.put('/updatelog', requirePerm('canManageUpdateLog'), (req: Request, res: Response) => {
     const content = req.body?.content;
     if (typeof content !== 'string') {
       res.status(400).json({ error: '缺少 content 字段' });
@@ -1141,7 +1141,7 @@ export function createSystemRoutes(
     res.json({ switches: getSwitchStates() });
   });
 
-  router.put('/switches', requireSuperMaster, (req: Request, res: Response) => {
+  router.put('/switches', requirePerm('canManageSwitches'), (req: Request, res: Response) => {
     const { key, enabled } = req.body || {};
     if (!key || typeof enabled !== 'boolean') { res.json({ ok: false, error: '需要 key 与布尔 enabled' }); return; }
     const s = setSwitchState(String(key), enabled);
@@ -1154,26 +1154,26 @@ export function createSystemRoutes(
     res.json({ tasks: listScheduleTasks() });
   });
 
-  router.post('/schedule-tasks', requireSuperMaster, (req: Request, res: Response) => {
+  router.post('/schedule-tasks', requirePerm('canManageScheduleTasks'), (req: Request, res: Response) => {
     const r = createScheduleTask(req.body || {});
     if (!r.ok) { res.json({ ok: false, error: r.error }); return; }
     res.json({ ok: true, task: r.task });
   });
 
-  router.put('/schedule-tasks', requireSuperMaster, (req: Request, res: Response) => {
+  router.put('/schedule-tasks', requirePerm('canManageScheduleTasks'), (req: Request, res: Response) => {
     const r = updateScheduleTask(req.body || {});
     if (!r.ok) { res.json({ ok: false, error: r.error }); return; }
     res.json({ ok: true, task: r.task });
   });
 
-  router.delete('/schedule-tasks', requireSuperMaster, (req: Request, res: Response) => {
+  router.delete('/schedule-tasks', requirePerm('canManageScheduleTasks'), (req: Request, res: Response) => {
     const id = String(req.query.id || '');
     if (!id) { res.json({ ok: false, error: '缺少 id' }); return; }
     const r = deleteScheduleTask(id);
     res.json({ ok: r.ok });
   });
 
-  router.post('/schedule-tasks/toggle', requireSuperMaster, (req: Request, res: Response) => {    const id = String((req.body || {}).id || '');
+  router.post('/schedule-tasks/toggle', requirePerm('canManageScheduleTasks'), (req: Request, res: Response) => {    const id = String((req.body || {}).id || '');
     if (!id) { res.json({ ok: false, error: '缺少 id' }); return; }
     const r = toggleScheduleTask(id);
     if (!r.ok) { res.json({ ok: false, error: r.error }); return; }
@@ -1208,7 +1208,7 @@ export function createSystemRoutes(
   });
 
   // 反馈回复：发私聊给反馈提交者 + 更新状态（面板直接回复）
-  router.post('/feedbacks/:id/reply', requireSuperMaster, async (req: Request, res: Response) => {
+  router.post('/feedbacks/:id/reply', requirePerm('canManageFeedbacks'), async (req: Request, res: Response) => {
     try {
       const id = String(req.params.id || '');
       const reply = String((req.body || {}).reply || '').trim();
@@ -1232,7 +1232,7 @@ export function createSystemRoutes(
   });
 
   // 反馈状态更新（pending → done）
-  router.put('/feedbacks/:id', requireSuperMaster, (req: Request, res: Response) => {
+  router.put('/feedbacks/:id', requirePerm('canManageFeedbacks'), (req: Request, res: Response) => {
     try {
       const id = String(req.params.id || '');
       const status = String((req.body || {}).status || 'done');
@@ -1245,7 +1245,7 @@ export function createSystemRoutes(
   });
 
   // 删除反馈
-  router.delete('/feedbacks/:id', requireSuperMaster, (req: Request, res: Response) => {
+  router.delete('/feedbacks/:id', requirePerm('canManageFeedbacks'), (req: Request, res: Response) => {
     try {
       const id = String(req.params.id || '');
       const db = getDb();
@@ -1280,7 +1280,7 @@ export function createSystemRoutes(
   });
 
   // 修改群：群名 / 群号（群号变更自动生成群头像）
-  router.put('/groups/:id', requireSuperMaster, (req: Request, res: Response) => {
+  router.put('/groups/:id', requirePerm('canManageGroups'), (req: Request, res: Response) => {
     try {
       const id = String(req.params.id || '');
       const body = req.body || {};
@@ -1310,7 +1310,7 @@ export function createSystemRoutes(
   });
 
   // 批量删除群（连带删除群成员记录）
-  router.post('/groups/batch-delete', requireSuperMaster, (req: Request, res: Response) => {
+  router.post('/groups/batch-delete', requirePerm('canManageGroups'), (req: Request, res: Response) => {
     try {
       const ids: any[] = Array.isArray((req.body || {}).ids) ? req.body.ids : [];
       if (!ids.length) { res.json({ ok: false, error: 'ids required' }); return; }
@@ -1330,7 +1330,7 @@ export function createSystemRoutes(
   });
 
   // 删除群（连带删除该群群成员记录）
-  router.delete('/groups/:id', requireSuperMaster, (req: Request, res: Response) => {
+  router.delete('/groups/:id', requirePerm('canManageGroups'), (req: Request, res: Response) => {
     try {
       const id = String(req.params.id || '');
       const db = getDb();

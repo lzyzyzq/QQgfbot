@@ -1290,7 +1290,7 @@ input[type="file"]{color:var(--text2)}
       </div>
     </div>
     <div class="table-wrap"><table><thead><tr><th>用户名</th><th>角色</th><th>绑定邮箱</th><th>金币</th><th>操作</th></tr></thead><tbody id="saUserList"></tbody></table></div>
-    <p style="font-size:12px;color:var(--text2);margin:10px 0 0">「权限管理」弹窗可一次保存：角色 / 机器人额度 / 过期时间 / 允许登录 / 认证开发者 / 8 项功能权限 / 25 项侧边栏页面。文件管理与部署终端始终仅超级主人可用。</p>
+    <p style="font-size:12px;color:var(--text2);margin:10px 0 0">「权限管理」弹窗可一次保存：角色 / 机器人额度 / 过期时间 / 允许登录 / 认证开发者 / 20 项功能权限（机器人 / 插件 / 群管理 / 授权码 / 市场 / OpenID / 反馈 / 成员同步 / 系统日志 / 拦截名单 / 更新日志 / 功能开关 / 定时任务 / 自定义页面） / 侧边栏页面。文件管理与部署终端始终仅超级主人可用。</p>
   </div>
 
   <div class="card">
@@ -1304,6 +1304,19 @@ input[type="file"]{color:var(--text2)}
       <button class="btn btn-outline btn-sm" onclick="switchPage('updatelog')">更新日志</button>
     </div>
     <p style="font-size:12px;color:var(--text2);margin:10px 0 0">核心文件与部署终端可读写服务器任意文件并执行命令，仅超级主人可用；普通用户与管理员访问接口一律 403。</p>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <h3 style="margin:0;font-size:15px">自定义页面 / 侧边栏功能</h3>
+      <span style="font-size:12px;color:var(--text2)">共 <b id="custCount">-</b> 个</span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="custLoad()">刷新</button>
+        <button class="btn btn-primary btn-sm" onclick="custOpen()">新增页面</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin:0 0 10px">超主可在此新增网页端页面：支持 HTML 内容页与外链（iframe 嵌入）两种类型；保存后自动出现在侧边栏，并可在「权限管理 → 侧边栏页面」中按用户勾选授权。</p>
+    <div class="table-wrap"><table><thead><tr><th>页面名称</th><th>类型</th><th>状态</th><th>排序</th><th>操作</th></tr></thead><tbody id="custList"></tbody></table></div>
   </div>
 </div>
 
@@ -1501,15 +1514,27 @@ input[type="file"]{color:var(--text2)}
     </div>
   </div>
   <div class="form-group"><label>功能权限</label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:13px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsAddBot"> 添加机器人</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsEditBot"> 编辑机器人</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsDelBot"> 删除机器人</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsGroups"> 群管理</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsUpPlugin"> 上传插件</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsOwnPlugin"> 管理自己的插件</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsAllPlugin"> 使用全部插件</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsTestPlugin"> 测试插件</label>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsEditCode"> 编辑插件代码</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsCodes"> 授权码管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsMarket"> 市场管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsOpenids"> OpenID管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsFeedback"> 反馈管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsMSync"> 成员同步操作</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsSysLogs"> 系统日志管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsBlock"> 拦截名单管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsUpLog"> 更新日志管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsSwitch"> 功能开关管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsTasks"> 定时任务管理</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aiPermsCustom"> 自定义页面管理</label>
     </div>
   </div>
   <div class="form-group"><label>侧边栏页面（不勾选 = 按角色默认显示）</label>
@@ -1551,6 +1576,28 @@ input[type="file"]{color:var(--text2)}
   <div class="modal-actions">
     <button class="btn btn-outline" onclick="closeModal('modalMemberEdit')">取消</button>
     <button class="btn btn-primary" id="meSaveBtn" onclick="memberEditSave()">保存资料</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modalCustPage"><div class="modal">
+  <h3 id="cpTitle">新增自定义页面</h3>
+  <p style="font-size:12px;color:var(--text2);margin-top:-6px">新增后页面即时出现在所有有权用户的侧边栏；HTML 内容中的脚本标签不会执行（安全考虑），需要脚本请改用「外链」类型。</p>
+  <input type="hidden" id="cpId">
+  <div class="form-group"><label>页面名称（显示在侧边栏）</label><input id="cpName" placeholder="例如：公告栏 / 帮助中心 / 数据看板" maxlength="30"></div>
+  <div class="form-group"><label>页面类型</label>
+    <select id="cpType" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)" onchange="cpSyncType()">
+      <option value="html">HTML 内容页</option><option value="link">外链（iframe 嵌入）</option>
+    </select>
+  </div>
+  <div class="form-group" id="cpLinkWrap" style="display:none"><label>外链地址（完整 http(s) URL）</label><input id="cpLink" placeholder="https://example.com/page"></div>
+  <div class="form-group" id="cpHtmlWrap"><label>HTML 内容（支持常用标签与内联样式）</label><textarea id="cpHtml" rows="8" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="<div style=&quot;padding:20px&quot;><h3>欢迎</h3><p>这是自定义页面</p></div>"></textarea></div>
+  <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <div class="form-group" style="flex:1;min-width:120px"><label>排序（越小越靠前）</label><input id="cpOrder" type="number" value="100"></div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding-bottom:10px"><input type="checkbox" id="cpEnabled" checked> 启用（立即显示在侧边栏）</label>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('modalCustPage')">取消</button>
+    <button class="btn btn-primary" id="cpSaveBtn" onclick="custSave()">保存页面</button>
   </div>
 </div></div>
 
@@ -2103,7 +2150,7 @@ async function doLogin(){
     setAdminTokenCookie(data.token);
     errEl.textContent='登录成功，跳转中...';
     setTimeout(function(){
-      hideLogin();updateSidebar();loadDashboard();loadBotCount();applyPendingOpen();
+      hideLogin();custRefreshNav();updateSidebar();loadDashboard();loadBotCount();applyPendingOpen();
       errEl.textContent='';
       checkPasswordPolicy();
     },300);
@@ -2155,6 +2202,90 @@ async function doChangePassword(){
 }
 
 async function doLogout(){try{await api('/api/auth/logout',{method:'POST'})}catch{}document.cookie='admin_token=; path=/; max-age=0';showLogin()}
+
+
+// ===== 自定义页面（v1.0.29）：超主网页端新增侧边栏页面与功能 =====
+let _custPages=[];let _custAll=[];
+async function custLoadAll(){try{const d=await api('/api/custom-pages');_custPages=d.pages||[]}catch(e){_custPages=[]}}
+function custNavRender(){
+  (_custPages||[]).forEach(p=>{
+    if(document.querySelector('.nav-item[data-page="'+p.id+'"]'))return;
+    const help=document.querySelector('.nav-item[data-page="help"]');
+    const div=document.createElement('div');
+    div.className='nav-item';div.setAttribute('data-page',p.id);
+    div.setAttribute('onclick',"switchPage('"+p.id+"')");
+    div.textContent=p.name;
+    if(help&&help.parentNode)help.parentNode.insertBefore(div,help);
+  });
+}
+async function custRefreshNav(){await custLoadAll();custNavRender();updateSidebar();}
+function custEnsurePage(p){
+  let el=docById('page-'+p.id);
+  if(!el){el=document.createElement('div');el.className='page';el.id='page-'+p.id;docById('mainContent').appendChild(el);}
+  const sig=p.id+':'+p.type+':'+(p.content||'').length;
+  if(el.getAttribute('data-rendered')===sig)return;
+  if(p.type==='link'){
+    el.innerHTML='<h2>'+esc(p.name)+'</h2><iframe src="'+esc(p.content)+'" style="width:100%;height:calc(100vh - 150px);border:1px solid var(--border);border-radius:var(--radius);background:#fff" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>';
+  }else{
+    el.innerHTML='<h2>'+esc(p.name)+'</h2><div class="card">'+p.content+'</div>';
+  }
+  el.setAttribute('data-rendered',sig);
+}
+// 超主管理页：自定义页面管理列表（全量含停用）
+async function custLoad(){
+  try{
+    const d=await api('/api/custom-pages/all');_custAll=d.pages||[];
+    docById('custCount').textContent=_custAll.length;
+    docById('custList').innerHTML=_custAll.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+(p.type==='link'?'<span class="tag" style="background:#1e3a5f;color:#7dd3fc">外链</span>':'<span class="tag">HTML</span>')+'</td><td>'+(p.enabled?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+(p.order||0)+'</td><td><button class="btn btn-outline btn-xs" onclick="custOpen(\''+esc(p.id)+'\')">编辑</button> <button class="btn btn-outline btn-xs" onclick="custToggle(\''+esc(p.id)+'\','+(p.enabled?1:0)+')">'+(p.enabled?'停用':'启用')+'</button> <button class="btn btn-danger btn-xs" onclick="custDel(\''+esc(p.id)+'\')">删除</button></td></tr>').join('')||'<tr><td colspan="5" style="color:var(--text2);text-align:center;padding:16px">暂无自定义页面，点击「新增页面」创建</td></tr>';
+  }catch(e){}
+}
+function cpSyncType(){
+  const t=docById('cpType').value;
+  docById('cpLinkWrap').style.display=t==='link'?'':'none';
+  docById('cpHtmlWrap').style.display=t==='link'?'none':'';
+}
+function custOpen(id){
+  const p=id?(_custAll.find(x=>x.id===id)||_custPages.find(x=>x.id===id)):null;
+  docById('cpTitle').textContent=p?('编辑自定义页面 · '+p.name):'新增自定义页面';
+  docById('cpId').value=p?p.id:'';
+  docById('cpName').value=p?p.name:'';
+  docById('cpType').value=p?p.type:'html';
+  docById('cpLink').value=p&&p.type==='link'?p.content:'';
+  docById('cpHtml').value=p&&p.type==='html'?p.content:'';
+  docById('cpOrder').value=p?(p.order||0):100;
+  docById('cpEnabled').checked=p?p.enabled!==false:true;
+  cpSyncType();
+  docById('cpSaveBtn').disabled=false;docById('cpSaveBtn').textContent='保存页面';
+  docById('modalCustPage').classList.add('active');
+}
+async function custSave(){
+  const id=docById('cpId').value;
+  const body={name:docById('cpName').value.trim(),type:docById('cpType').value,enabled:docById('cpEnabled').checked,order:Number(docById('cpOrder').value)||0};
+  if(body.type==='link'){body.content=docById('cpLink').value.trim();if(!/^https?:\/\//i.test(body.content)){alert('外链地址需以 http(s):// 开头');return}}
+  else{body.content=docById('cpHtml').value;if(!body.content.trim()){alert('HTML 内容不能为空');return}}
+  const btn=docById('cpSaveBtn');btn.disabled=true;btn.textContent='保存中...';
+  try{
+    if(id)await api('/api/custom-pages/'+encodeURIComponent(id),{method:'PUT',body});
+    else await api('/api/custom-pages',{method:'POST',body});
+    closeModal('modalCustPage');
+    alert('自定义页面已保存，侧边栏已更新');
+    await custRefreshNav();custLoad();
+  }catch(e){alert('保存失败：'+(e.message||e));btn.disabled=false;btn.textContent='保存页面'}
+}
+async function custToggle(id,cur){
+  try{
+    const p=_custAll.find(x=>x.id===id);if(!p)return;
+    await api('/api/custom-pages/'+encodeURIComponent(id),{method:'PUT',body:{enabled:!cur}});
+    await custRefreshNav();custLoad();
+  }catch(e){alert('操作失败：'+(e.message||e))}
+}
+async function custDel(id){
+  if(!confirm('确定删除该自定义页面？删除后侧边栏与授权配置同步移除。'))return;
+  try{
+    await api('/api/custom-pages/'+encodeURIComponent(id),{method:'DELETE'});
+    await custRefreshNav();custLoad();
+  }catch(e){alert('删除失败：'+(e.message||e))}
+}
 
 function updateSidebar(){
   docById('sidebarUser').textContent=currentUser?currentUser.username:'未登录';
@@ -2260,7 +2391,9 @@ function switchPage(name){
   const page=docById('page-'+name);if(page)page.classList.add('active');
   const nav=document.querySelector(`.nav-item[data-page="${name}"]`);if(nav)nav.classList.add('active');
   const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',members:'成员管理',superadmin:'超主管理',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
-  docById('mobilePageTitle').textContent=titles[name]||name;
+  const custP=(_custPages||[]).find(x=>x.id===name);
+  if(custP)custEnsurePage(custP);
+  docById('mobilePageTitle').textContent=titles[name]||(custP?custP.name:name);
   const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,members:saLoadPage,superadmin:saLoadPage,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
   if(currentBot&&['membersync','users','runlog','feedback','authcodes','channels','plugins'].includes(name)){
@@ -2608,6 +2741,7 @@ async function saLoadPage(){
   if(tip)tip.textContent=isSuper?'提示：注册用户带「注册用户」标记；点击「资料编辑」可修改全部资料（含超级主人账号），「权限管理」可管理角色、功能权限与侧边栏显示。':'成员管理仅对超级主人开放，请联系超级主人开通权限。';
   if(!isSuper){_memberAll=[];memberApplyFilter();return}
   await aiUserLoad();
+  custLoad();
 }
 // 删除用户（超主）：二次确认后走 DELETE /admins/:username
 async function aiUserDelete(username){
@@ -2636,11 +2770,34 @@ async function aiPermsOpen(username){
   docById('aiPermsAddBot').checked=!!(a.permissions&&a.permissions.canAddBot);
   docById('aiPermsEditBot').checked=!!(a.permissions&&a.permissions.canEditBot);
   docById('aiPermsDelBot').checked=!!(a.permissions&&a.permissions.canDeleteBot);
+  docById('aiPermsGroups').checked=!!(a.permissions&&a.permissions.canManageGroups);
   docById('aiPermsUpPlugin').checked=!!(a.permissions&&a.permissions.canUploadPlugin);
   docById('aiPermsOwnPlugin').checked=!!(a.permissions&&a.permissions.canManageOwnPlugins);
   docById('aiPermsAllPlugin').checked=!!(a.permissions&&a.permissions.canUseAllPlugins);
   docById('aiPermsTestPlugin').checked=!!(a.permissions&&a.permissions.canTestPlugin);
   docById('aiPermsEditCode').checked=!!(a.permissions&&a.permissions.canEditPluginCode);
+  docById('aiPermsCodes').checked=!!(a.permissions&&a.permissions.canManageAuthCodes);
+  docById('aiPermsMarket').checked=!!(a.permissions&&a.permissions.canManageMarket);
+  docById('aiPermsOpenids').checked=!!(a.permissions&&a.permissions.canManageOpenids);
+  docById('aiPermsFeedback').checked=!!(a.permissions&&a.permissions.canManageFeedbacks);
+  docById('aiPermsMSync').checked=!!(a.permissions&&a.permissions.canManageMemberSync);
+  docById('aiPermsSysLogs').checked=!!(a.permissions&&a.permissions.canManageSystemLogs);
+  docById('aiPermsBlock').checked=!!(a.permissions&&a.permissions.canManageBlocklist);
+  docById('aiPermsUpLog').checked=!!(a.permissions&&a.permissions.canManageUpdateLog);
+  docById('aiPermsSwitch').checked=!!(a.permissions&&a.permissions.canManageSwitches);
+  docById('aiPermsTasks').checked=!!(a.permissions&&a.permissions.canManageScheduleTasks);
+  docById('aiPermsCustom').checked=!!(a.permissions&&a.permissions.canManageCustomPages);
+  docById('aiPermsCodes').checked=!!(a.permissions&&a.permissions.canManageAuthCodes);
+  docById('aiPermsMarket').checked=!!(a.permissions&&a.permissions.canManageMarket);
+  docById('aiPermsOpenids').checked=!!(a.permissions&&a.permissions.canManageOpenids);
+  docById('aiPermsFeedback').checked=!!(a.permissions&&a.permissions.canManageFeedbacks);
+  docById('aiPermsMSync').checked=!!(a.permissions&&a.permissions.canManageMemberSync);
+  docById('aiPermsSysLogs').checked=!!(a.permissions&&a.permissions.canManageSystemLogs);
+  docById('aiPermsBlock').checked=!!(a.permissions&&a.permissions.canManageBlocklist);
+  docById('aiPermsUpLog').checked=!!(a.permissions&&a.permissions.canManageUpdateLog);
+  docById('aiPermsSwitch').checked=!!(a.permissions&&a.permissions.canManageSwitches);
+  docById('aiPermsTasks').checked=!!(a.permissions&&a.permissions.canManageScheduleTasks);
+  docById('aiPermsCustom').checked=!!(a.permissions&&a.permissions.canManageCustomPages);
   // 侧边栏页面：当前用户 allowedPages（空=默认全选展示但不提交）
   let cur=[];
   try{const d=await api('/api/ai/pages?username='+encodeURIComponent(username));cur=d.allowedPages||[]}catch(e){}
@@ -2671,17 +2828,33 @@ async function aiPermsSave(){
       canAddBot:docById('aiPermsAddBot').checked,
       canEditBot:docById('aiPermsEditBot').checked,
       canDeleteBot:docById('aiPermsDelBot').checked,
+      canManageGroups:docById('aiPermsGroups').checked,
       canUploadPlugin:docById('aiPermsUpPlugin').checked,
       canManageOwnPlugins:docById('aiPermsOwnPlugin').checked,
       canUseAllPlugins:docById('aiPermsAllPlugin').checked,
       canTestPlugin:docById('aiPermsTestPlugin').checked,
       canEditPluginCode:docById('aiPermsEditCode').checked,
+      canManageAuthCodes:docById('aiPermsCodes').checked,
+      canManageMarket:docById('aiPermsMarket').checked,
+      canManageOpenids:docById('aiPermsOpenids').checked,
+      canManageFeedbacks:docById('aiPermsFeedback').checked,
+      canManageMemberSync:docById('aiPermsMSync').checked,
+      canManageSystemLogs:docById('aiPermsSysLogs').checked,
+      canManageBlocklist:docById('aiPermsBlock').checked,
+      canManageUpdateLog:docById('aiPermsUpLog').checked,
+      canManageSwitches:docById('aiPermsSwitch').checked,
+      canManageScheduleTasks:docById('aiPermsTasks').checked,
+      canManageCustomPages:docById('aiPermsCustom').checked,
       maxBots:Math.max(0,Math.trunc(Number(docById('aiPermsMaxBots').value)||0)),
     }});
     const pages=[...docById('aiPermsPages').querySelectorAll('input:checked')].map(i=>i.value);
     await api('/api/ai/pages',{method:'PUT',body:{username:u,pages}});
     closeModal('modalAiPerms');
-    alert('用户「'+u+'」的全部权限已保存'+(pages.length?('，侧边栏已限制为 '+pages.length+' 项'):'，侧边栏按角色默认显示')+'。用户刷新页面后生效。');
+    if(u===currentUser?.username){
+      try{const me=await api('/api/auth/me');if(me&&me.username)currentUser=me;}catch(e){}
+      await custRefreshNav();updateSidebar();
+    }
+    alert('用户「'+u+'」的全部权限已保存'+(pages.length?('，侧边栏已限制为 '+pages.length+' 项'):'，侧边栏按角色默认显示')+'（若修改的是当前登录账号则已即时生效）。');
     aiUserLoad();
   }catch(e){alert('保存失败：'+(e.message||e));btn.disabled=false;btn.textContent='保存全部'}
 }

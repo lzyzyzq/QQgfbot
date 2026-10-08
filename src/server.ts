@@ -22,6 +22,7 @@ import { createAiRoutes } from './admin/routes/ai';
 import { createMarketRoutes } from './admin/routes/market';
 import editorRoutes from './admin/routes/editor';
 import type { AdminConfig } from './admin/config';
+import { ROLE_PERMISSIONS } from './admin/config';
 
 // ===== 业务 API imports =====
 import { initDb, closeDb, getConfig, setConfig, getDb, addSystemLog } from './db/index';
@@ -39,6 +40,7 @@ import botRoutes from './api/bot';
 import pluginRoutes from './api/plugin';
 import logRoutes from './api/log';
 import authCodesRoutes from './api/auth-codes';
+import { createCustomPagesRoutes } from './admin/routes/custom-pages';
 import botAuthCodesRoutes from './api/bot-auth-codes';
 import botSystemRoutes, { syncPermConfig } from './api/bot-system';
 import timeOffsetRoutes from './api/time-offset';
@@ -522,7 +524,7 @@ async function main() {
     admins: [{
       username: 'superadmin', password: adminPassword,
       role: 'super_master', loginAble: true,
-      permissions: { canAddBot: true, maxBots: 999, canEditBot: true, canDeleteBot: true, canUploadPlugin: true, canManageOwnPlugins: true, canUseAllPlugins: true, canEditPluginCode: true, canManageGroups: true, canTestPlugin: true },
+      permissions: { ...ROLE_PERMISSIONS.super_master, maxBots: 999 },
     }],
     sessionExpireHours: 24, pluginsDir: PLUGINS_DIR, dataDir: DATA_DIR,
   };
@@ -638,8 +640,8 @@ async function main() {
   app.use('/api', botRoutes);
   app.use('/api', pluginRoutes);
   app.use('/api', logRoutes);
-  app.use('/api', authCodesRoutes);
-  app.use('/api', timeOffsetRoutes);
+  app.use('/api', authCodesRoutes);  app.use('/api', timeOffsetRoutes);
+  app.use('/api/custom-pages', createCustomPagesRoutes());
   app.use('/api', filesRoutes);
   app.use('/api', groupsRoutes);
   app.use('/api', menuConfigRoutes);

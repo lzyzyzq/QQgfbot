@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { AdminAuth } from '../auth';
-import { requireSuperMaster } from '../middleware';
+import { requirePerm } from '../middleware';
 import { getDb } from '../../db/index';
 import { getPluginEngine } from '../../api/index';
 
@@ -314,7 +314,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
   });
 
   // ===== 超级主人管理 =====
-  router.get('/admin/items', requireSuperMaster, (req: Request, res: Response) => {
+  router.get('/admin/items', requirePerm('canManageMarket'), (req: Request, res: Response) => {
     const status = String(req.query.status || '').trim();
     const search = String(req.query.search || '').trim();
     const db = getDb();
@@ -329,7 +329,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
 
   // 从本地导入（词库：plugins/词库/*.txt；插件：plugins/*.js|mjs|py）为系统内置条目（超主直接审核上架，可定价）
   // 超主上传本地文件内容直接上架（不入 plugins 文件夹，内容落库；支持代码文件与词库文件）
-  router.post('/admin/upload', requireSuperMaster, (req: Request, res: Response) => {
+  router.post('/admin/upload', requirePerm('canManageMarket'), (req: Request, res: Response) => {
     const body = req.body || {};
     const type = body.type === 'plugin' ? 'plugin' : 'dict';
     const content = String(body.content || '');
@@ -371,7 +371,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     res.json({ ok: true, id, price });
   });
 
-  router.post('/admin/import', requireSuperMaster, (req: Request, res: Response) => {
+  router.post('/admin/import', requirePerm('canManageMarket'), (req: Request, res: Response) => {
     const body = req.body || {};
     const type = body.type === 'plugin' ? 'plugin' : 'dict';
     const file = safeItemFileName(type, body.file);
@@ -433,7 +433,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
   });
 
   // 本地文件清单（供导入：词库 + 插件）
-  router.get('/admin/local-files', requireSuperMaster, (_req: Request, res: Response) => {
+  router.get('/admin/local-files', requirePerm('canManageMarket'), (_req: Request, res: Response) => {
     try {
       const files = fs.existsSync(MARKET_DIR)
         ? fs.readdirSync(MARKET_DIR).filter((n) => /\.txt$/i.test(n)).sort((a, b) => a.localeCompare(b, 'zh-CN'))
@@ -448,7 +448,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     }
   });
 
-  router.post('/admin/review', requireSuperMaster, (req: Request, res: Response) => {
+  router.post('/admin/review', requirePerm('canManageMarket'), (req: Request, res: Response) => {
     const body = req.body || {};
     const id = String(body.id || '');
     const action = String(body.action || '');
@@ -460,7 +460,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     res.json({ ok: true });
   });
 
-  router.put('/admin/items/:id', requireSuperMaster, (req: Request, res: Response) => {
+  router.put('/admin/items/:id', requirePerm('canManageMarket'), (req: Request, res: Response) => {
     const id = String(req.params.id);
     const db = getDb();
     const item = db.prepare('SELECT * FROM market_items WHERE id = ?').get(id) as any;
@@ -491,14 +491,14 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     res.json({ ok: true });
   });
 
-  router.delete('/admin/items/:id', requireSuperMaster, (req: Request, res: Response) => {
+  router.delete('/admin/items/:id', requirePerm('canManageMarket'), (req: Request, res: Response) => {
     const db = getDb();
     const r = db.prepare('DELETE FROM market_items WHERE id = ?').run(String(req.params.id));
     if (!r.changes) { res.status(404).json({ error: '词库不存在' }); return; }
     res.json({ ok: true });
   });
 
-  router.get('/admin/settings', requireSuperMaster, (_req: Request, res: Response) => {
+  router.get('/admin/settings', requirePerm('canManageMarket'), (_req: Request, res: Response) => {
     res.json({
       taxRate: getMarketSetting('tax_rate', 10),
       signinCoins: getMarketSetting('signin_coins', 5),
@@ -506,7 +506,7 @@ export function createMarketRoutes(auth: AdminAuth): Router {
     });
   });
 
-  router.put('/admin/settings', requireSuperMaster, (req: Request, res: Response) => {
+  router.put('/admin/settings', requirePerm('canManageMarket'), (req: Request, res: Response) => {
     const body = req.body || {};
     if (body.taxRate !== undefined) setMarketSetting('tax_rate', Math.min(90, Math.max(0, Math.trunc(Number(body.taxRate) || 0))));
     if (body.signinCoins !== undefined) setMarketSetting('signin_coins', Math.min(1000, Math.max(1, Math.trunc(Number(body.signinCoins) || 5))));
