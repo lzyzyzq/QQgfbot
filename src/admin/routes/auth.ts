@@ -478,6 +478,11 @@ export function createAuthRoutes(auth: AdminAuth): Router {
     if (nickname !== undefined) patch.nickname = nickname;
     if (openid !== undefined && String(openid).trim() !== '') patch.openid = String(openid).trim();
     if (avatar !== undefined) patch.avatar = avatar;
+    // 系统安全：至少保留一名超级主人（防止唯一超主被降级后系统失去管理能力）
+    if (role !== undefined && role !== 'super_master' && user.role === 'super_master') {
+      const supers = auth.getAdmins().filter((a) => a.role === 'super_master');
+      if (supers.length <= 1) { res.status(400).json({ error: '系统至少保留一名超级主人，请先将其他用户提升为超级主人' }); return; }
+    }
     if (role !== undefined) patch.role = role as AdminUser['role'];
     if (expireAt !== undefined) patch.expireAt = expireAt || undefined;
     // 超级主人可直接修改任意用户邮箱（免验证码）；清空=传空串
@@ -507,6 +512,9 @@ export function createAuthRoutes(auth: AdminAuth): Router {
   });
 
   router.delete('/admins/:username', requireSuperMaster, (req: Request, res: Response) => {
+    const target = auth.getUser(String(req.params.username));
+    // 系统安全：超级主人账号不可删除（可先将其角色调整为其他角色后再删除）
+    if (target && target.role === 'super_master') { res.status(400).json({ error: '超级主人账号不可删除' }); return; }
     const ok = auth.removeAdmin(String(req.params.username));
     if (ok) res.json({ ok: true });
     else res.status(404).json({ error: 'Admin not found' });

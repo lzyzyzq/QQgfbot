@@ -1487,11 +1487,12 @@ input[type="file"]{color:var(--text2)}
   <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap">
     <div class="form-group" style="flex:1;min-width:140px"><label>角色</label>
       <select id="aiPermsRole" style="width:100%;padding:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius)">
-        <option value="user">普通用户</option><option value="member">会员</option><option value="master">主人</option>
+        <option value="user">普通用户</option><option value="member">会员</option><option value="master">主人</option><option value="super_master">超级主人</option>
       </select>
     </div>
     <div class="form-group" style="flex:1;min-width:140px"><label>机器人额度（maxBots）</label><input id="aiPermsMaxBots" type="number" min="0" max="999" placeholder="0"></div>
   </div>
+  <p id="aiPermsSuperTip" style="display:none;font-size:12px;color:#f59e0b;margin:-2px 0 6px">该账号是超级主人：当前不受任何权限限制；此处勾选与额度会真实保存，在其角色被调整为其他角色后立即生效。</p>
   <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap">
     <div class="form-group" style="flex:1;min-width:140px"><label>过期时间（留空=永久）</label><input id="aiPermsExpire" placeholder="2026-12-31 或空"></div>
     <div class="form-group" style="flex:1;min-width:140px;display:flex;align-items:flex-end;gap:16px;padding-bottom:8px">
@@ -1544,7 +1545,9 @@ input[type="file"]{color:var(--text2)}
   <div style="display:flex;gap:16px;padding:0 0 8px;flex-wrap:wrap">
     <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="meLoginAble"> 允许登录</label>
     <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="meDev"> 认证开发者</label>
+    <span id="meSuperCoinsTip" style="display:none;font-size:12px;color:#f59e0b;align-self:center">超级主人金币不受限</span>
   </div>
+  <div class="form-group"><label>金币余额（直接设置；留空=不变；调整会记入金币流水）</label><input id="meCoins" type="number" step="1" placeholder="保持不变"></div>
   <div class="modal-actions">
     <button class="btn btn-outline" onclick="closeModal('modalMemberEdit')">取消</button>
     <button class="btn btn-primary" id="meSaveBtn" onclick="memberEditSave()">保存资料</button>
@@ -2541,6 +2544,12 @@ async function memberEditOpen(username){
   docById('meExpire').value=(a.expireAt?new Date(a.expireAt).toISOString().slice(0,10):'');
   docById('meLoginAble').checked=a.loginAble!==false;
   docById('meDev').checked=a.isDeveloper===true;
+  const isSuperTarget=a.role==='super_master';
+  const coinsInput=docById('meCoins');
+  coinsInput.value='';
+  coinsInput.disabled=isSuperTarget;
+  coinsInput.placeholder=isSuperTarget?'不受限':'保持不变（当前 '+(typeof a.coins==='number'?a.coins:0)+'）';
+  docById('meSuperCoinsTip').style.display=(isSuperTarget?'':'none');
   docById('meSaveBtn').disabled=false;
   docById('meSaveBtn').textContent='保存资料';
   docById('modalMemberEdit').classList.add('active');
@@ -2572,6 +2581,16 @@ async function memberEditSave(){
     body.isDeveloper=docById('meDev').checked;
     if(expireRaw)body.expireAt=(new Date(expireRaw).getTime()||undefined);
     await api('/api/auth/admins/'+encodeURIComponent(u),{method:'PUT',body});
+    // 金币直接设置：换算为增量走 adjust 接口，保持金币流水完整
+    const coinsRaw=docById('meCoins').value.trim();
+    if(coinsRaw!==''&&!docById('meCoins').disabled){
+      const target=Math.trunc(Number(coinsRaw));
+      if(Number.isNaN(target)||target<0){alert('金币余额需为不小于 0 的整数');btn.disabled=false;btn.textContent='保存资料';return}
+      const cur=(await api('/api/auth/admins').catch(()=>[]))||[];
+      const me=cur.find(x=>x.username===u);
+      const now=typeof me?.coins==='number'?me.coins:0;
+      if(target!==now){await api('/api/ai/coins/adjust',{method:'POST',body:{username:u,delta:target-now,reason:'超主直接设置金币余额'}})}
+    }
     closeModal('modalMemberEdit');
     alert('成员「'+u+'」的资料已保存');
     aiUserLoad();
@@ -2607,8 +2626,9 @@ async function aiPermsOpen(username){
   const admins=await api('/api/auth/admins').catch(()=>[]);
   const a=(admins||[]).find(x=>x.username===username);
   if(!a){alert('用户不存在');return}
-  docById('aiPermsUser').textContent='· '+username;
-  docById('aiPermsRole').value=(['user','member','master'].includes(a.role)?a.role:'user');
+  docById('aiPermsUser').textContent='· '+username+(a.role==='super_master'?'（超级主人）':'');
+  docById('aiPermsRole').value=(['user','member','master','super_master'].includes(a.role)?a.role:'user');
+  docById('aiPermsSuperTip').style.display=(a.role==='super_master'?'':'none');
   docById('aiPermsMaxBots').value=(a.permissions&&typeof a.permissions.maxBots==='number'?a.permissions.maxBots:0);
   docById('aiPermsExpire').value=(a.expireAt?new Date(a.expireAt).toISOString().slice(0,10):'');
   docById('aiPermsLoginAble').checked=a.loginAble!==false;
@@ -2634,13 +2654,15 @@ async function aiPermsOpen(username){
 async function aiPermsSave(){
   const u=_aiPermsTarget;
   if(!u)return;
+  const newRole=docById('aiPermsRole').value;
+  if(u===currentUser?.username&&newRole!=='super_master'&&!confirm('你正在将自己的角色改为「'+newRole+'」，保存后将失去超级主人身份，可能无法再进行管理。确定继续？'))return;
   const btn=docById('aiPermsSaveBtn');
   btn.disabled=true;btn.textContent='保存中...';
   try{
     const expireRaw=docById('aiPermsExpire').value.trim();
     const expireAt=expireRaw?(new Date(expireRaw).getTime()||undefined):undefined;
     await api('/api/auth/admins/'+encodeURIComponent(u),{method:'PUT',body:{
-      role:docById('aiPermsRole').value,
+      role:newRole,
       loginAble:docById('aiPermsLoginAble').checked,
       isDeveloper:docById('aiPermsDev').checked,
       expireAt:expireAt||undefined,
