@@ -1,28 +1,28 @@
 {
   "ok": true,
-  "version": "1.0.30",
-  "frameworkVersion": "1.0.25",
+  "version": "1.0.31",
+  "frameworkVersion": "1.0.26",
   "pluginVersion": "1.0.18",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.30.zip",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.31.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091（合并补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.30.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.31.zip"
     },
     {
-      "name": "8091（框架补丁 1.0.25）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.25.zip"
+      "name": "8091（框架补丁 1.0.26）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.26.zip"
     },
     {
       "name": "8091（插件补丁 1.0.18）",
       "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.18.zip"
     }
   ],
-  "changeLog": "侧边栏页面全面管理化：全部内置页面（仪表盘/机器人管理/AI回复/市场等27项）纳入「自定义页面/侧边栏功能」管理区，超主可对任意内置页改名、停用（对全员隐藏）、自定义排序；自定义页面管理保持不变（HTML内容页/外链iframe）；恢复默认：改名留空、排序留空即可",
+  "changeLog": "侧边栏管理区再升级：每个内置页面新增「代码」按钮（HTML 注入到页面顶部，公告条/操作区自由定制，清空即移除）与「权限」按钮（页面级角色可见性：可限制仅主人/会员/普通用户可见，超主恒可见）；管理列表显示「已注入代码/角色受限」标记；本包仍以 1.0.25 为基线全量打包，从 1.0.25 直接升级到 1.0.31 即获得 1.0.26~1.0.31 全部内容",
   "changeType": "框架升级",
-  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.25.zip",
+  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.26.zip",
   "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.18.zip",
-  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.25.zip",
+  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.26.zip",
   "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.18.zip"
 }
