@@ -465,9 +465,20 @@ export function createAuthRoutes(auth: AdminAuth): Router {
   });
 
   router.put('/admins/:username', requireSuperMaster, (req: Request, res: Response) => {
-    const { loginAble, password, qq, nickname, openid, avatar, role, expireAt, email, isDeveloper } = req.body;
+    const { loginAble, password, qq, nickname, openid, avatar, role, expireAt, email, isDeveloper, newUsername } = req.body;
     const user = auth.getUser(String(req.params.username));
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+    // 用户名重命名（v1.0.34）：所有用户均可改名（含超级主人）；激活码用户除外；改名后需重新登录
+    if (newUsername !== undefined && String(newUsername).trim() !== String(req.params.username)) {
+      const r = auth.renameUser(String(req.params.username), String(newUsername));
+      if (r === 'notfound') { res.status(404).json({ error: 'User not found' }); return; }
+      if (r === 'exists') { res.status(400).json({ error: '新用户名已被占用' }); return; }
+      if (r === 'invalid') { res.status(400).json({ error: '用户名需为 2~32 位中文/字母/数字/下划线/中划线' }); return; }
+      if (r === 'code_user') { res.status(400).json({ error: '激活码注册用户不支持修改用户名' }); return; }
+      if (r !== 'ok') { res.status(500).json({ error: '改名失败' }); return; }
+      res.json({ ok: true, renamed: true, username: String(newUsername).trim(), relogin: true });
+      return;
+    }
     const patch: Record<string, unknown> = {};
     if (loginAble !== undefined) patch.loginAble = loginAble;
     if (password) patch.password = password;

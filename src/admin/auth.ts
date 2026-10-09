@@ -143,6 +143,7 @@ export class AdminAuth {
       nickname: a.nickname,
       openid: a.openid,
       avatar: a.avatar,
+      email: a.email || '',
       loginAble: a.loginAble,
       expireAt: a.expireAt,
       permissions: a.permissions,
@@ -151,6 +152,21 @@ export class AdminAuth {
       coins: typeof a.coins === 'number' ? a.coins : 0,
       allowedPages: Array.isArray(a.allowedPages) ? a.allowedPages : undefined,
     }));
+  }
+
+  // 重命名用户（v1.0.34）：直接修改 admins 数组内对象引用，权限/金币等运行态引用同步生效
+  // 返回值：'ok' | 'notfound' | 'exists' | 'invalid' | 'code_user'
+  renameUser(oldUsername: string, newUsername: string): 'ok' | 'notfound' | 'exists' | 'invalid' | 'code_user' {
+    const name = String(newUsername || '').trim();
+    if (!name || name.length < 2 || name.length > 32) return 'invalid';
+    if (!/^[A-Za-z0-9_\-\u4e00-\u9fa5]+$/.test(name)) return 'invalid';
+    const user = this.config.admins.find(a => a.username === oldUsername);
+    if (!user) return 'notfound';
+    if (oldUsername.startsWith('code_')) return 'code_user';
+    if (this.config.admins.some(a => a.username === name)) return 'exists';
+    user.username = name;
+    saveAdmins(this.config.admins);
+    return 'ok';
   }
 
   // 调整用户金币（delta 可正可负），余额下限 0；写入 admin.json 并记流水

@@ -51,6 +51,7 @@ export interface SidebarOverride {
   enabled?: boolean;
   order?: number;
   html?: string;
+  htmlBottom?: string;
   roles?: string[];
 }
 
@@ -139,6 +140,11 @@ export function createCustomPagesRoutes(): Router {
       const html = String(req.body.html || '').slice(0, 100000);
       next.html = html ? html : undefined;
     }
+    // v1.0.34：页面底部自定义 HTML 注入（空串 = 清除）
+    if (req.body.htmlBottom !== undefined) {
+      const htmlB = String(req.body.htmlBottom || '').slice(0, 100000);
+      next.htmlBottom = htmlB ? htmlB : undefined;
+    }
     // v1.0.31：页面级角色可见性（空数组/null = 全部角色可见；不含 super_master，超主恒可见）
     if (req.body.roles !== undefined) {
       const roles = Array.isArray(req.body.roles)
@@ -149,6 +155,7 @@ export function createCustomPagesRoutes(): Router {
     if (next.name === undefined) delete next.name;
     if (next.order === undefined) delete next.order;
     if (next.html === undefined) delete next.html;
+    if (next.htmlBottom === undefined) delete next.htmlBottom;
     if (next.roles === undefined) delete next.roles;
     ov[req.params.id] = next;
     if (!Object.keys(next).length) delete ov[req.params.id];

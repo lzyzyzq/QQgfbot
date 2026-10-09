@@ -1587,9 +1587,26 @@ input[type="file"]{color:var(--text2)}
     <textarea id="ovcSource" rows="14" readonly style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:12px;white-space:pre;overflow:auto" placeholder="页面源码加载中…"></textarea>
   </div>
   <div class="form-group">
-    <label style="font-weight:bold;color:var(--accent)">自定义功能代码（注入到页面顶部，HTML + script 均支持）</label>
-    <textarea id="ovcHtml" rows="8" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="示例：&#10;&lt;div id=&quot;myNotice&quot; style=&quot;padding:12px;background:#f59e0b22;border-radius:8px&quot;&gt;公告内容&lt;/div&gt;&#10;&lt;script&gt;&#10;  document.getElementById('myNotice').onclick=function(){alert('点击了公告')}&#10;&lt;/script&gt;"></textarea>
-    <p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">保存后切换到该页面即可看到效果；清空保存即移除注入；script 代码在页面注入时自动执行。</p>
+    <label style="font-weight:bold;color:var(--accent)">自定义功能代码 · 顶部注入（HTML + script 均支持）</label>
+    <div style="display:flex;gap:6px;align-items:center;margin:4px 0">
+      <span style="font-size:12px;color:var(--text2)">插入模板：</span>
+      <select id="ovcTplTop" onchange="ovcTplSelect('top')" style="font-size:12px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px">
+        <option value="">选择模板…</option>
+      </select>
+      <span style="font-size:11px;color:var(--text2)">公告条 / 快捷按钮 / 倒计时 / 嵌网页 / 统计卡 / CSS 美化 / 接口调用 / 页脚</span>
+    </div>
+    <textarea id="ovcHtml" rows="7" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="写入的代码显示在该页面顶部；支持 HTML 与 script（自动执行）"></textarea>
+  </div>
+  <div class="form-group">
+    <label style="font-weight:bold;color:var(--accent)">自定义功能代码 · 底部注入（HTML + script 均支持）</label>
+    <div style="display:flex;gap:6px;align-items:center;margin:4px 0">
+      <span style="font-size:12px;color:var(--text2)">插入模板：</span>
+      <select id="ovcTplBottom" onchange="ovcTplSelect('bottom')" style="font-size:12px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px">
+        <option value="">选择模板…</option>
+      </select>
+    </div>
+    <textarea id="ovcHtmlBottom" rows="5" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="写入的代码显示在该页面底部；适合页脚版权、统计、脚本初始化"></textarea>
+    <p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">保存后切换到该页面即可看到效果；清空对应编辑框保存即移除该位置注入。</p>
   </div>
   <div class="modal-actions">
     <button class="btn btn-outline" onclick="closeModal('modalOvCode')">关闭</button>
@@ -2253,14 +2270,26 @@ function custInjectBanner(pageId){
     if(page.getAttribute('data-banner'))page.removeAttribute('data-banner');
     return;
   }
-  const sig=ov.html.length;
-  if(oldB&&page.getAttribute('data-banner')===String(sig)){return}
+  custInjectBannerAt(page,'top',ov.html);
+}
+// v1.0.34：顶部/底部统一注入执行器（允许 script，仅超主可设置）
+function custInjectBannerAt(page,pos,html){
+  const cls='cust-banner cust-banner-'+pos;
+  const oldB=page.querySelector('.'+cls.replace(/\s+/g,'.'));
+  const sig=pos+':'+(html||'').length;
+  const attr='data-banner-'+pos;
+  if(!html){
+    if(oldB)oldB.remove();
+    if(page.getAttribute(attr))page.removeAttribute(attr);
+    return;
+  }
+  if(oldB&&page.getAttribute(attr)===String(sig)){return}
   if(oldB)oldB.remove();
   const div=document.createElement('div');
-  div.className='card cust-banner';
-  div.style.marginBottom='12px';
-  div.innerHTML=ov.html;
-  page.insertBefore(div,page.firstChild);
+  div.className='card '+cls;
+  if(pos==='top')div.style.marginBottom='12px';else div.style.marginTop='16px';
+  div.innerHTML=html;
+  if(pos==='top')page.insertBefore(div,page.firstChild);else page.appendChild(div);
   // 注入内容允许 script（仅超主可设置，等同超主自身改源码权限）：提取后重建执行
   div.querySelectorAll('script').forEach(oldSc=>{
     const sc=document.createElement('script');
@@ -2269,7 +2298,7 @@ function custInjectBanner(pageId){
     oldSc.remove();
     document.head.appendChild(sc);
   });
-  page.setAttribute('data-banner',String(sig));
+  page.setAttribute(attr,String(sig));
 }
 function custApplySidebar(){
   const items=[...document.querySelectorAll('.nav-item')];
@@ -2313,7 +2342,7 @@ async function custLoad(){
       const ordV=(_custOverrides[p.id]&&typeof _custOverrides[p.id].order==='number')?_custOverrides[p.id].order:'默认';
       const ov=_custOverrides[p.id]||{};
       const flags=[];
-      if(ov.html)flags.push('<span class="tag tag-approved" style="font-size:10px">已注入代码</span>');
+      if(ov.html||ov.htmlBottom)flags.push('<span class="tag tag-approved" style="font-size:10px">已注入代码'+((ov.html&&ov.htmlBottom)?'(顶+底)':'')+'</span>');
       if(Array.isArray(ov.roles)&&ov.roles.length)flags.push('<span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:10px">角色受限</span>');
       return '<tr><td>'+esc(cur)+' <span style="font-size:11px;color:var(--text2)">'+esc(p.id)+'</span> '+flags.join(' ')+'</td><td><span class="tag">内置</span></td><td>'+(en?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+ordV+'</td><td><button class="btn btn-outline btn-xs" onclick="ovRename(\''+esc(p.id)+'\',\''+esc(cur)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="ovToggle(\''+esc(p.id)+'\','+(en?1:0)+')">'+(en?'停用':'启用')+'</button> <button class="btn btn-outline btn-xs" onclick="ovOrder(\''+esc(p.id)+'\')">排序</button> <button class="btn btn-primary btn-xs" onclick="ovCode(\''+esc(p.id)+'\')">代码</button> <button class="btn btn-outline btn-xs" onclick="ovRoles(\''+esc(p.id)+'\')">权限</button></td></tr>';
     }).join('');
@@ -2347,6 +2376,16 @@ async function ovCode(id){
   const ov=_custOverrides[id]||{};
   docById('ovcTarget').textContent=id;
   docById('ovcHtml').value=ov.html||'';
+  docById('ovcHtmlBottom').value=(ov.htmlBottom||'');
+  ['ovcTplTop','ovcTplBottom'].forEach(function(sid){
+    const sel=docById(sid);
+    if(sel&&sel.options.length<=1){
+      Object.keys(OVC_TEMPLATES).forEach(function(k){
+        const op=document.createElement('option');op.value=k;op.textContent=OVC_TEMPLATES[k].name;sel.appendChild(op);
+      });
+    }
+    if(sel)sel.value='';
+  });
   docById('ovcSaveBtn').disabled=false;docById('ovcSaveBtn').textContent='保存并生效';
   docById('modalOvCode').classList.add('active');
   const srcTa=docById('ovcSource');
@@ -2370,16 +2409,66 @@ function ovCodeToFiles(){
 async function ovCodeSave(){
   const id=docById('ovcTarget').textContent;
   const html=docById('ovcHtml').value;
+  const htmlB=docById('ovcHtmlBottom').value;
   const btn=docById('ovcSaveBtn');
   btn.disabled=true;btn.textContent='保存中...';
   try{
-    await api('/api/custom-pages/builtin/'+encodeURIComponent(id),{method:'PUT',body:{html:html}});
+    await api('/api/custom-pages/builtin/'+encodeURIComponent(id),{method:'PUT',body:{html:html,htmlBottom:htmlB}});
     closeModal('modalOvCode');
-    if(_custOverrides[id])_custOverrides[id].html=html||undefined;else _custOverrides[id]={html:html||undefined};
-    custInjectBanner(id);
+    const ov=_custOverrides[id]||{};
+    ov.html=html||undefined;ov.htmlBottom=htmlB||undefined;_custOverrides[id]=ov;
+    const pg=docById('page-'+id);
+    if(pg){custInjectBannerAt(pg,'top',ov.html||'');custInjectBannerAt(pg,'bottom',ov.htmlBottom||'')}
     custLoad();
     alert('「'+id+'」页面代码已保存，切换到该页面即可看到效果');
   }catch(e){alert('保存失败：'+(e.message||e));btn.disabled=false;btn.textContent='保存并生效'}
+}
+// v1.0.34：常用代码模板一键插入（顶部或底部编辑区）
+const OVC_TEMPLATES={
+  notice:{name:'公告条',code:`<div style="padding:12px 14px;background:linear-gradient(90deg,#f59e0b22,#f59e0b05);border:1px solid #f59e0b44;border-radius:8px;font-size:13px">📢 <b>公告</b>：这里是公告内容，可在管理区随时修改。</div>`},
+  buttons:{name:'快捷按钮组',code:`<div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 0">
+  <button onclick="alert('功能A')" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer">按钮 A</button>
+  <button onclick="alert('功能B')" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer">按钮 B</button>
+</div>`},
+  countdown:{name:'倒计时',code:`<div id="myCountdown" style="padding:10px 14px;background:#22c55e18;border:1px solid #22c55e44;border-radius:8px;font-size:13px">距目标时间：<b id="cdTime">--</b></div>
+<script>
+  var cdEnd=new Date().getTime()+24*3600*1000;
+  setInterval(function(){var d=cdEnd-new Date().getTime();if(d<0)d=0;var h=Math.floor(d/3600000),m=Math.floor(d%3600000/60000),s=Math.floor(d%60000/1000);var el=document.getElementById('cdTime');if(el)el.textContent=h+' 时 '+m+' 分 '+s+' 秒';},1000);
+<\/script>`},
+  iframe:{name:'嵌入外部网页',code:`<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+  <iframe src="https://example.com" style="width:100%;height:360px;border:0"></iframe>
+</div>`},
+  stats:{name:'统计卡片行',code:`<div style="display:flex;gap:10px;flex-wrap:wrap">
+  <div style="flex:1;min-width:120px;padding:14px;background:var(--bg3);border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:bold;color:var(--accent)" id="myStat1">0</div><div style="font-size:12px;color:var(--text2)">自定义指标</div></div>
+  <div style="flex:1;min-width:120px;padding:14px;background:var(--bg3);border-radius:10px;text-align:center"><div style="font-size:22px;font-weight:bold;color:#22c55e" id="myStat2">0</div><div style="font-size:12px;color:var(--text2)">自定义指标 2</div></div>
+</div>`},
+  css:{name:'页面样式美化（CSS）',code:`<style>
+  /* 示例：卡片圆角加大 + 标题变色，可自行修改选择器 */
+  .page .card{border-radius:14px}
+  .page h2{background:linear-gradient(90deg,var(--accent),#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+</style>`},
+  api:{name:'调用面板接口示例',code:`<div id="apiDemo" style="padding:10px 14px;background:var(--bg3);border-radius:8px;font-size:13px">正在加载…</div>
+<script>
+  (async function(){
+    try{
+      var r=await fetch('/api/ai/meta',{headers:{'Authorization':'Bearer '+((document.cookie.match(/admin_token=([^;]+)/)||[])[1]||'')}});
+      var d=await r.json();
+      var el=document.getElementById('apiDemo');
+      if(el)el.textContent='接口返回：'+JSON.stringify(d).slice(0,120);
+    }catch(e){var el2=document.getElementById('apiDemo');if(el2)el2.textContent='加载失败：'+e.message;}
+  })();
+<\/script>`},
+  footer:{name:'页脚版权条',code:`<div style="text-align:center;padding:14px;color:var(--text2);font-size:12px;border-top:1px dashed var(--border);margin-top:16px">© 2026 我的机器人面板 · Powered by 自定义注入</div>`}
+};
+function ovcTplSelect(target){
+  const sel=docById(target==='top'?'ovcTplTop':'ovcTplBottom');
+  const k=sel.value;
+  if(!k)return;
+  const t=OVC_TEMPLATES[k];
+  if(!t)return;
+  const ta=docById(target==='top'?'ovcHtml':'ovcHtmlBottom');
+  ta.value=(ta.value?ta.value+'\n\n':'')+t.code;
+  sel.value='';
 }
 // 内置页角色可见性：逗号分隔角色列表（master/user/member），留空=全部可见
 function ovRoles(id){
@@ -2545,7 +2634,9 @@ function switchPage(name){
   const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',members:'成员管理',superadmin:'超主管理',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
   const custP=(_custPages||[]).find(x=>x.id===name);
   if(custP)custEnsurePage(custP);
-  custInjectBanner(name);
+  const _ovB=_custOverrides[name];
+  custInjectBannerAt(docById('page-'+name)||document.createElement('div'),'top',(_ovB&&_ovB.html)||'');
+  if(_ovB&&_ovB.htmlBottom){const pg=docById('page-'+name);if(pg)custInjectBannerAt(pg,'bottom',_ovB.htmlBottom)}
   docById('mobilePageTitle').textContent=titles[name]||custNameOf(name,(custP?custP.name:name));
   const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,members:saLoadPage,superadmin:saLoadPage,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
@@ -2841,7 +2932,7 @@ async function memberEditOpen(username){
   docById('modalMemberEdit').classList.add('active');
 }
 async function memberEditSave(){
-  const u=_meTarget;
+  let u=_meTarget;
   if(!u)return;
   const newRole=docById('meRole').value;
   if(u===currentUser?.username&&newRole!=='super_master'&&!confirm('你正在修改自己的角色为「'+newRole+'」，保存后将失去超级主人身份，可能无法再进行管理。确定继续？'))return;
@@ -2849,6 +2940,8 @@ async function memberEditSave(){
   btn.disabled=true;btn.textContent='保存中...';
   try{
     const body={};
+    const newU=docById('meNewUsername').value.trim();
+    if(newU&&newU!==u)body.newUsername=newU;
     const nickname=docById('meNickname').value.trim();
     const avatar=docById('meAvatar').value.trim();
     const qq=docById('meQQ').value.trim();
@@ -2866,7 +2959,15 @@ async function memberEditSave(){
     body.loginAble=docById('meLoginAble').checked;
     body.isDeveloper=docById('meDev').checked;
     if(expireRaw)body.expireAt=(new Date(expireRaw).getTime()||undefined);
-    await api('/api/auth/admins/'+encodeURIComponent(u),{method:'PUT',body});
+    // 用户名修改：单独请求（后端改名分支独立返回）；改名成功后按新名继续保存其余资料
+    let renamedTip='';
+    if(body.newUsername){
+      const r1=await api('/api/auth/admins/'+encodeURIComponent(u),{method:'PUT',body:{newUsername:body.newUsername}});
+      renamedTip='；用户名已改为「'+(r1.username||body.newUsername)+'」（该用户需退出后重新登录）';
+      u=r1.username||body.newUsername;
+      delete body.newUsername;
+    }
+    if(Object.keys(body).length)await api('/api/auth/admins/'+encodeURIComponent(u),{method:'PUT',body});
     // 金币直接设置：换算为增量走 adjust 接口，保持金币流水完整
     const coinsRaw=docById('meCoins').value.trim();
     if(coinsRaw!==''&&!docById('meCoins').disabled){
@@ -2878,7 +2979,8 @@ async function memberEditSave(){
       if(target!==now){await api('/api/ai/coins/adjust',{method:'POST',body:{username:u,delta:target-now,reason:'超主直接设置金币余额'}})}
     }
     closeModal('modalMemberEdit');
-    alert('成员「'+u+'」的资料已保存');
+    alert('成员「'+u+'」的资料已保存'+renamedTip);
+    if(currentUser&&currentUser.username===u){try{const me=await api('/api/auth/me');if(me&&me.username){currentUser=me;updateSidebar()}}catch(e){}}
     aiUserLoad();
   }catch(e){alert('保存失败：'+(e.message||e));btn.disabled=false;btn.textContent='保存资料'}
 }
