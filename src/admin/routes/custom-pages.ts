@@ -42,8 +42,17 @@ function sanitizePage(body: any, id: string): CustomPage | null {
 }
 
 // ===== 内置侧边栏页面覆盖配置（v1.0.30）：超主可改名/启停/排序全部内置页面 =====
-// 存储：bot.db config 表 sidebar_overrides，结构 { pageId: { name?, enabled?, order? } }
-export function loadSidebarOverrides(): Record<string, { name?: string; enabled?: boolean; order?: number }> {
+// v1.0.31 扩展：html（页面顶部自定义内容注入）+ roles（页面级角色可见性）
+// 存储：bot.db config 表 sidebar_overrides，结构 { pageId: { name?, enabled?, order?, html?, roles? } }
+export interface SidebarOverride {
+  name?: string;
+  enabled?: boolean;
+  order?: number;
+  html?: string;
+  roles?: string[];
+}
+
+export function loadSidebarOverrides(): Record<string, SidebarOverride> {
   try {
     const raw = getConfig('sidebar_overrides');
     const o = raw ? JSON.parse(raw) : {};
@@ -53,9 +62,11 @@ export function loadSidebarOverrides(): Record<string, { name?: string; enabled?
   }
 }
 
-function persistSidebarOverrides(o: Record<string, { name?: string; enabled?: boolean; order?: number }>) {
+function persistSidebarOverrides(o: Record<string, SidebarOverride>) {
   setConfig('sidebar_overrides', JSON.stringify(o));
 }
+
+const VALID_ROLES = ['super_master', 'master', 'member', 'user'];
 
 export function createCustomPagesRoutes(): Router {
   const router = Router();
@@ -77,7 +88,7 @@ export function createCustomPagesRoutes(): Router {
     if (!builtin) { res.status(404).json({ error: '内置页面不存在' }); return; }
     const ov = loadSidebarOverrides();
     const cur = ov[req.params.id] || {};
-    const next: { name?: string; enabled?: boolean; order?: number } = { ...cur };
+    const next: SidebarOverride = { ...cur };
     if (req.body.name !== undefined) {
       const name = String(req.body.name).trim().slice(0, 30);
       // 空白 = 恢复默认名称；与默认同名也视为无覆盖
@@ -90,8 +101,22 @@ export function createCustomPagesRoutes(): Router {
       // null = 恢复默认排序；数字 = 自定义排序值
       next.order = req.body.order === null ? undefined : Math.trunc(Number(req.body.order) || 0);
     }
+    // v1.0.31：页面顶部自定义 HTML 注入（空串 = 清除）
+    if (req.body.html !== undefined) {
+      const html = String(req.body.html || '').slice(0, 100000);
+      next.html = html ? html : undefined;
+    }
+    // v1.0.31：页面级角色可见性（空数组/null = 全部角色可见；不含 super_master，超主恒可见）
+    if (req.body.roles !== undefined) {
+      const roles = Array.isArray(req.body.roles)
+        ? req.body.roles.map((r: any) => String(r)).filter((r: string) => VALID_ROLES.includes(r) && r !== 'super_master')
+        : [];
+      next.roles = roles.length ? roles : undefined;
+    }
     if (next.name === undefined) delete next.name;
     if (next.order === undefined) delete next.order;
+    if (next.html === undefined) delete next.html;
+    if (next.roles === undefined) delete next.roles;
     ov[req.params.id] = next;
     if (!Object.keys(next).length) delete ov[req.params.id];
     persistSidebarOverrides(ov);

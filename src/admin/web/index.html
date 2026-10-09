@@ -1579,6 +1579,16 @@ input[type="file"]{color:var(--text2)}
   </div>
 </div></div>
 
+<div class="modal-overlay" id="modalOvCode"><div class="modal" style="max-width:640px">
+  <h3>编辑页面代码 <span id="ovcTarget" style="font-size:13px;color:var(--text2)"></span></h3>
+  <p style="font-size:12px;color:var(--text2);margin-top:-6px">HTML 内容将注入到该页面顶部显示（公告条 / 操作提示 / 嵌入内容），保存后切换到该页面即可看到；清空保存即移除注入。</p>
+  <div class="form-group"><textarea id="ovcHtml" rows="10" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="<div style=&quot;padding:12px;background:#f59e0b22;border-radius:8px&quot;>📢 欢迎使用本面板</div>"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('modalOvCode')">取消</button>
+    <button class="btn btn-primary" id="ovcSaveBtn" onclick="ovCodeSave()">保存并生效</button>
+  </div>
+</div></div>
+
 <div class="modal-overlay" id="modalCustPage"><div class="modal">
   <h3 id="cpTitle">新增自定义页面</h3>
   <p style="font-size:12px;color:var(--text2);margin-top:-6px">新增后页面即时出现在所有有权用户的侧边栏；HTML 内容中的脚本标签不会执行（安全考虑），需要脚本请改用「外链」类型。</p>
@@ -2223,14 +2233,38 @@ function custNavRender(){
   });
 }
 // 内置页面覆盖应用：改名（保留徽标节点）/ 停用强制隐藏 / 按排序值重排
+// 内置页顶部自定义内容注入（v1.0.31）：override.html 渲染到页面容器顶部，内容变更自动重渲染
+function custInjectBanner(pageId){
+  const ov=_custOverrides[pageId];
+  const page=docById('page-'+pageId);
+  if(!page)return;
+  const oldB=page.querySelector('.cust-banner');
+  if(!ov||!ov.html){
+    if(oldB)oldB.remove();
+    if(page.getAttribute('data-banner'))page.removeAttribute('data-banner');
+    return;
+  }
+  const sig=ov.html.length;
+  if(oldB&&page.getAttribute('data-banner')===String(sig)){return}
+  if(oldB)oldB.remove();
+  const div=document.createElement('div');
+  div.className='card cust-banner';
+  div.style.marginBottom='12px';
+  div.innerHTML=ov.html;
+  page.insertBefore(div,page.firstChild);
+  page.setAttribute('data-banner',String(sig));
+}
 function custApplySidebar(){
   const items=[...document.querySelectorAll('.nav-item')];
   const domOrder={};items.forEach((n,i)=>domOrder[n.getAttribute('data-page')]=i);
   const orderOf=id=>{const ov=_custOverrides[id];return (ov&&typeof ov.order==='number')?ov.order:(domOrder[id]!==undefined?domOrder[id]:9999)};
+  const isSuper=currentUser&&currentUser.role==='super_master';
   items.forEach(n=>{
     const id=n.getAttribute('data-page');
     if(!custEnabledOf(id)){n.style.display='none';return}
     const ov=_custOverrides[id];
+    // 页面级角色可见性：配置了 roles 且当前角色不在其中则隐藏（超主恒可见）
+    if(!isSuper&&ov&&Array.isArray(ov.roles)&&ov.roles.length&&!(currentUser&&ov.roles.includes(currentUser.role))){n.style.display='none';return}
     if(ov&&ov.name&&n.childNodes[0]&&n.childNodes[0].nodeType===3)n.childNodes[0].textContent=ov.name;
   });
   items.slice().sort((a,b)=>orderOf(a.getAttribute('data-page'))-orderOf(b.getAttribute('data-page'))).forEach(n=>{if(n.parentNode)n.parentNode.appendChild(n)});
@@ -2257,7 +2291,11 @@ async function custLoad(){
     const builtinRows=_custBuiltin.map(p=>{
       const cur=custNameOf(p.id,p.name);const en=custEnabledOf(p.id);
       const ordV=(_custOverrides[p.id]&&typeof _custOverrides[p.id].order==='number')?_custOverrides[p.id].order:'默认';
-      return '<tr><td>'+esc(cur)+' <span style="font-size:11px;color:var(--text2)">'+esc(p.id)+'</span></td><td><span class="tag">内置</span></td><td>'+(en?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+ordV+'</td><td><button class="btn btn-outline btn-xs" onclick="ovRename(\''+esc(p.id)+'\',\''+esc(cur)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="ovToggle(\''+esc(p.id)+'\','+(en?1:0)+')">'+(en?'停用':'启用')+'</button> <button class="btn btn-outline btn-xs" onclick="ovOrder(\''+esc(p.id)+'\')">排序</button></td></tr>';
+      const ov=_custOverrides[p.id]||{};
+      const flags=[];
+      if(ov.html)flags.push('<span class="tag tag-approved" style="font-size:10px">已注入代码</span>');
+      if(Array.isArray(ov.roles)&&ov.roles.length)flags.push('<span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:10px">角色受限</span>');
+      return '<tr><td>'+esc(cur)+' <span style="font-size:11px;color:var(--text2)">'+esc(p.id)+'</span> '+flags.join(' ')+'</td><td><span class="tag">内置</span></td><td>'+(en?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+ordV+'</td><td><button class="btn btn-outline btn-xs" onclick="ovRename(\''+esc(p.id)+'\',\''+esc(cur)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="ovToggle(\''+esc(p.id)+'\','+(en?1:0)+')">'+(en?'停用':'启用')+'</button> <button class="btn btn-outline btn-xs" onclick="ovOrder(\''+esc(p.id)+'\')">排序</button> <button class="btn btn-primary btn-xs" onclick="ovCode(\''+esc(p.id)+'\')">代码</button> <button class="btn btn-outline btn-xs" onclick="ovRoles(\''+esc(p.id)+'\')">权限</button></td></tr>';
     }).join('');
     const customRows=_custAll.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+(p.type==='link'?'<span class="tag" style="background:#1e3a5f;color:#7dd3fc">外链</span>':'<span class="tag">HTML</span>')+'</td><td>'+(p.enabled?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+(p.order||0)+'</td><td><button class="btn btn-outline btn-xs" onclick="custOpen(\''+esc(p.id)+'\')">编辑</button> <button class="btn btn-outline btn-xs" onclick="custToggle(\''+esc(p.id)+'\','+(p.enabled?1:0)+')">'+(p.enabled?'停用':'启用')+'</button> <button class="btn btn-danger btn-xs" onclick="custDel(\''+esc(p.id)+'\')">删除</button></td></tr>').join('');
     docById('custList').innerHTML=builtinRows+customRows;
@@ -2283,6 +2321,37 @@ function ovOrder(id){
   const n=Number(v);
   if(Number.isNaN(n)){alert('请输入数字');return}
   ovSave(id,{order:Math.trunc(n)});
+}
+// 内置页代码注入编辑：HTML 会渲染到该页面顶部（公告条/操作区/嵌入内容等）
+function ovCode(id){
+  const ov=_custOverrides[id]||{};
+  docById('ovcTarget').textContent=id;
+  docById('ovcHtml').value=ov.html||'';
+  docById('ovcSaveBtn').disabled=false;docById('ovcSaveBtn').textContent='保存并生效';
+  docById('modalOvCode').classList.add('active');
+}
+async function ovCodeSave(){
+  const id=docById('ovcTarget').textContent;
+  const html=docById('ovcHtml').value;
+  const btn=docById('ovcSaveBtn');
+  btn.disabled=true;btn.textContent='保存中...';
+  try{
+    await api('/api/custom-pages/builtin/'+encodeURIComponent(id),{method:'PUT',body:{html:html}});
+    closeModal('modalOvCode');
+    if(_custOverrides[id])_custOverrides[id].html=html||undefined;else _custOverrides[id]={html:html||undefined};
+    custInjectBanner(id);
+    custLoad();
+    alert('「'+id+'」页面代码已保存，切换到该页面即可看到效果');
+  }catch(e){alert('保存失败：'+(e.message||e));btn.disabled=false;btn.textContent='保存并生效'}
+}
+// 内置页角色可见性：逗号分隔角色列表（master/user/member），留空=全部可见
+function ovRoles(id){
+  const ov=_custOverrides[id]||{};
+  const cur=Array.isArray(ov.roles)&&ov.roles.length?ov.roles.join(','):'';
+  const v=prompt('「'+id+'」对哪些角色可见？\n可选角色：master（主人）、member（会员）、user（普通用户）\n多个用英文逗号分隔；留空 = 全部角色可见；注意：超级主人始终可见',cur);
+  if(v===null)return;
+  const roles=v.split(',').map(x=>x.trim()).filter(x=>['master','member','user'].includes(x));
+  ovSave(id,{roles:roles});
 }
 function cpSyncType(){
   const t=docById('cpType').value;
@@ -2439,6 +2508,7 @@ function switchPage(name){
   const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',members:'成员管理',superadmin:'超主管理',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
   const custP=(_custPages||[]).find(x=>x.id===name);
   if(custP)custEnsurePage(custP);
+  custInjectBanner(name);
   docById('mobilePageTitle').textContent=titles[name]||custNameOf(name,(custP?custP.name:name));
   const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,members:saLoadPage,superadmin:saLoadPage,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
