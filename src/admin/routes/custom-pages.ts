@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { requirePerm } from '../middleware';
 import { getConfig, setConfig } from '../../db/index';
+import { SIDEBAR_PAGES } from '../ai-config';
 import type { CustomPage } from '../config';
 
 // 自定义页面持久化：bot.db config 表 custom_pages（JSON 数组，全局共享）
@@ -40,18 +41,61 @@ function sanitizePage(body: any, id: string): CustomPage | null {
   };
 }
 
+// ===== 内置侧边栏页面覆盖配置（v1.0.30）：超主可改名/启停/排序全部内置页面 =====
+// 存储：bot.db config 表 sidebar_overrides，结构 { pageId: { name?, enabled?, order? } }
+export function loadSidebarOverrides(): Record<string, { name?: string; enabled?: boolean; order?: number }> {
+  try {
+    const raw = getConfig('sidebar_overrides');
+    const o = raw ? JSON.parse(raw) : {};
+    return o && typeof o === 'object' ? o : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistSidebarOverrides(o: Record<string, { name?: string; enabled?: boolean; order?: number }>) {
+  setConfig('sidebar_overrides', JSON.stringify(o));
+}
+
 export function createCustomPagesRoutes(): Router {
   const router = Router();
   const canManage = requirePerm('canManageCustomPages');
 
-  // 登录用户：已启用的自定义页面（前端动态侧边栏与页面渲染）
+  // 登录用户：已启用的自定义页面 + 内置页覆盖配置（前端动态侧边栏）
   router.get('/', (_req: Request, res: Response) => {
-    res.json({ pages: sortPages(loadCustomPages().filter((p) => p.enabled)) });
+    res.json({ pages: sortPages(loadCustomPages().filter((p) => p.enabled)), overrides: loadSidebarOverrides() });
   });
 
-  // 管理端全量（含停用）
+  // 管理端全量（自定义页含停用 + 内置页清单 + 覆盖配置）
   router.get('/all', canManage, (_req: Request, res: Response) => {
-    res.json({ pages: sortPages(loadCustomPages()) });
+    res.json({ pages: sortPages(loadCustomPages()), builtin: SIDEBAR_PAGES, overrides: loadSidebarOverrides() });
+  });
+
+  // 内置页面覆盖：改名 / 启停 / 排序（id 为内置页面 id，如 dashboard）
+  router.put('/builtin/:id', canManage, (req: Request, res: Response) => {
+    const builtin = SIDEBAR_PAGES.find((p) => p.id === req.params.id);
+    if (!builtin) { res.status(404).json({ error: '内置页面不存在' }); return; }
+    const ov = loadSidebarOverrides();
+    const cur = ov[req.params.id] || {};
+    const next: { name?: string; enabled?: boolean; order?: number } = { ...cur };
+    if (req.body.name !== undefined) {
+      const name = String(req.body.name).trim().slice(0, 30);
+      // 空白 = 恢复默认名称；与默认同名也视为无覆盖
+      next.name = name ? (name === builtin.name ? undefined : name) : undefined;
+    }
+    if (req.body.enabled !== undefined) next.enabled = req.body.enabled === true;
+    // enabled=true 等价默认行为，视为无覆盖
+    if (next.enabled === true) delete next.enabled;
+    if (req.body.order !== undefined) {
+      // null = 恢复默认排序；数字 = 自定义排序值
+      next.order = req.body.order === null ? undefined : Math.trunc(Number(req.body.order) || 0);
+    }
+    if (next.name === undefined) delete next.name;
+    if (next.order === undefined) delete next.order;
+    ov[req.params.id] = next;
+    if (!Object.keys(next).length) delete ov[req.params.id];
+    persistSidebarOverrides(ov);
+    res.json({ ok: true, override: next });
   });
 
   router.post('/', canManage, (req: Request, res: Response) => {

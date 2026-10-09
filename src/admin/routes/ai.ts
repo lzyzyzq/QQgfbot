@@ -8,7 +8,7 @@ import {
   listProviders, saveProviders, toProviderView,
   callModel, COIN_COST_PER_CALL,
 } from '../../core/ai-reply';
-import { loadCustomPages } from './custom-pages';
+import { loadCustomPages, loadSidebarOverrides } from './custom-pages';
 import { AI_PRESET_PERSONAS, SIDEBAR_PAGES, type AiProvider, type AiBotConfig } from '../ai-config';
 
 // 校验当前用户对机器人是否有管理权（owner 或超级主人）
@@ -209,9 +209,19 @@ export function createAiRoutes(auth: AdminAuth): Router {
 
   // ===== 元数据：预设人设 / 页面清单 / 默认供应商 =====
   router.get('/meta', (_req: Request, res: Response) => {
-    // 动态合并超主自定义页面（v1.0.29）：自定义页面与内置页面同权参与权限勾选
-    const custom = loadCustomPages().filter((p: any) => p.enabled).map((p: any) => ({ id: p.id, name: p.name }));
-    res.json({ personas: AI_PRESET_PERSONAS, pages: [...SIDEBAR_PAGES, ...custom], coinCost: COIN_COST_PER_CALL });
+    // 动态合并自定义页面（v1.0.29）并应用超主的内置页覆盖配置（v1.0.30：改名/启停/排序）
+    const ov = loadSidebarOverrides();
+    const isDisabled = (id: string) => ov[id] && ov[id].enabled === false;
+    const nameOf = (id: string, def: string) => (ov[id] && ov[id].name) || def;
+    const orderOf = (id: string, def: number) => (ov[id] && typeof ov[id].order === 'number' ? (ov[id].order as number) : def);
+    const builtinPages = SIDEBAR_PAGES
+      .filter((p) => !isDisabled(p.id))
+      .map((p, i) => ({ id: p.id, name: nameOf(p.id, p.name), order: orderOf(p.id, (i + 1) * 10) }));
+    const customPages = loadCustomPages()
+      .filter((p: any) => p.enabled && !isDisabled(p.id))
+      .map((p: any) => ({ id: p.id, name: nameOf(p.id, p.name), order: orderOf(p.id, p.order || 100000) }));
+    const pages = [...builtinPages, ...customPages].sort((a, b) => a.order - b.order).map((p) => ({ id: p.id, name: p.name }));
+    res.json({ personas: AI_PRESET_PERSONAS, pages, coinCost: COIN_COST_PER_CALL });
   });
 
   return router;

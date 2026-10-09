@@ -1315,7 +1315,7 @@ input[type="file"]{color:var(--text2)}
         <button class="btn btn-primary btn-sm" onclick="custOpen()">新增页面</button>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--text2);margin:0 0 10px">超主可在此新增网页端页面：支持 HTML 内容页与外链（iframe 嵌入）两种类型；保存后自动出现在侧边栏，并可在「权限管理 → 侧边栏页面」中按用户勾选授权。</p>
+    <p style="font-size:12px;color:var(--text2);margin:0 0 10px">全部侧边栏页面（内置 + 自定义）集中管理：内置页可改名 / 启停 / 排序，停用对全员隐藏；自定义页支持 HTML 内容页与外链（iframe 嵌入）两种类型，保存后自动出现在侧边栏，并可在「权限管理 → 侧边栏页面」中按用户勾选授权。</p>
     <div class="table-wrap"><table><thead><tr><th>页面名称</th><th>类型</th><th>状态</th><th>排序</th><th>操作</th></tr></thead><tbody id="custList"></tbody></table></div>
   </div>
 </div>
@@ -2205,18 +2205,35 @@ async function doLogout(){try{await api('/api/auth/logout',{method:'POST'})}catc
 
 
 // ===== 自定义页面（v1.0.29）：超主网页端新增侧边栏页面与功能 =====
-let _custPages=[];let _custAll=[];
-async function custLoadAll(){try{const d=await api('/api/custom-pages');_custPages=d.pages||[]}catch(e){_custPages=[]}}
+let _custPages=[];let _custAll=[];let _custOverrides={};let _custBuiltin=[];
+async function custLoadAll(){
+  try{const d=await api('/api/custom-pages');_custPages=d.pages||[];_custOverrides=d.overrides||{}}catch(e){_custPages=[];_custOverrides={}}
+}
+function custNameOf(id,def){const ov=_custOverrides[id];return (ov&&ov.name)?ov.name:def}
+function custEnabledOf(id){const ov=_custOverrides[id];return !(ov&&ov.enabled===false)}
 function custNavRender(){
+  document.querySelectorAll('.nav-item[data-page^="custom_"]').forEach(n=>n.remove());
+  const help=document.querySelector('.nav-item[data-page="help"]');
   (_custPages||[]).forEach(p=>{
-    if(document.querySelector('.nav-item[data-page="'+p.id+'"]'))return;
-    const help=document.querySelector('.nav-item[data-page="help"]');
     const div=document.createElement('div');
     div.className='nav-item';div.setAttribute('data-page',p.id);
     div.setAttribute('onclick',"switchPage('"+p.id+"')");
-    div.textContent=p.name;
+    div.textContent=custNameOf(p.id,p.name);
     if(help&&help.parentNode)help.parentNode.insertBefore(div,help);
   });
+}
+// 内置页面覆盖应用：改名（保留徽标节点）/ 停用强制隐藏 / 按排序值重排
+function custApplySidebar(){
+  const items=[...document.querySelectorAll('.nav-item')];
+  const domOrder={};items.forEach((n,i)=>domOrder[n.getAttribute('data-page')]=i);
+  const orderOf=id=>{const ov=_custOverrides[id];return (ov&&typeof ov.order==='number')?ov.order:(domOrder[id]!==undefined?domOrder[id]:9999)};
+  items.forEach(n=>{
+    const id=n.getAttribute('data-page');
+    if(!custEnabledOf(id)){n.style.display='none';return}
+    const ov=_custOverrides[id];
+    if(ov&&ov.name&&n.childNodes[0]&&n.childNodes[0].nodeType===3)n.childNodes[0].textContent=ov.name;
+  });
+  items.slice().sort((a,b)=>orderOf(a.getAttribute('data-page'))-orderOf(b.getAttribute('data-page'))).forEach(n=>{if(n.parentNode)n.parentNode.appendChild(n)});
 }
 async function custRefreshNav(){await custLoadAll();custNavRender();updateSidebar();}
 function custEnsurePage(p){
@@ -2234,10 +2251,38 @@ function custEnsurePage(p){
 // 超主管理页：自定义页面管理列表（全量含停用）
 async function custLoad(){
   try{
-    const d=await api('/api/custom-pages/all');_custAll=d.pages||[];
-    docById('custCount').textContent=_custAll.length;
-    docById('custList').innerHTML=_custAll.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+(p.type==='link'?'<span class="tag" style="background:#1e3a5f;color:#7dd3fc">外链</span>':'<span class="tag">HTML</span>')+'</td><td>'+(p.enabled?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+(p.order||0)+'</td><td><button class="btn btn-outline btn-xs" onclick="custOpen(\''+esc(p.id)+'\')">编辑</button> <button class="btn btn-outline btn-xs" onclick="custToggle(\''+esc(p.id)+'\','+(p.enabled?1:0)+')">'+(p.enabled?'停用':'启用')+'</button> <button class="btn btn-danger btn-xs" onclick="custDel(\''+esc(p.id)+'\')">删除</button></td></tr>').join('')||'<tr><td colspan="5" style="color:var(--text2);text-align:center;padding:16px">暂无自定义页面，点击「新增页面」创建</td></tr>';
+    const d=await api('/api/custom-pages/all');
+    _custAll=d.pages||[];_custBuiltin=d.builtin||[];_custOverrides=d.overrides||_custOverrides;
+    docById('custCount').textContent=(_custAll.length+_custBuiltin.length);
+    const builtinRows=_custBuiltin.map(p=>{
+      const cur=custNameOf(p.id,p.name);const en=custEnabledOf(p.id);
+      const ordV=(_custOverrides[p.id]&&typeof _custOverrides[p.id].order==='number')?_custOverrides[p.id].order:'默认';
+      return '<tr><td>'+esc(cur)+' <span style="font-size:11px;color:var(--text2)">'+esc(p.id)+'</span></td><td><span class="tag">内置</span></td><td>'+(en?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+ordV+'</td><td><button class="btn btn-outline btn-xs" onclick="ovRename(\''+esc(p.id)+'\',\''+esc(cur)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="ovToggle(\''+esc(p.id)+'\','+(en?1:0)+')">'+(en?'停用':'启用')+'</button> <button class="btn btn-outline btn-xs" onclick="ovOrder(\''+esc(p.id)+'\')">排序</button></td></tr>';
+    }).join('');
+    const customRows=_custAll.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+(p.type==='link'?'<span class="tag" style="background:#1e3a5f;color:#7dd3fc">外链</span>':'<span class="tag">HTML</span>')+'</td><td>'+(p.enabled?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+(p.order||0)+'</td><td><button class="btn btn-outline btn-xs" onclick="custOpen(\''+esc(p.id)+'\')">编辑</button> <button class="btn btn-outline btn-xs" onclick="custToggle(\''+esc(p.id)+'\','+(p.enabled?1:0)+')">'+(p.enabled?'停用':'启用')+'</button> <button class="btn btn-danger btn-xs" onclick="custDel(\''+esc(p.id)+'\')">删除</button></td></tr>').join('');
+    docById('custList').innerHTML=builtinRows+customRows;
   }catch(e){}
+}
+// 内置页面覆盖：改名 / 启停 / 排序
+async function ovSave(id,body){
+  try{
+    await api('/api/custom-pages/builtin/'+encodeURIComponent(id),{method:'PUT',body});
+    await custRefreshNav();custLoad();
+  }catch(e){alert('操作失败：'+(e.message||e))}
+}
+function ovRename(id,cur){
+  const n=prompt('修改「'+id+'」页面名称（侧边栏显示，输入空白恢复默认）：',cur||'');
+  if(n===null)return;
+  ovSave(id,{name:n.trim()});
+}
+function ovToggle(id,en){ovSave(id,{enabled:!en})}
+function ovOrder(id){
+  const cur=(_custOverrides[id]&&typeof _custOverrides[id].order==='number')?_custOverrides[id].order:'';
+  const v=prompt('「'+id+'」排序值（数字越小越靠前；留空恢复默认顺序）：',cur);
+  if(v===null)return;
+  const n=Number(v);
+  if(Number.isNaN(n)){alert('请输入数字');return}
+  ovSave(id,{order:Math.trunc(n)});
 }
 function cpSyncType(){
   const t=docById('cpType').value;
@@ -2307,6 +2352,7 @@ function updateSidebar(){
   const genBtn=docById('authCodeGenBtn');
   if(genBtn)genBtn.style.display=(isSuper||currentUser?.role==='master')?'':'none';
   if(isSuper){document.querySelectorAll('.nav-item[data-page="bots"]')[0]?.firstChild&&(document.querySelectorAll('.nav-item[data-page="bots"]')[0].childNodes[0].textContent='所有机器人')}
+  custApplySidebar();
   // 顶栏显示金币余额
   if(currentUser){
     api('/api/ai/coins').then(d=>{if(d&&typeof d.coins==='number'){const el=docById('sidebarCoins');if(el){el.style.display='';const sp=el.querySelector('span');if(sp)sp.textContent=d.coins;}}}).catch(()=>{});
@@ -2393,7 +2439,7 @@ function switchPage(name){
   const titles={dashboard:'仪表盘',bots:'我的机器人',ai:'AI 智能回复',market:'插件词库市场',membersync:'成员同步',channels:'频道管理',plugins:'插件管理',dicts:'词库管理',files:'文件管理',deployterminal:'部署终端',settings:'系统设置',users:'用户管理',openids:'OpenID列表',feedback:'反馈',logs:'系统日志',runlog:'运行记录',authcodes:'授权码',members:'成员管理',superadmin:'超主管理',updatelog:'更新日志',hyperlinks:'超链接',profile:'个人中心',help:'帮助文档'};
   const custP=(_custPages||[]).find(x=>x.id===name);
   if(custP)custEnsurePage(custP);
-  docById('mobilePageTitle').textContent=titles[name]||(custP?custP.name:name);
+  docById('mobilePageTitle').textContent=titles[name]||custNameOf(name,(custP?custP.name:name));
   const loaders={dashboard:loadDashboard,bots:loadBots,ai:loadAiPage,market:mkLoadPage,membersync:loadMemberSync,channels:chLoadGuilds,editor:loadEditor,plugins:loadPlugins,dicts:loadDictsPage,files:()=>loadFiles(),deployterminal:termInit,settings:loadSettings,users:loadUserGroups,openids:loadOpenidList,feedback:loadFeedbacks,logs:loadLogs,runlog:loadRunLogs,authcodes:loadAuthCodes,members:saLoadPage,superadmin:saLoadPage,updatelog:loadUpdateLog,hyperlinks:loadHyperlinks,profile:loadProfilePage,help:loadHelp};
   const runLoader=()=>{if(loaders[name])loaders[name]();};
   if(currentBot&&['membersync','users','runlog','feedback','authcodes','channels','plugins'].includes(name)){
