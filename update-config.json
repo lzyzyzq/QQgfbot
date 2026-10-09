@@ -1,28 +1,28 @@
 {
   "ok": true,
-  "version": "1.0.33",
-  "frameworkVersion": "1.0.28",
-  "pluginVersion": "1.0.18",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.33.zip",
+  "version": "1.0.34",
+  "frameworkVersion": "1.0.29",
+  "pluginVersion": "1.0.19",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.34.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091（合并补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.33.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.34.zip"
     },
     {
-      "name": "8091（框架补丁 1.0.28）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.28.zip"
+      "name": "8091（框架补丁 1.0.29）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.29.zip"
     },
     {
-      "name": "8091（插件补丁 1.0.18）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.18.zip"
+      "name": "8091（插件补丁 1.0.19）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.19.zip"
     }
   ],
-  "changeLog": "两项修复与增强：1）修复侧边栏排序重排时把底部用户信息卡（头像/金币/退出登录）顶到侧边栏上方的问题，重排后用户卡保持在底部；2）「代码」弹窗全面升级——打开即自动加载该页面的网页端源码（只读查看，27 个内置页全部支持），下方自定义功能代码区支持 HTML+script（注入页面顶部并自动执行脚本，可实现按钮、公告联动等自定义功能），新增「在文件管理中编辑整站源码」快捷跳转。本包仍以 1.0.25 为基线全量打包，从 1.0.25 直接升级到 1.0.33 即获得全部内容",
-  "changeType": "框架升级",
-  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.28.zip",
-  "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.18.zip",
-  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.28.zip",
-  "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.18.zip"
+  "changeLog": "三项更新：1）修复「绑定邮箱成功后列表仍显示未绑定」的 bug（后端用户列表接口漏返回 email 字段，写入一直成功、读取丢失，现绑定/修改/解绑即时正确显示）；2）所有用户支持修改用户名（含超级主人）：编辑资料弹窗新增用户名输入框，改名后需重新登录，激活码注册用户除外，重名/非法字符自动拦截；3）「代码」弹窗升级为双注入位：顶部+底部独立代码区（HTML+script 均支持），新增 8 种常用代码模板一键插入（公告条/快捷按钮组/倒计时/嵌入外部网页/统计卡片/页面样式美化CSS/面板接口调用示例/页脚版权条），管理列表显示注入位置标记。本包仍以 1.0.25 为基线全量打包，从 1.0.25 直接升级到 1.0.34 即获得全部内容",
+  "changeType": "框架升级 + 插件升级",
+  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.29.zip",
+  "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.19.zip",
+  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.29.zip",
+  "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.19.zip"
 }
