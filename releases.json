@@ -8,8 +8,8 @@
   "configUrl": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "updateConfig": "https://lzyzyzq.github.io/QQgfbot/update-config.json",
   "current": {
-    "version": "1.0.32",
-    "changeLog": "更新体验优化：系统设置「服务端接收」区新增版本自动对比——当前版本落后时显示醒目的「发现新版本」提示条，已是最新时显示绿色确认；接收补丁包/上传 zip 完成后的提示中新增「Ctrl+F5 强制刷新浏览器」重要提醒，避免接收成功后因浏览器缓存误以为未更新。本包仍以 1.0.25 为基线全量打包，从 1.0.25 直接升级到 1.0.32 即获得全部内容"
+    "version": "1.0.33",
+    "changeLog": "两项修复与增强：1）修复侧边栏排序重排时把底部用户信息卡（头像/金币/退出登录）顶到侧边栏上方的问题，重排后用户卡保持在底部；2）「代码」弹窗全面升级——打开即自动加载该页面的网页端源码（只读查看，27 个内置页全部支持），下方自定义功能代码区支持 HTML+script（注入页面顶部并自动执行脚本，可实现按钮、公告联动等自定义功能），新增「在文件管理中编辑整站源码」快捷跳转。本包仍以 1.0.25 为基线全量打包，从 1.0.25 直接升级到 1.0.33 即获得全部内容"
   },
   "releases": [
     {
@@ -1441,10 +1441,44 @@
       }
     },
     {
+      "version": "1.0.33",
+      "tag": "v1.0.33",
+      "date": "2026-10-09",
+      "isCurrent": true,
+      "patch": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.33/qqbot-card-editor-patch-1.0.33.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.33/qqbot-card-editor-patch-1.0.33.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.33/qqbot-card-editor-patch-1.0.33.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.33.zip"
+      },
+      "full": {
+        "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.33/qqbot-card-editor-1.0.33.zip",
+        "mirrors": [
+          {
+            "name": "GitHub 加速(ghfast.top)",
+            "url": "https://ghfast.top/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.33/qqbot-card-editor-1.0.33.zip"
+          },
+          {
+            "name": "GitHub 加速(ghproxy.net)",
+            "url": "https://ghproxy.net/https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.33/qqbot-card-editor-1.0.33.zip"
+          }
+        ],
+        "si": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-1.0.33.zip"
+      }
+    },
+    {
       "version": "1.0.32",
       "tag": "v1.0.32",
       "date": "2026-10-09",
-      "isCurrent": true,
+      "isCurrent": false,
       "patch": {
         "main": "https://github.com/lzyzyzq/QQgfbot/releases/download/v1.0.32/qqbot-card-editor-patch-1.0.32.zip",
         "mirrors": [
