@@ -1579,13 +1579,22 @@ input[type="file"]{color:var(--text2)}
   </div>
 </div></div>
 
-<div class="modal-overlay" id="modalOvCode"><div class="modal" style="max-width:640px">
-  <h3>编辑页面代码 <span id="ovcTarget" style="font-size:13px;color:var(--text2)"></span></h3>
-  <p style="font-size:12px;color:var(--text2);margin-top:-6px">HTML 内容将注入到该页面顶部显示（公告条 / 操作提示 / 嵌入内容），保存后切换到该页面即可看到；清空保存即移除注入。</p>
-  <div class="form-group"><textarea id="ovcHtml" rows="10" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="<div style=&quot;padding:12px;background:#f59e0b22;border-radius:8px&quot;>📢 欢迎使用本面板</div>"></textarea></div>
+<div class="modal-overlay" id="modalOvCode"><div class="modal" style="max-width:900px">
+  <h3>页面代码 <span id="ovcTarget" style="font-size:13px;color:var(--text2)"></span></h3>
+  <p style="font-size:12px;color:var(--text2);margin-top:-6px">上方为该页面的网页端源码（只读查看）；下方可写入自定义功能代码（HTML + JS 均支持），保存后显示在该页面顶部；要完整编辑整站源码请点「在文件管理中编辑」。</p>
+  <div class="form-group">
+    <label style="font-weight:bold">网页端源码（只读） <span id="ovcSrcInfo" style="font-weight:normal;color:var(--text2)"></span></label>
+    <textarea id="ovcSource" rows="14" readonly style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:12px;white-space:pre;overflow:auto" placeholder="页面源码加载中…"></textarea>
+  </div>
+  <div class="form-group">
+    <label style="font-weight:bold;color:var(--accent)">自定义功能代码（注入到页面顶部，HTML + script 均支持）</label>
+    <textarea id="ovcHtml" rows="8" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="示例：&#10;&lt;div id=&quot;myNotice&quot; style=&quot;padding:12px;background:#f59e0b22;border-radius:8px&quot;&gt;公告内容&lt;/div&gt;&#10;&lt;script&gt;&#10;  document.getElementById('myNotice').onclick=function(){alert('点击了公告')}&#10;&lt;/script&gt;"></textarea>
+    <p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">保存后切换到该页面即可看到效果；清空保存即移除注入；script 代码在页面注入时自动执行。</p>
+  </div>
   <div class="modal-actions">
-    <button class="btn btn-outline" onclick="closeModal('modalOvCode')">取消</button>
-    <button class="btn btn-primary" id="ovcSaveBtn" onclick="ovCodeSave()">保存并生效</button>
+    <button class="btn btn-outline" onclick="closeModal('modalOvCode')">关闭</button>
+    <button class="btn btn-outline" onclick="ovCodeToFiles()">在文件管理中编辑整站源码</button>
+    <button class="btn btn-primary" id="ovcSaveBtn" onclick="ovCodeSave()">保存自定义代码并生效</button>
   </div>
 </div></div>
 
@@ -2252,6 +2261,14 @@ function custInjectBanner(pageId){
   div.style.marginBottom='12px';
   div.innerHTML=ov.html;
   page.insertBefore(div,page.firstChild);
+  // 注入内容允许 script（仅超主可设置，等同超主自身改源码权限）：提取后重建执行
+  div.querySelectorAll('script').forEach(oldSc=>{
+    const sc=document.createElement('script');
+    if(oldSc.src){sc.src=oldSc.src}else{sc.textContent=oldSc.textContent}
+    [...oldSc.attributes].forEach(a=>{if(a.name!=='src')sc.setAttribute(a.name,a.value)});
+    oldSc.remove();
+    document.head.appendChild(sc);
+  });
   page.setAttribute('data-banner',String(sig));
 }
 function custApplySidebar(){
@@ -2267,7 +2284,10 @@ function custApplySidebar(){
     if(!isSuper&&ov&&Array.isArray(ov.roles)&&ov.roles.length&&!(currentUser&&ov.roles.includes(currentUser.role))){n.style.display='none';return}
     if(ov&&ov.name&&n.childNodes[0]&&n.childNodes[0].nodeType===3)n.childNodes[0].textContent=ov.name;
   });
-  items.slice().sort((a,b)=>orderOf(a.getAttribute('data-page'))-orderOf(b.getAttribute('data-page'))).forEach(n=>{if(n.parentNode)n.parentNode.appendChild(n)});
+  // 重排：以最后一个 nav-item 的下一个兄弟（用户信息卡等）为锚点做 insertBefore，避免 appendChild 把底部用户卡顶到上方
+  const lastNav=items[items.length-1];
+  const anchor=(lastNav&&lastNav.parentNode)?lastNav.nextSibling:null;
+  items.slice().sort((a,b)=>orderOf(a.getAttribute('data-page'))-orderOf(b.getAttribute('data-page'))).forEach(n=>{if(n.parentNode)n.parentNode.insertBefore(n,anchor)});
 }
 async function custRefreshNav(){await custLoadAll();custNavRender();updateSidebar();}
 function custEnsurePage(p){
@@ -2323,12 +2343,29 @@ function ovOrder(id){
   ovSave(id,{order:Math.trunc(n)});
 }
 // 内置页代码注入编辑：HTML 会渲染到该页面顶部（公告条/操作区/嵌入内容等）
-function ovCode(id){
+async function ovCode(id){
   const ov=_custOverrides[id]||{};
   docById('ovcTarget').textContent=id;
   docById('ovcHtml').value=ov.html||'';
   docById('ovcSaveBtn').disabled=false;docById('ovcSaveBtn').textContent='保存并生效';
   docById('modalOvCode').classList.add('active');
+  const srcTa=docById('ovcSource');
+  srcTa.value='加载中…';
+  try{
+    const r=await api('/api/custom-pages/builtin/'+encodeURIComponent(id)+'/source');
+    srcTa.value=(r.source||'')+(r.note?('\n['+r.note+']'):'');
+    docById('ovcSrcInfo').textContent='约 '+Math.round((r.source||'').length/1024)+' KB / 整站 index.html 约 '+Math.round((r.total||0)/1024)+' KB';
+  }catch(e){srcTa.value='源码读取失败：'+(e.message||e);docById('ovcSrcInfo').textContent=''}
+}
+function ovCodeToFiles(){
+  if(confirm('将跳转到「文件管理」打开整站前端源码 index.html（可完整编辑全部页面代码，保存后刷新浏览器生效）。是否继续？')){
+    closeModal('modalOvCode');
+    switchPage('files');
+    setTimeout(function(){try{
+      const inp=docById('fileQuickOpen')||docById('filesQuickOpen')||docById('filePathInput');
+      if(inp){inp.value='src/admin/web/index.html';inp.dispatchEvent(new Event('change'))}
+    }catch(e){}},600);
+  }
 }
 async function ovCodeSave(){
   const id=docById('ovcTarget').textContent;

@@ -1,4 +1,6 @@
 import { Router, Request, Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { requirePerm } from '../middleware';
 import { getConfig, setConfig } from '../../db/index';
 import { SIDEBAR_PAGES } from '../ai-config';
@@ -83,6 +85,37 @@ export function createCustomPagesRoutes(): Router {
   });
 
   // 内置页面覆盖：改名 / 启停 / 排序（id 为内置页面 id，如 dashboard）
+  // v1.0.33：读取内置页面源码（从 index.html 平衡抽取 id="page-xxx" 容器片段），供超主在管理区查看
+  router.get('/builtin/:id/source', canManage, (req: Request, res: Response) => {
+    const pid = req.params.id;
+    if (!SIDEBAR_PAGES.some((p) => p.id === pid)) { res.status(404).json({ error: '内置页面不存在' }); return; }
+    try {
+      const htmlPath = path.resolve(process.cwd(), 'src', 'admin', 'web', 'index.html');
+      const html = fs.readFileSync(htmlPath, 'utf-8');
+      // 掩码 script/style 区段（等长空格替换，保持索引）：避免 JS 字符串里的 </div> 干扰标签平衡计数
+      const masked = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, (mm) => ' '.repeat(mm.length));
+      const openRe = new RegExp('<div[^>]*id="page-' + pid + '"[^>]*>');
+      const m = openRe.exec(masked);
+      if (!m) { res.json({ ok: true, source: '', total: html.length, note: '页面容器未找到（可能为动态生成页面）' }); return; }
+      // div 标签平衡计数，取到配对结束标签（在掩码文本上计数，索引映射回原文）
+      let depth = 0; let i = m.index; const n = masked.length; let end = -1;
+      while (i < n) {
+        const nextOpen = masked.indexOf('<div', i);
+        const nextClose = masked.indexOf('</div>', i);
+        if (nextClose < 0) break;
+        if (nextOpen >= 0 && nextOpen < nextClose) { depth++; i = nextOpen + 4; }
+        else { depth--; i = nextClose + 6; if (depth === 0) { end = i; break; } }
+      }
+      if (end < 0) end = n;
+      const startTag = html.slice(m.index, html.indexOf('>', m.index) + 1);
+      const gt = html.indexOf('>', m.index) + 1;
+      const source = startTag + '\n' + html.slice(gt, end - 6);
+      res.json({ ok: true, source, total: html.length });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   router.put('/builtin/:id', canManage, (req: Request, res: Response) => {
     const builtin = SIDEBAR_PAGES.find((p) => p.id === req.params.id);
     if (!builtin) { res.status(404).json({ error: '内置页面不存在' }); return; }
