@@ -5884,13 +5884,28 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
   }
 
   let _recvAi=null;
+  // 语义化版本比较：a>b 返回 1，a<b 返回 -1，相等 0
+  function cmpVer(a,b){
+    const pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
+    for(let i=0;i<3;i++){const x=pa[i]||0,y=pb[i]||0;if(x>y)return 1;if(x<y)return -1}
+    return 0;
+  }
   async function loadUpdateReceiver(){
     const st=docById('recvStatus');const msg=docById('recvMsg');
     try{
       const r=await api('/api/system/update-receive/info');
       _recvAi=r.ai||null;
       if(st){
-        let h='解压根目录：<b>'+(r.rootDir||'')+'</b>　当前版本：<b>'+(r.currentVersion||'（未记录）')+'</b>';
+        let h='';
+        // 发现新版本醒目提示：当前版本落后于 AI 端最新版本时
+        if(r.ai&&r.ai.ok&&r.ai.version&&cmpVer(r.currentVersion,r.ai.version)<0){
+          h+='<div style="background:linear-gradient(90deg,#f59e0b22,#f59e0b05);border:1px solid #f59e0b55;border-radius:8px;padding:10px 14px;margin-bottom:10px">'
+            +'<b style="color:#f59e0b;font-size:14px">⬆ 发现新版本 v'+esc(r.ai.version)+'（当前 v'+esc(r.currentVersion||'未知')+'）</b>'
+            +'<br><span style="font-size:12px;color:var(--text2)">请点击下方「接收补丁包」按钮完成更新；接收完成后按 <b>Ctrl+F5</b> 强制刷新浏览器即可看到全部新功能</span></div>';
+        }else if(r.ai&&r.ai.ok&&r.ai.version&&r.currentVersion){
+          h+='<div style="background:#22c55e18;border:1px solid #22c55e44;border-radius:8px;padding:8px 14px;margin-bottom:10px"><b style="color:#22c55e;font-size:13px">✔ 已是最新版本 v'+esc(r.currentVersion)+'</b></div>';
+        }
+        h+='解压根目录：<b>'+(r.rootDir||'')+'</b>　当前版本：<b>'+(r.currentVersion||'（未记录）')+'</b>';
         if(r.ai&&r.ai.ok&&r.ai.version){
           const n=(r.ai.sources&&r.ai.sources.length)||0;
           const names=(r.ai.sources||[]).map(function(s){return s.name}).join(' → ')||'';
@@ -5922,6 +5937,7 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
         if(r.usedUrl)t+='\n实际下载源：'+r.usedUrl;
         if(r.restart&&r.restart.ok)t+='\n🔄 已执行 pm2 restart qqbot，等待服务恢复…';
         else t+='\n⚠️ 未自动重启（pm2 qqbot 不存在/不在本机）。若需重启请手动执行：\ncd '+(r.root||'')+' && pm2 restart qqbot';
+        t+='\n💡 重要：请按 <b>Ctrl+F5</b> 强制刷新浏览器（或清缓存后刷新），否则看到的仍是旧界面。';
         msg.textContent=t;msg.style.color='var(--success)';
         loadUpdateReceiver();loadUpdateRecords();
       }else{
@@ -5942,6 +5958,7 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
         let t='✅ 接收完成：'+r.kind+' v'+r.version+'（'+r.fileName+'）已解压到 '+r.root+'\n已写入更新记录（共 '+(r.records?r.records.length:0)+' 条），当前版本：v'+r.currentVersion;
         if(r.restart&&r.restart.ok)t+='\n🔄 已执行 pm2 restart qqbot，等待服务恢复…';
         else t+='\n⚠️ 未自动重启（pm2 qqbot 不存在/不在本机）。若需重启请手动执行：\ncd '+(r.root||'')+' && pm2 restart qqbot';
+        t+='\n💡 重要：请按 <b>Ctrl+F5</b> 强制刷新浏览器（或清缓存后刷新），否则看到的仍是旧界面。';
         msg.textContent=t;msg.style.color='var(--success)';
         loadUpdateReceiver();loadUpdateRecords();
       }else{msg.textContent='❌ 接收失败（'+(r.step||'')+'）：'+(r.error||'');msg.style.color='var(--danger)'}
