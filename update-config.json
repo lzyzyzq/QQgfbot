@@ -1,28 +1,28 @@
 {
   "ok": true,
-  "version": "1.0.35",
-  "frameworkVersion": "1.0.30",
+  "version": "1.0.36",
+  "frameworkVersion": "1.0.31",
   "pluginVersion": "1.0.19",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.35.zip",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.36.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091（合并补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.35.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.36.zip"
     },
     {
-      "name": "8091（框架补丁 1.0.30）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.30.zip"
+      "name": "8091（框架补丁 1.0.31）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.31.zip"
     },
     {
       "name": "8091（插件补丁 1.0.19）",
       "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.19.zip"
     }
   ],
-  "changeLog": "新增面板版本号显示：侧边栏底部用户信息卡下方显示当前面板版本（如「面板 v1.0.35」），点击可查看版本详情与更新方法——一眼确认服务器是否已更新到最新版。使用提示：若版本号与 AI 端最新版本不一致，请在「系统设置 → 服务端接收」点「接收补丁包」完成更新，完成后务必按 Ctrl+F5 强制刷新浏览器。1.0.34 的全部内容（邮箱显示修复/用户改名/代码模板库）均包含在本包内。本包仍以 1.0.25 为基线全量打包",
+  "changeLog": "「代码」弹窗编辑体验大升级：1）顶部/底部编辑区上方各新增 16 个「常用标签」按钮——点击即在光标处插入对应 HTML 片段（H2/H3 标题、段落、加粗、红字、绿字、居中、链接、图片、按钮、分隔线、卡片容器、徽章、列表、表格、换行），像自定义页面一样可视挑选常用标签与内联样式；2）代码模板库从 8 种扩充到 16 种（联网搜集整理）：新增折叠面板 FAQ（details 原生免 JS）、进度条、徽章标签行、渐变横幅大标题、快捷链接卡片组、更新时间线、状态表格、图片展示卡。本包仍以 1.0.25 为基线全量打包，从 1.0.25 直接升级到 1.0.36 即获得全部内容",
   "changeType": "框架升级",
-  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.30.zip",
+  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.31.zip",
   "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.19.zip",
-  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.30.zip",
+  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.31.zip",
   "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.19.zip"
 }
