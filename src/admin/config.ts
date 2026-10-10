@@ -103,6 +103,7 @@ export interface CustomPage {
   content: string;   // html=HTML 片段；link=完整 URL
   enabled: boolean;
   order: number;
+  roles?: string[];
   createdAt: number;
 }
 

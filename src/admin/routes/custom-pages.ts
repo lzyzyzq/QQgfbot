@@ -32,6 +32,10 @@ function sanitizePage(body: any, id: string): CustomPage | null {
   if (!name) return null;
   if (type === 'link' && !/^https?:\/\//i.test(content)) return null;
   if (type === 'html' && !content) return null;
+  // 页面级角色可见性（v1.0.37）：空数组 = 全部角色可见；超主恒可见
+  const roles = Array.isArray(body.roles)
+    ? body.roles.map((r: any) => String(r)).filter((r: string) => VALID_ROLES.includes(r) && r !== 'super_master')
+    : undefined;
   return {
     id,
     name,
@@ -39,6 +43,7 @@ function sanitizePage(body: any, id: string): CustomPage | null {
     content: type === 'html' ? content.slice(0, 200000) : content.slice(0, 2000),
     enabled: body.enabled !== false,
     order: Math.trunc(Number(body.order) || 0),
+    ...(roles && roles.length ? { roles } : {}),
     createdAt: Math.trunc(Number(body.createdAt) || Date.now()),
   };
 }

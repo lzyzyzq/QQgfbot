@@ -1549,6 +1549,7 @@ input[type="file"]{color:var(--text2)}
 
 <div class="modal-overlay" id="modalMemberEdit"><div class="modal" style="max-width:560px;max-height:88vh;overflow:auto">
   <h3>编辑成员资料 <span id="meUsername" style="font-size:13px;color:var(--text2)"></span></h3>
+  <div class="form-group" id="meNewUsernameWrap"><label>登录用户名（2~32 位中文/字母/数字/下划线/中划线；改名后该用户需退出重新登录；激活码注册用户不可改名）</label><input id="meNewUsername" placeholder="留空 = 保持原用户名不变"></div>
   <p style="font-size:12px;color:var(--text2);margin-top:-6px">超级主人可修改所有用户的全部资料（包含超级主人账号）；留空的字段保持原值不变。</p>
   <div class="form-row" style="display:flex;gap:10px;flex-wrap:wrap">
     <div class="form-group" style="flex:1;min-width:150px"><label>昵称</label><input id="meNickname" placeholder="昵称"></div>
@@ -1584,7 +1585,7 @@ input[type="file"]{color:var(--text2)}
   <h3>页面代码 <span id="ovcTarget" style="font-size:13px;color:var(--text2)"></span></h3>
   <p style="font-size:12px;color:var(--text2);margin-top:-6px">上方为该页面的网页端源码（只读查看）；下方可写入自定义功能代码（HTML + JS 均支持），保存后显示在该页面顶部；要完整编辑整站源码请点「在文件管理中编辑」。</p>
   <div class="form-group">
-    <label style="font-weight:bold">网页端源码（只读） <span id="ovcSrcInfo" style="font-weight:normal;color:var(--text2)"></span></label>
+    <label style="font-weight:bold">网页端源码（只读） <span id="ovcSrcInfo" style="font-weight:normal;color:var(--text2)"></span> <button class="btn btn-outline btn-xs" style="margin-left:8px" onclick="ovcCopyText(docById('ovcSource').value)">复制源码</button> <button class="btn btn-outline btn-xs" onclick="ovcCopyText(docById('ovcHtml').value+'\n'+docById('ovcHtmlBottom').value)">复制自定义代码</button></label>
     <textarea id="ovcSource" rows="14" readonly style="width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:12px;white-space:pre;overflow:auto" placeholder="页面源码加载中…"></textarea>
   </div>
   <div class="form-group">
@@ -2331,7 +2332,12 @@ function custApplySidebar(){
     if(!custEnabledOf(id)){n.style.display='none';return}
     const ov=_custOverrides[id];
     // 页面级角色可见性：配置了 roles 且当前角色不在其中则隐藏（超主恒可见）
-    if(!isSuper&&ov&&Array.isArray(ov.roles)&&ov.roles.length&&!(currentUser&&ov.roles.includes(currentUser.role))){n.style.display='none';return}
+    let pageRoles=ov&&Array.isArray(ov.roles)?ov.roles:null;
+    if(!pageRoles&&id&&id.indexOf('custom_')===0){
+      const cp=(_custPages||[]).find(x=>x.id===id);
+      if(cp&&Array.isArray(cp.roles)&&cp.roles.length)pageRoles=cp.roles;
+    }
+    if(!isSuper&&pageRoles&&pageRoles.length&&!(currentUser&&pageRoles.includes(currentUser.role))){n.style.display='none';return}
     if(ov&&ov.name&&n.childNodes[0]&&n.childNodes[0].nodeType===3)n.childNodes[0].textContent=ov.name;
   });
   // 重排：以最后一个 nav-item 的下一个兄弟（用户信息卡等）为锚点做 insertBefore，避免 appendChild 把底部用户卡顶到上方
@@ -2365,9 +2371,13 @@ async function custLoad(){
       const flags=[];
       if(ov.html||ov.htmlBottom)flags.push('<span class="tag tag-approved" style="font-size:10px">已注入代码'+((ov.html&&ov.htmlBottom)?'(顶+底)':'')+'</span>');
       if(Array.isArray(ov.roles)&&ov.roles.length)flags.push('<span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:10px">角色受限</span>');
-      return '<tr><td>'+esc(cur)+' <span style="font-size:11px;color:var(--text2)">'+esc(p.id)+'</span> '+flags.join(' ')+'</td><td><span class="tag">内置</span></td><td>'+(en?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+ordV+'</td><td><button class="btn btn-outline btn-xs" onclick="ovRename(\''+esc(p.id)+'\',\''+esc(cur)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="ovToggle(\''+esc(p.id)+'\','+(en?1:0)+')">'+(en?'停用':'启用')+'</button> <button class="btn btn-outline btn-xs" onclick="ovOrder(\''+esc(p.id)+'\')">排序</button> <button class="btn btn-primary btn-xs" onclick="ovCode(\''+esc(p.id)+'\')">代码</button> <button class="btn btn-outline btn-xs" onclick="ovRoles(\''+esc(p.id)+'\')">权限</button></td></tr>';
+      return '<tr><td>'+esc(cur)+' <span style="font-size:11px;color:var(--text2)">'+esc(p.id)+'</span> '+flags.join(' ')+'</td><td><span class="tag">内置</span></td><td>'+(en?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+ordV+'</td><td><button class="btn btn-outline btn-xs" onclick="ovRename(\''+esc(p.id)+'\',\''+esc(cur)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="ovToggle(\''+esc(p.id)+'\','+(en?1:0)+')">'+(en?'停用':'启用')+'</button> <button class="btn btn-outline btn-xs" onclick="ovOrder(\''+esc(p.id)+'\')">排序</button> <button class="btn btn-primary btn-xs" onclick="ovCode(\''+esc(p.id)+'\')">代码</button> <button class="btn btn-outline btn-xs" onclick="ovCopyCode(\''+esc(p.id)+'\')">复制</button> <button class="btn btn-outline btn-xs" onclick="ovRoles(\''+esc(p.id)+'\')">权限</button></td></tr>';
     }).join('');
-    const customRows=_custAll.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+(p.type==='link'?'<span class="tag" style="background:#1e3a5f;color:#7dd3fc">外链</span>':'<span class="tag">HTML</span>')+'</td><td>'+(p.enabled?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+(p.order||0)+'</td><td><button class="btn btn-outline btn-xs" onclick="custOpen(\''+esc(p.id)+'\')">编辑</button> <button class="btn btn-outline btn-xs" onclick="custToggle(\''+esc(p.id)+'\','+(p.enabled?1:0)+')">'+(p.enabled?'停用':'启用')+'</button> <button class="btn btn-danger btn-xs" onclick="custDel(\''+esc(p.id)+'\')">删除</button></td></tr>').join('');
+    const customRows=_custAll.map(p=>{
+      const flags=[];
+      if(Array.isArray(p.roles)&&p.roles.length)flags.push('<span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:10px">角色受限</span>');
+      return '<tr><td>'+esc(p.name)+' <span style="font-size:11px;color:var(--text2)">'+esc(p.id)+'</span> '+flags.join(' ')+'</td><td>'+(p.type==='link'?'<span class="tag" style="background:#1e3a5f;color:#7dd3fc">外链</span>':'<span class="tag">HTML</span>')+'</td><td>'+(p.enabled?'<span style="color:#22c55e">启用</span>':'<span style="color:var(--text2)">停用</span>')+'</td><td>'+(p.order||0)+'</td><td><button class="btn btn-outline btn-xs" onclick="custOpen(\''+esc(p.id)+'\')">编辑</button> <button class="btn btn-outline btn-xs" onclick="custCopyCode(\''+esc(p.id)+'\')">复制</button> <button class="btn btn-outline btn-xs" onclick="custRoles(\''+esc(p.id)+'\')">权限</button> <button class="btn btn-outline btn-xs" onclick="custToggle(\''+esc(p.id)+'\','+(p.enabled?1:0)+')">'+(p.enabled?'停用':'启用')+'</button> <button class="btn btn-danger btn-xs" onclick="custDel(\''+esc(p.id)+'\')">删除</button></td></tr>';
+    }).join('');
     docById('custList').innerHTML=builtinRows+customRows;
   }catch(e){}
 }
@@ -2533,6 +2543,38 @@ const OVC_TEMPLATES={
   imgcard:{name:'图片展示卡',code:`<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;max-width:420px">
   <img src="https://example.com/cover.png" style="width:100%;display:block" onerror="this.style.display='none'">
   <div style="padding:10px 14px;font-size:13px"><b>图片标题</b><div style="color:var(--text2);font-size:12px;margin-top:2px">图片说明文字</div></div>
+</div>`},
+  scroll:{name:'滚动跑马灯公告',code:`<div style="overflow:hidden;white-space:nowrap;background:#3b82f615;border:1px solid #3b82f644;border-radius:8px;padding:8px 0">
+  <div id="myMarquee" style="display:inline-block;padding-left:100%;animation:myScroll 12s linear infinite;color:var(--text);font-size:13px">📢 这是一条滚动公告，内容可在管理区随时修改，支持任意文字。</div>
+</div>
+<style>@keyframes myScroll{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}</style>`},
+  tabs:{name:'切换标签页',code:`<div>
+  <div style="display:flex;gap:6px;margin-bottom:10px">
+    <button onclick="document.getElementById('tabA').style.display='';document.getElementById('tabB').style.display='none';this.style.background='var(--accent)';this.style.color='#fff'" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--accent);color:#fff;cursor:pointer;font-size:13px">标签一</button>
+    <button onclick="document.getElementById('tabB').style.display='';document.getElementById('tabA').style.display='none';this.style.background='var(--accent)';this.style.color='#fff'" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:13px">标签二</button>
+  </div>
+  <div id="tabA" style="padding:14px;background:var(--bg3);border-radius:8px;font-size:13px;line-height:1.8">标签一的内容，可放任意 HTML。</div>
+  <div id="tabB" style="display:none;padding:14px;background:var(--bg3);border-radius:8px;font-size:13px;line-height:1.8">标签二的内容。</div>
+</div>`},
+  accordion2:{name:'更新日志折叠列表',code:`<details style="border-left:3px solid var(--accent);background:var(--bg3);border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px" open>
+  <summary style="cursor:pointer;font-weight:bold">2026-10-10 更新</summary>
+  <ul style="margin:8px 0 0;padding-left:18px;color:var(--text2);font-size:13px;line-height:2">
+    <li>新增功能一</li>
+    <li>新增功能二</li>
+  </ul>
+</details>
+<details style="border-left:3px solid var(--border);background:var(--bg3);border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">
+  <summary style="cursor:pointer;font-weight:bold">2026-10-09 更新</summary>
+  <ul style="margin:8px 0 0;padding-left:18px;color:var(--text2);font-size:13px;line-height:2">
+    <li>修复问题一</li>
+  </ul>
+</details>`},
+  contact:{name:'联系管理员卡片',code:`<div style="display:flex;gap:12px;align-items:center;padding:16px;background:linear-gradient(90deg,#22c55e15,transparent);border:1px solid #22c55e44;border-radius:10px">
+  <div style="width:44px;height:44px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">?</div>
+  <div>
+    <div style="font-weight:bold;font-size:14px">需要帮助？</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:2px">添加管理员 QQ：123456789 · 交流群：987654321</div>
+  </div>
 </div>`}
 };
 // 常用标签库（v1.0.36）：点击在光标处插入
@@ -2590,6 +2632,53 @@ function ovcTplSelect(target){
   sel.value='';
 }
 // 内置页角色可见性：逗号分隔角色列表（master/user/member），留空=全部可见
+// 复制到剪贴板（兼容非 https 环境）
+function ovcCopyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){alert('已复制到剪贴板（'+text.length+' 字符）')},function(){ovcCopyFallback(text)})}
+  else ovcCopyFallback(text);
+}
+function ovcCopyFallback(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');alert('已复制到剪贴板（'+text.length+' 字符）')}catch(e){prompt('复制失败，请手动复制：',text)}
+  ta.remove();
+}
+// 内置页：复制该页的全部注入代码（顶部+底部）
+function ovCopyCode(id){
+  const ov=_custOverrides[id]||{};
+  let t='';
+  if(ov.html)t+='/* ===== 顶部注入代码 ===== */\n'+ov.html+'\n';
+  if(ov.htmlBottom)t+=(t?'\n':'')+'/* ===== 底部注入代码 ===== */\n'+ov.htmlBottom;
+  if(!t){alert('「'+id+'」暂无注入代码，请先在「代码」中编写');return}
+  ovcCopyText(t);
+}
+// 自定义页：复制该页 HTML/外链内容
+function custCopyCode(id){
+  const p=(_custAll||[]).find(x=>x.id===id);
+  if(!p){alert('页面不存在');return}
+  ovcCopyText(p.content||'');
+}
+// 自定义页：页面级角色可见性设置
+function custRoles(id){
+  const p=(_custAll||[]).find(x=>x.id===id);
+  if(!p){alert('页面不存在');return}
+  const cur=Array.isArray(p.roles)&&p.roles.length?p.roles.join(','):'';
+  const v=prompt('「'+p.name+'」对哪些角色可见？\n可选角色：master（主人）、member（会员）、user（普通用户）\n多个用英文逗号分隔；留空 = 全部角色可见；注意：超级主人始终可见',cur);
+  if(v===null)return;
+  const roles=v.split(',').map(x=>x.trim()).filter(x=>['master','member','user'].includes(x));
+  custToggle2(id,{roles:roles});
+}
+async function custToggle2(id,extra){
+  try{
+    const p=(_custAll||[]).find(x=>x.id===id);
+    const body={name:p.name,type:p.type,content:p.content,enabled:p.enabled,order:p.order||0};
+    if(extra&&Array.isArray(extra.roles))body.roles=extra.roles;
+    await api('/api/custom-pages/'+encodeURIComponent(id),{method:'PUT',body:body});
+    custLoad();
+    alert('页面权限已更新');
+  }catch(e){alert('保存失败：'+(e.message||e))}
+}
 function ovRoles(id){
   const ov=_custOverrides[id]||{};
   const cur=Array.isArray(ov.roles)&&ov.roles.length?ov.roles.join(','):'';
@@ -3030,6 +3119,7 @@ async function memberEditOpen(username){
   const a=(_memberAll.find(x=>x.username===username))||((await api('/api/auth/admins').catch(()=>[]))||[]).find(x=>x.username===username);
   if(!a){alert('用户不存在');return}
   docById('meUsername').textContent='· '+username+(a.role==='super_master'?'（超级主人）':'');
+  const mun=docById('meNewUsername');if(mun)mun.value='';
   docById('meNickname').value=a.nickname||'';
   docById('meAvatar').value=a.avatar||'';
   docById('meQQ').value=a.qq||'';
@@ -3059,7 +3149,8 @@ async function memberEditSave(){
   btn.disabled=true;btn.textContent='保存中...';
   try{
     const body={};
-    const newU=docById('meNewUsername').value.trim();
+    const _mun=docById('meNewUsername');
+    const newU=_mun?_mun.value.trim():'';
     if(newU&&newU!==u)body.newUsername=newU;
     const nickname=docById('meNickname').value.trim();
     const avatar=docById('meAvatar').value.trim();
