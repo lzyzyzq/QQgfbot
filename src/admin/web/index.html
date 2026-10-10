@@ -298,6 +298,7 @@ input[type="file"]{color:var(--text2)}
     <div style="margin-top:4px;font-size:12px;color:#f59e0b;display:none" id="sidebarCoins">金币 <span>0</span></div>
     <div style="margin-top:8px"><a href="#" onclick="showChangeCode()" style="color:var(--accent);font-size:12px">修改授权码</a></div>
     <div style="margin-top:4px"><a href="#" onclick="doLogout()" style="color:var(--danger);font-size:12px">退出登录</a></div>
+    <div id="panelVersion" style="margin-top:8px;font-size:11px;color:var(--text2);opacity:.75;cursor:pointer" onclick="showPanelVersionDetail()" title="点击查看版本详情">面板 v—</div>
   </div>
 </div>
 
@@ -2238,6 +2239,24 @@ async function doChangePassword(){
 }
 
 async function doLogout(){try{await api('/api/auth/logout',{method:'POST'})}catch{}document.cookie='admin_token=; path=/; max-age=0';showLogin()}
+// 面板版本显示：读本地 update-config.json（接收补丁包后即为对应版本号），一眼确认当前部署版本
+let _panelVer='';
+function refreshPanelVersion(){
+  fetch('/update-config.json?t='+Date.now()).then(function(r){return r.ok?r.json():null}).then(function(d){
+    if(d&&d.version){_panelVer=d.version;const el=docById('panelVersion');if(el)el.textContent='面板 v'+d.version}
+  }).catch(function(){});
+}
+function showPanelVersionDetail(){
+  fetch('/update-config.json?t='+Date.now()).then(function(r){return r.ok?r.json():null}).then(function(d){
+    if(!d){alert('无法读取版本信息（update-config.json 不存在）');return}
+    let fw='';try{fw=(JSON.parse(localStorage.getItem('panel_framework_ver')||'""'))}catch(e){}
+    alert('当前面板版本：v'+d.version
+      +'\n框架版本：v'+(d.frameworkVersion||'—')
+      +'\n插件版本：v'+(d.pluginVersion||'—')
+      +'\n\n更新方法：系统设置 → 服务端接收 → 接收补丁包，完成后按 Ctrl+F5 强制刷新浏览器。'
+      +'\n如果此处版本号与 AI 端最新版本不一致，说明服务器尚未完成更新。');
+  }).catch(function(){alert('无法读取版本信息')});
+}
 
 
 // ===== 自定义页面（v1.0.29）：超主网页端新增侧边栏页面与功能 =====
@@ -6477,7 +6496,8 @@ function mdToHtml(md){return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
     setAdminTokenCookie(savedToken);
     hideLogin();
     try {
-      api('/api/auth/me').then(info => {
+      refreshPanelVersion();
+  api('/api/auth/me').then(info => {
         if (info) {
           currentUser = { username: info.username, role: info.role };
           currentUserPermissions = info.permissions || null;
@@ -6549,6 +6569,7 @@ function mdToHtml(md){return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
     return;
   }
   // 无本地 token 且非回调：尝试用 Cookie 会话自动登录（支持新标签页/深链直达）
+  refreshPanelVersion();
   api('/api/auth/me').then(info => {
     if (info && info.username) {
       currentUser = { username: info.username, role: info.role };
