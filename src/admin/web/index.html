@@ -1596,7 +1596,8 @@ input[type="file"]{color:var(--text2)}
       </select>
       <span style="font-size:11px;color:var(--text2)">公告条 / 快捷按钮 / 倒计时 / 嵌网页 / 统计卡 / CSS 美化 / 接口调用 / 页脚</span>
     </div>
-    <textarea id="ovcHtml" rows="7" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="写入的代码显示在该页面顶部；支持 HTML 与 script（自动执行）"></textarea>
+    <div id="ovcTagsTop" style="display:flex;gap:4px;flex-wrap:wrap;margin:6px 0"></div>
+    <textarea id="ovcHtml" rows="7" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="写入的代码显示在该页面顶部；支持 HTML 与 script（自动执行）；点击上方标签按钮在光标处插入常用标签"></textarea>
   </div>
   <div class="form-group">
     <label style="font-weight:bold;color:var(--accent)">自定义功能代码 · 底部注入（HTML + script 均支持）</label>
@@ -1606,7 +1607,8 @@ input[type="file"]{color:var(--text2)}
         <option value="">选择模板…</option>
       </select>
     </div>
-    <textarea id="ovcHtmlBottom" rows="5" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="写入的代码显示在该页面底部；适合页脚版权、统计、脚本初始化"></textarea>
+    <div id="ovcTagsBottom" style="display:flex;gap:4px;flex-wrap:wrap;margin:6px 0"></div>
+    <textarea id="ovcHtmlBottom" rows="5" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:10px;font-family:monospace;font-size:13px" placeholder="写入的代码显示在该页面底部；适合页脚版权、统计、脚本初始化；点击上方标签按钮插入常用标签"></textarea>
     <p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">保存后切换到该页面即可看到效果；清空对应编辑框保存即移除该位置注入。</p>
   </div>
   <div class="modal-actions">
@@ -2396,6 +2398,7 @@ async function ovCode(id){
   docById('ovcTarget').textContent=id;
   docById('ovcHtml').value=ov.html||'';
   docById('ovcHtmlBottom').value=(ov.htmlBottom||'');
+  ovcRenderTags();
   ['ovcTplTop','ovcTplBottom'].forEach(function(sid){
     const sel=docById(sid);
     if(sel&&sel.options.length<=1){
@@ -2477,8 +2480,105 @@ const OVC_TEMPLATES={
     }catch(e){var el2=document.getElementById('apiDemo');if(el2)el2.textContent='加载失败：'+e.message;}
   })();
 <\/script>`},
-  footer:{name:'页脚版权条',code:`<div style="text-align:center;padding:14px;color:var(--text2);font-size:12px;border-top:1px dashed var(--border);margin-top:16px">© 2026 我的机器人面板 · Powered by 自定义注入</div>`}
+  footer:{name:'页脚版权条',code:`<div style="text-align:center;padding:14px;color:var(--text2);font-size:12px;border-top:1px dashed var(--border);margin-top:16px">© 2026 我的机器人面板 · Powered by 自定义注入</div>`},
+  accordion:{name:'折叠面板 FAQ（免 JS）',code:`<details style="border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px" open>
+  <summary style="cursor:pointer;font-weight:bold">常见问题一？</summary>
+  <p style="margin:8px 0 0;color:var(--text2);line-height:1.8">这里是答案内容，点击标题可展开/收起，无需任何脚本。</p>
+</details>
+<details style="border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px">
+  <summary style="cursor:pointer;font-weight:bold">常见问题二？</summary>
+  <p style="margin:8px 0 0;color:var(--text2);line-height:1.8">第二个问题的答案。</p>
+</details>`},
+  progress:{name:'进度条',code:`<div style="padding:12px 14px;background:var(--bg3);border-radius:8px">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px"><span>任务进度</span><b style="color:var(--accent)">80%</b></div>
+  <div style="width:100%;height:10px;background:var(--border);border-radius:999px;overflow:hidden">
+    <div style="width:80%;height:100%;background:linear-gradient(90deg,var(--accent),#22c55e);border-radius:999px"></div>
+  </div>
+</div>`},
+  badges:{name:'徽章标签行',code:`<div style="display:flex;gap:6px;flex-wrap:wrap">
+  <span style="padding:4px 12px;border-radius:999px;background:#22c55e22;color:#22c55e;font-size:12px">运行中</span>
+  <span style="padding:4px 12px;border-radius:999px;background:#f59e0b22;color:#f59e0b;font-size:12px">维护中</span>
+  <span style="padding:4px 12px;border-radius:999px;background:#ef444422;color:#ef4444;font-size:12px">已停用</span>
+  <span style="padding:4px 12px;border-radius:999px;background:#3b82f622;color:#3b82f6;font-size:12px">Beta</span>
+</div>`},
+  banner:{name:'渐变横幅大标题',code:`<div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:12px;padding:24px;text-align:center;color:#fff">
+  <div style="font-size:22px;font-weight:bold;margin-bottom:6px">欢迎使用机器人面板</div>
+  <div style="font-size:13px;opacity:.85">这里是副标题说明文字</div>
+</div>`},
+  links:{name:'快捷链接卡片组',code:`<div style="display:flex;gap:10px;flex-wrap:wrap">
+  <a href="https://example.com" target="_blank" style="flex:1;min-width:140px;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;text-decoration:none;color:var(--text)">
+    <div style="font-weight:bold;margin-bottom:4px">官方文档</div>
+    <div style="font-size:12px;color:var(--text2)">查看使用教程</div>
+  </a>
+  <a href="https://example.com" target="_blank" style="flex:1;min-width:140px;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;text-decoration:none;color:var(--text)">
+    <div style="font-weight:bold;margin-bottom:4px">交流群</div>
+    <div style="font-size:12px;color:var(--text2)">加入用户交流</div>
+  </a>
+</div>`},
+  timeline:{name:'更新时间线',code:`<div style="padding:4px 0">
+  <div style="display:flex;gap:10px;margin-bottom:12px">
+    <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:6px;flex-shrink:0"></div>
+    <div><b style="font-size:13px">v1.0.36 发布</b><div style="font-size:12px;color:var(--text2);margin-top:2px">新增折叠面板与进度条模板</div></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:12px">
+    <div style="width:8px;height:8px;border-radius:50%;background:var(--border);margin-top:6px;flex-shrink:0"></div>
+    <div><b style="font-size:13px">v1.0.35 发布</b><div style="font-size:12px;color:var(--text2);margin-top:2px">面板版本号显示</div></div>
+  </div>
+</div>`},
+  tablecard:{name:'状态表格',code:`<table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--bg3);border-radius:8px;overflow:hidden">
+  <tr><th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--border)">项目</th><th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--border)">状态</th></tr>
+  <tr><td style="padding:10px 12px;border-bottom:1px solid var(--border)">机器人服务</td><td style="padding:10px 12px;border-bottom:1px solid var(--border);color:#22c55e">正常</td></tr>
+  <tr><td style="padding:10px 12px">数据库</td><td style="padding:10px 12px;color:#22c55e">正常</td></tr>
+</table>`},
+  imgcard:{name:'图片展示卡',code:`<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;max-width:420px">
+  <img src="https://example.com/cover.png" style="width:100%;display:block" onerror="this.style.display='none'">
+  <div style="padding:10px 14px;font-size:13px"><b>图片标题</b><div style="color:var(--text2);font-size:12px;margin-top:2px">图片说明文字</div></div>
+</div>`}
 };
+// 常用标签库（v1.0.36）：点击在光标处插入
+const OVC_TAGS=[
+  {label:'H2 标题',code:`<h2>标题内容</h2>`},
+  {label:'H3 标题',code:`<h3>小标题</h3>`},
+  {label:'段落',code:`<p style="line-height:1.8">段落内容</p>`},
+  {label:'加粗',code:`<b>加粗文字</b>`},
+  {label:'红色字',code:`<span style="color:#ef4444">红色文字</span>`},
+  {label:'绿色字',code:`<span style="color:#22c55e">绿色文字</span>`},
+  {label:'居中',code:`<div style="text-align:center">居中内容</div>`},
+  {label:'链接',code:`<a href="https://example.com" target="_blank" style="color:var(--accent)">链接文字</a>`},
+  {label:'图片',code:`<img src="https://example.com/img.png" style="max-width:100%;border-radius:8px">`},
+  {label:'按钮',code:`<button onclick="alert('点击了按钮')" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer">按钮文字</button>`},
+  {label:'分隔线',code:`<hr style="border:0;border-top:1px solid var(--border);margin:12px 0">`},
+  {label:'卡片容器',code:`<div class="card" style="padding:14px">卡片内容</div>`},
+  {label:'徽章',code:`<span style="display:inline-block;padding:2px 10px;border-radius:999px;background:#22c55e22;color:#22c55e;font-size:12px">新</span>`},
+  {label:'列表',code:`<ul style="padding-left:20px;line-height:2"><li>项目一</li><li>项目二</li></ul>`},
+  {label:'表格',code:`<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th style="text-align:left;padding:6px;border-bottom:1px solid var(--border)">列1</th><th style="text-align:left;padding:6px;border-bottom:1px solid var(--border)">列2</th></tr><tr><td style="padding:6px">内容</td><td style="padding:6px">内容</td></tr></table>`},
+  {label:'换行',code:`<br>`}
+];
+function ovcInsert(pos,snippet){
+  const ta=docById(pos==='top'?'ovcHtml':'ovcHtmlBottom');
+  if(!ta)return;
+  const st=(typeof ta.selectionStart==='number')?ta.selectionStart:ta.value.length;
+  const en=(typeof ta.selectionEnd==='number')?ta.selectionEnd:st;
+  ta.value=ta.value.slice(0,st)+snippet+ta.value.slice(en);
+  ta.focus();
+  const np=st+snippet.length;
+  try{ta.setSelectionRange(np,np)}catch(e){}
+}
+function ovcRenderTags(){
+  ['ovcTagsTop','ovcTagsBottom'].forEach(function(cid){
+    const box=docById(cid);
+    if(!box||box.getAttribute('data-rendered'))return;
+    box.setAttribute('data-rendered','1');
+    OVC_TAGS.forEach(function(t){
+      const b=document.createElement('button');
+      b.className='btn btn-outline btn-xs';
+      b.style.fontSize='11px';
+      b.textContent=t.label;
+      b.onclick=function(){ovcInsert(cid==='ovcTagsTop'?'top':'bottom',t.code)};
+      box.appendChild(b);
+    });
+  });
+}
 function ovcTplSelect(target){
   const sel=docById(target==='top'?'ovcTplTop':'ovcTplBottom');
   const k=sel.value;
