@@ -1,4 +1,5 @@
-// 实用工具 v1.2.1 - 每日备注/打卡/昵称/天气/个人信息（富媒体头像卡）
+// 实用工具 v1.2.2 - 每日备注/打卡/昵称/天气/个人信息（富媒体头像卡）
+// v1.2.2: 「打卡」别名命中每日打卡；权限/授权角色中文化；用户ID行附QQ；OpenID→QQ多重兜底
 // ReplySpec 回复可视化：内置模板可被后台 config plugin.file-实用工具.reply 覆盖；渲染优先+原文兜底
 /*__REPLY_SPEC_BEGIN__*/
 var REPLY_SPEC = {
@@ -242,8 +243,8 @@ module.exports = {
           return;
         }
 
-        // ===== 每日打卡 =====
-        if (content === '每日打卡') {
+        // ===== 每日打卡（「打卡」为别名，v1.2.2）=====
+        if (content === '每日打卡' || content === '打卡') {
           var today = new Date().toISOString().split('T')[0];
           var key = 'checkin_util_' + userId + '_' + today;
           var streakKey = 'checkin_util_streak_' + userId;
@@ -427,19 +428,60 @@ module.exports = {
           return;
         }
 
+        // ===== 实用功能帮助（v1.2.2：菜单按钮「实用」落点，此前落到 fallback 未知指令）=====
+        if (content === '实用功能') {
+          var helpTxt = '🛠 实用功能\n━━━━━━━━━━━━━━';
+          helpTxt += '\n📅 打卡 — 每日打卡领积分';
+          helpTxt += '\n📝 每日备注 [内容] — 记录今天';
+          helpTxt += '\n✏️ 设置昵称 [昵称] — 修改昵称';
+          helpTxt += '\n🌤 查询天气 [城市] — 天气查询';
+          helpTxt += '\n👤 个人信息 — 我的资料卡';
+          helpTxt += '\n━━━━━━━━━━━━━━';
+          await sendReply(helpTxt, [backRow()]);
+          return true;
+        }
+
         // ===== 个人信息（富媒体头像卡：engine.getUserProfile 本地聚合 + sendGroupMarkdownWithImage 发送头像） =====
         if (content === '个人信息') {
           var nickname = ctx.storage.get('nickname_' + userId) || '未设置';
-          var total = ctx.storage.get('checkin_util_total_' + userId) || '0';
-          var streak = ctx.storage.get('checkin_util_streak_' + userId) || '0';
           var today = new Date().toISOString().split('T')[0];
           var note = ctx.storage.get('note_' + userId + '_' + today) || '无';
-          var lastCheckin = ctx.storage.get('checkin_util_' + userId + '_' + today) ? '已打卡' : '未打卡';
+          // 签到数据统一显示（v1.2.2）：跨插件读签到系统 checkin_*（getPluginStorage 按插件名解析），为空回退打卡卡 checkin_util_*
+          var _gs = function (k) { try { return (ctx.engine && ctx.engine.getPluginStorage) ? ctx.engine.getPluginStorage('签到系统', k) : null; } catch (eg) { return null; } };
+          var sTotal = parseInt(_gs('checkin_' + userId + '_total'), 10) || 0;
+          var sStreak = parseInt(_gs('checkin_' + userId + '_streak'), 10) || 0;
+          var sDate = _gs('checkin_' + userId + '_date') || '';
+          var uTotal = parseInt(ctx.storage.get('checkin_util_total_' + userId), 10) || 0;
+          var uStreak = parseInt(ctx.storage.get('checkin_util_streak_' + userId), 10) || 0;
+          var uChecked = !!ctx.storage.get('checkin_util_' + userId + '_' + today);
+          var total = (sTotal || uTotal) + '';
+          var streak = Math.max(sStreak, uStreak) + '';
+          var lastCheckin = (sDate === today || uChecked) ? '已打卡' : '未打卡';
+          // 积分排名：扫描签到系统用户索引
+          var rankLine = '';
+          if (sTotal > 0) {
+            var _idx = [];
+            try { _idx = JSON.parse(_gs('checkin_users_index') || '[]') || []; } catch (ei) { _idx = []; }
+            var _cnt = 0; var _higher = 0;
+            for (var _i = 0; _i < _idx.length; _i++) {
+              var _t = parseInt(_gs('checkin_' + _idx[_i] + '_total'), 10) || 0;
+              if (_t > 0) { _cnt++; if (_t > sTotal) _higher++; }
+            }
+            if (_cnt > 0) rankLine = '\n🏆 积分排名：第 ' + (_higher + 1) + ' 名（共 ' + _cnt + ' 人）';
+          }
 
           // 后端聚合资料（与网页面板/菜单同源）：OpenID→QQ/昵称/头像/面板角色/授权角色
           var prof = null;
           try { prof = (ctx.engine && ctx.engine.getUserProfile) ? ctx.engine.getUserProfile(userId, 1) : null; } catch(e) {}
           var qq = (prof && prof.qq_number) || '';
+          // OpenID→QQ 多重兜底：getUserProfile 缺失/未绑定时走 identity.getQQ，再失败回退群成员表最近记录
+          if (!qq) { try { if (ctx.engine && ctx.engine.identity && ctx.engine.identity.getQQ) qq = ctx.engine.identity.getQQ(userId) || ''; } catch (eq) {} }
+          if (!qq) {
+            try {
+              var gmQ = (ctx.engine && ctx.engine.queryGroupMember) ? ctx.engine.queryGroupMember(userId) : null;
+              if (gmQ && gmQ.qq_id) qq = String(gmQ.qq_id);
+            } catch (eq2) {}
+          }
           var uname = (prof && prof.nickname) || nickname;
           var avatar = (prof && prof.avatar) || '';
           var permRole = (prof && prof.permission) || '';
@@ -447,19 +489,22 @@ module.exports = {
           var gName = '';
           try { gName = (ctx.engine && ctx.engine.getGroupName) ? ctx.engine.getGroupName(groupId) : ''; } catch(e) {}
 
-          var permLabel = permRole || authRole || '普通用户';
-          var authText = authRole ? ('已授权' + (authRole === permRole ? '' : ' · ' + authRole)) : (permRole ? '面板成员' : '未授权');
+          // 角色/授权中英映射（v1.2.2）：super_master→超级主人、master→主人 等，未知值原样显示
+          var _roleCn = { super_master: '超级主人', master: '主人', admin: '管理员', developer: '开发者', member: '成员', user: '普通用户' };
+          var _roleTxt = function (r) { return r ? (_roleCn[String(r)] || String(r)) : ''; };
+          var permLabel = _roleTxt(permRole) || _roleTxt(authRole) || '普通用户';
+          var authText = authRole ? ('已授权' + (authRole === permRole ? '' : ' · ' + _roleTxt(authRole))) : (permRole ? '面板成员' : '未授权');
 
           var md = '# 👤 个人信息\n' +
             '![头像](__AVATAR__)\n' +
             '👥 所在群：' + (gName || '-') + '\n' +
             '👤 昵称：' + uname + '\n' +
             '🔢 QQ：' + (qq || '未绑定') + '\n' +
-            '🆔 用户ID：' + userId + '\n' +
+            '🆔 用户ID：' + userId + (qq ? '（QQ ' + qq + '）' : '') + '\n' +
             '🔐 权限：' + permLabel + '\n' +
             '✅ 授权：' + authText + '\n' +
             '━━━━━━━━━━━━━━\n' +
-            '📅 打卡：' + lastCheckin + ' · 连续 ' + streak + ' 天 · 积分 ' + total + '\n' +
+            '📅 打卡：' + lastCheckin + ' · 连续 ' + streak + ' 天 · 积分 ' + total + (sDate ? '\n🗓 最近签到：' + sDate : '') + rankLine + '\n' +
             '📝 今日备注：' + note + '\n' +
             '━━━━━━━━━━━━━━\n' +
             '发送"实用功能"查看更多';
@@ -473,7 +518,7 @@ module.exports = {
           } catch(e) {
             try { await ctx.bot.sendMarkdownGroup(groupId, md.replace(/!\[头像\]\(__AVATAR__\)\n?/g, ''), undefined, undefined, msgId); } catch(e2) {}
           }
-          return;
+          return true;
         }
 
         await sendReply(render('fallback', data) || '❓ 未知指令\n发送"实用功能"查看所有实用工具', [backRow()]);

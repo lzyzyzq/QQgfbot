@@ -436,9 +436,17 @@ module.exports = (function () {
         if (hit) return true;
       }
       // 签到类
-      if (content === '签到' || content === '补签' || content === '签到排行' || content === '积分排行' ||
-          content === '个人信息' || content === '我的信息') {
+      if (content === '签到' || content === '补签' || content === '签到排行' || content === '积分排行') {
         const hit = await ctx.engine.callPlugin('签到系统', 'handleCommand', data).catch(() => null);
+        if (hit) return true;
+      }
+      // 实用工具类（v1.2.2 路由补全：打卡别名/备注/昵称/天气/帮助）
+      if (content === '打卡' || content === '每日打卡' || content === '每日备注' || content.indexOf('每日备注 ') === 0 ||
+          content === '设置昵称' || content.indexOf('设置昵称 ') === 0 ||
+          content === '天气' || content.indexOf('天气 ') === 0 ||
+          content === '查询天气' || content.indexOf('查询天气 ') === 0 || content === '实用功能' ||
+          content === '个人信息' || content === '我的信息') {
+        const hit = await ctx.engine.callPlugin('实用工具', 'handleCommand', data).catch(() => null);
         if (hit) return true;
       }
       // 系统/设置类

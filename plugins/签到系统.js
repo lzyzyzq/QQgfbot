@@ -1,4 +1,5 @@
-// 签到系统 v2.2.0 - 每日签到 + 积分 + 排行 + 补签 + 个人信息 + 按钮/文字双模式
+// 签到系统 v2.2.1 - 每日签到 + 积分 + 排行 + 补签 + 个人信息 + 按钮/文字双模式
+// v2.2.1: 修复 _displayName 的 OpenID→QQ 转换（getUserProfile 字段名 qq_number + 回退链）
 // v2.2.0: 实现「个人信息」查询（积分/连续天数/最近签到/积分排名）；签到用户索引持久化（重启后排行不丢）
 // v2.1.1: 积分排行显示绑定 QQ（已绑定用户显示 QQ 号，未绑定才显示 UID 前 8 位）
 // ReplySpec 回复可视化：内置模板可被后台 config plugin.file-签到系统.reply 覆盖
@@ -355,14 +356,19 @@ module.exports = {
     },
 
     _displayName: function(ctx, openid) {
+      // OpenID→QQ 转换（v2.2.1）：identity.getQQ 优先，空值时回退 getUserProfile（字段 qq_number），再失败显示 UID 前缀
       var qq = '';
       try {
         if (ctx.engine && ctx.engine.identity && ctx.engine.identity.getQQ) qq = ctx.engine.identity.getQQ(openid) || '';
-        else if (ctx.engine && ctx.engine.getUserProfile) {
-          var p = ctx.engine.getUserProfile(openid);
-          qq = (p && p.qq) || '';
-        }
       } catch (e) {}
+      if (!qq) {
+        try {
+          if (ctx.engine && ctx.engine.getUserProfile) {
+            var p = ctx.engine.getUserProfile(openid);
+            qq = (p && (p.qq_number || p.qq)) || '';
+          }
+        } catch (e2) {}
+      }
       if (qq) return 'QQ:' + qq;
       return 'UID:' + String(openid).substring(0, 8) + '...';
     },

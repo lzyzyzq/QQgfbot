@@ -757,6 +757,18 @@ async function main() {
     }));
   }
 
+  // ===== 面板版本号源文件（update-config.json 在工作目录根，静态目录 src/admin/web 不覆盖它） =====
+  // 侧边栏底部「面板 vX.Y.Z」读取此文件；接收补丁包解压后即为新版本号
+  const updateConfigPath = path.resolve(process.cwd(), 'update-config.json');
+  app.get('/update-config.json', (_req, res) => {
+    if (fs.existsSync(updateConfigPath)) {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, private');
+      res.sendFile(updateConfigPath);
+    } else {
+      res.status(404).json({ ok: false, error: 'update-config.json not found' });
+    }
+  });
+
   // ===== 文字链接点击落地页（全局"文字链接模式"：点击文字 → 自动触发指令并回复到群） =====
   const escHtml = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   app.get('/click', (req, res) => {
