@@ -3073,8 +3073,8 @@ function renderAdminRows(admins){
     const regTag=a.createdBy==='register'?' <span class="tag" style="background:#1e3a5f;color:#7dd3fc;font-size:11px">注册用户</span>':'';
     const regInfo=a.createdAt?'<div style="font-size:11px;color:var(--text2)">'+new Date(a.createdAt).toLocaleDateString()+(a.createdBy==='register'?' 注册':' 创建')+'</div>':'';
     const ops=isSuper
-      ?'<button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button>'
-      :'<button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button> <button class="btn btn-danger btn-xs" onclick="aiUserDelete(\''+esc(a.username)+'\')">删除</button>';
+      ?'<button class="btn btn-primary btn-xs" onclick="aiRename(\''+esc(a.username)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button>'
+      :'<button class="btn btn-primary btn-xs" onclick="aiRename(\''+esc(a.username)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button> <button class="btn btn-danger btn-xs" onclick="aiUserDelete(\''+esc(a.username)+'\')">删除</button>';
     return '<tr><td>'+esc(a.username)+(a.nickname?' <span style="color:var(--text2);font-size:12px">('+esc(a.nickname)+')</span>':'')+devTag+regTag+regInfo+'</td><td>'+(roleLabels[a.role]||a.role)+'</td>'+
     '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+' <button class="btn btn-outline btn-xs" onclick="aiEmailEdit(\''+esc(a.username)+'\',\''+esc(a.email||'')+'\')">修改邮箱</button></td>'+
     '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
@@ -3107,13 +3107,28 @@ function memberApplyFilter(){
     '<td>'+(a.email?'<span style="font-size:12px">'+esc(a.email)+'</span>':'<span style="color:var(--text2);font-size:12px">未绑定</span>')+(a.qq?'<div style="font-size:11px;color:var(--text2)">QQ '+esc(a.qq)+'</div>':'')+'</td>'+
     '<td>'+(isSuper?'<span style="color:var(--text2)">不受限</span>':'<b style="color:#f59e0b">'+(typeof a.coins==='number'?a.coins:0)+'</b>')+'</td>'+
     '<td>'+(isSuper
-      ?'<button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button>'
-      :'<button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button> <button class="btn btn-danger btn-xs" onclick="aiUserDelete(\''+esc(a.username)+'\')">删除</button>')+'</td></tr>';
+      ?'<button class="btn btn-primary btn-xs" onclick="aiRename(\''+esc(a.username)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button>'
+      :'<button class="btn btn-primary btn-xs" onclick="aiRename(\''+esc(a.username)+'\')">改名</button> <button class="btn btn-outline btn-xs" onclick="memberEditOpen(\''+esc(a.username)+'\')">资料编辑</button> <button class="btn btn-primary btn-xs" onclick="aiPermsOpen(\''+esc(a.username)+'\')">权限管理</button> <button class="btn btn-outline btn-xs" onclick="aiCoinAdjust(\''+esc(a.username)+'\',1)">+1</button> <button class="btn btn-outline btn-xs" onclick="aiCoinCustom(\''+esc(a.username)+'\')">增减</button> <button class="btn btn-outline btn-xs" onclick="aiCoinLogs(\''+esc(a.username)+'\')">流水</button> <button class="btn btn-outline btn-xs" onclick="aiPagesEdit(\''+esc(a.username)+'\')">侧边栏</button> <button class="btn btn-outline btn-xs" onclick="aiDevToggle(\''+esc(a.username)+'\','+(a.isDeveloper?1:0)+')">'+(a.isDeveloper?'取消开发者':'认证开发者')+'</button> <button class="btn btn-danger btn-xs" onclick="aiUserDelete(\''+esc(a.username)+'\')">删除</button>')+'</td></tr>';
   }).join('')||'<tr><td colspan="5" style="color:var(--text2);text-align:center;padding:20px">无匹配成员</td></tr>';
 }
 function memberFilter(){memberApplyFilter()}
 // 成员资料编辑：超主可修改所有用户全部资料（含超级主人账号本身）
 let _meTarget='';
+// 行内直接改名（v1.0.38）：不依赖资料编辑弹窗，prompt 输入新用户名立即生效
+function aiRename(username){
+  const v=prompt('修改用户「'+username+'」的登录用户名：\n（2~32 位中文/字母/数字/下划线/中划线；改名后该用户需退出重新登录；激活码注册用户不可改名）',username);
+  if(v===null)return;
+  const nu=String(v).trim();
+  if(!nu||nu===username)return;
+  if(nu.length<2||nu.length>32){alert('用户名需为 2~32 位');return}
+  api('/api/auth/admins/'+encodeURIComponent(username),{method:'PUT',body:{newUsername:nu}}).then(function(r){
+    if(r&&r.ok&&r.renamed){
+      alert('用户名已从「'+username+'」改为「'+r.username+'」\n该用户需退出后重新登录');
+      if(currentUser&&currentUser.username===username){currentUser.username=r.username;updateSidebar()}
+      aiUserLoad();
+    }else{alert('改名失败：'+((r&&r.error)||'未知错误'))}
+  }).catch(function(e){alert('改名失败：'+(e.message||e))});
+}
 async function memberEditOpen(username){
   _meTarget=username;
   const a=(_memberAll.find(x=>x.username===username))||((await api('/api/auth/admins').catch(()=>[]))||[]).find(x=>x.username===username);
@@ -3930,7 +3945,7 @@ async function loadDashboard(){try{const stats=await api('/api/system/stats');
     dashStatCard('词库总数',(lex.total||0),'词条 '+(lex.entries||0),'yellow')+
     dashStatCard('收到消息',(msg.in||0),'今日 +'+(msg.todayIn||0),'blue')+
     dashStatCard('发出消息',(msg.out||0),'今日 +'+(msg.todayOut||0),'green')+
-    dashStatCard('今日异常',(stats.errorsToday||0),'',((stats.errorsToday||0)>0?'yellow':''))+
+    dashStatCard('今日异常',(stats.errorsToday||0),((stats.errorsToday||0)>0?'点击查看异常详情':'暂无异常'),((stats.errorsToday||0)>0?'yellow':''),(stats.errorsToday||0)>0?"switchPage('runlog');setTimeout(function(){const lv=docById('runLogLevel');if(lv){lv.value='error';try{lv.dispatchEvent(new Event('change'))}catch(e){loadRunLogs()}}},700)":"switchPage('logs')")+
     dashMiniCard('24h 入站消息',totIn,'blue')+
     dashMiniCard('24h 出站回复',totOut,'green')+
     dashMiniCard('机器人在线',online+' / '+(stats.bots?stats.bots.total:0),'green')+
@@ -4005,7 +4020,7 @@ const BOT_STATUS_CN={running:'运行中',stopped:'已停止',error:'错误',erro
 function botStatusCN(v){const k=String(v||'').toLowerCase();return BOT_STATUS_CN[k]||String(v||'')}
 function dashMiniCard(label,val,cls){return '<div class="stat-card"><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(String(val))+'</div></div>'}
 function fmtNum(v){const n=Number(v)||0;try{return n.toLocaleString('zh-CN')}catch(e){return String(n)}}
-function dashStatCard(label,val,sub,cls){return '<div class="stat-card"><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(fmtNum(val))+'</div>'+(sub?('<div class="sub">'+esc(sub)+'</div>'):'')+'</div>'}
+function dashStatCard(label,val,sub,cls,onclick){return '<div class="stat-card"'+(onclick?' style="cursor:pointer" onclick="'+onclick+'" title="点击查看详情"':'')+'><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(fmtNum(val))+'</div>'+(sub?('<div class="sub">'+esc(sub)+'</div>'):'')+'</div>'}
 // 近 14 天消息趋势：纯内联 SVG 折线图（无常量依赖，跟随主题变量）
 function dashLineChart(labels,series){
   const w=720,h=210,pad={l:44,r:14,t:12,b:26};
