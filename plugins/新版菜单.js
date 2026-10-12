@@ -436,7 +436,8 @@ module.exports = (function () {
         if (hit) return true;
       }
       // 签到类
-      if (content === '签到' || content === '补签' || content === '签到排行' || content === '积分排行') {
+      if (content === '签到' || content === '补签' || content === '签到排行' || content === '积分排行' ||
+          content === '个人信息' || content === '我的信息') {
         const hit = await ctx.engine.callPlugin('签到系统', 'handleCommand', data).catch(() => null);
         if (hit) return true;
       }

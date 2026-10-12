@@ -1,4 +1,5 @@
-// 签到系统 v2.1.1 - 每日签到 + 积分 + 排行 + 补签 + 按钮/文字双模式
+// 签到系统 v2.2.0 - 每日签到 + 积分 + 排行 + 补签 + 个人信息 + 按钮/文字双模式
+// v2.2.0: 实现「个人信息」查询（积分/连续天数/最近签到/积分排名）；签到用户索引持久化（重启后排行不丢）
 // v2.1.1: 积分排行显示绑定 QQ（已绑定用户显示 QQ 号，未绑定才显示 UID 前 8 位）
 // ReplySpec 回复可视化：内置模板可被后台 config plugin.file-签到系统.reply 覆盖
 // @ts-nocheck
@@ -12,7 +13,7 @@ var REPLY_SPEC = {
       key: "disabled",
       label: "系统停用（后台开关 switch.checkin=0）",
       scope: ["group"],
-      triggers: ["签到", "补签", "签到排行", "积分排行"],
+      triggers: ["签到", "补签", "签到排行", "积分排行", "个人信息", "我的信息"],
       lines: [
         { "t": "text", "v": "签到系统已停用" }
       ]
@@ -258,6 +259,12 @@ module.exports = {
 
           if (!ctx._checkinUsers) ctx._checkinUsers = [];
           if (ctx._checkinUsers.indexOf(userId) === -1) ctx._checkinUsers.push(userId);
+          // 索引持久化：重启后排行/个人信息仍可查询
+          try {
+            var _idx = [];
+            try { _idx = JSON.parse(ctx.storage.get('checkin_users_index') || '[]') || []; } catch (e2) { _idx = []; }
+            if (_idx.indexOf(userId) === -1) { _idx.push(userId); ctx.storage.set('checkin_users_index', JSON.stringify(_idx)); }
+          } catch (e3) {}
 
           var tOk = rsText(ctx, 'ok', data, { points: points, streak: streak, bonus: bonusMsg, total: total });
           await sendReply(tOk || _fb('ok', { points: points, streak: streak, bonus: bonusMsg, total: total }), [backRow()]);
@@ -287,6 +294,11 @@ module.exports = {
           total -= 30;
           ctx.storage.set('checkin_' + userId + '_total', String(total));
           ctx.storage.set('checkin_' + userId + '_date', yday);
+          try {
+            var _idx2 = [];
+            try { _idx2 = JSON.parse(ctx.storage.get('checkin_users_index') || '[]') || []; } catch (e2) { _idx2 = []; }
+            if (_idx2.indexOf(userId) === -1) { _idx2.push(userId); ctx.storage.set('checkin_users_index', JSON.stringify(_idx2)); }
+          } catch (e3) {}
 
           var streak = (parseInt(ctx.storage.get('checkin_' + userId + '_streak'), 10) || 0) + 1;
           ctx.storage.set('checkin_' + userId + '_streak', String(streak));
@@ -296,8 +308,28 @@ module.exports = {
           return;
         }
 
-        if (content === '个人信息') {
-          return;
+        // 个人信息（v2.2.0）：积分 / 连续签到 / 最近签到 / 积分排名 / 签到记录
+        if (content === '个人信息' || content === '我的信息' || content === '个人信息查询') {
+          var pInfo = parseInt(ctx.storage.get('checkin_' + userId + '_total'), 10) || 0;
+          var pStreak = parseInt(ctx.storage.get('checkin_' + userId + '_streak'), 10) || 0;
+          var pLast = ctx.storage.get('checkin_' + userId + '_date') || '';
+          var all = this._scanCheckinKeys(ctx);
+          var pRank = 0;
+          if (pInfo > 0) {
+            var higher = all.filter(function (x) { return x.total > pInfo; }).length;
+            pRank = higher + 1;
+          }
+          var name = this._displayName(ctx, userId);
+          var pTxt = '📋 个人信息\n━━━━━━━━━━━━━━';
+          pTxt += '\n用户：' + name;
+          pTxt += '\n积分：' + pInfo;
+          pTxt += '\n连续签到：' + pStreak + ' 天';
+          pTxt += '\n最近签到：' + (pLast || '从未签到');
+          if (pInfo > 0) pTxt += '\n积分排名：第 ' + pRank + ' 名（共 ' + all.length + ' 人）';
+          pTxt += '\n━━━━━━━━━━━━━━';
+          pTxt += (pLast === this._today()) ? '\n✅ 今日已签到' : '\n💡 今日尚未签到，发送「签到」开始打卡';
+          await sendReply(pTxt, [backRow()]);
+          return true;
         }
 
         if (content === '签到排行' || content === '积分排行') {
@@ -335,9 +367,20 @@ module.exports = {
       return 'UID:' + String(openid).substring(0, 8) + '...';
     },
 
-    _scanCheckinKeys: function(ctx) {
+    _scanCheckinUsers: function(ctx) {
       if (!ctx._checkinUsers) ctx._checkinUsers = [];
-      var users = ctx._checkinUsers;
+      var seen = {};
+      var all = [];
+      var merge = function (u) { if (u && !seen[u]) { seen[u] = 1; all.push(u); } };
+      (ctx._checkinUsers || []).forEach(merge);
+      try {
+        var idx = JSON.parse(ctx.storage.get('checkin_users_index') || '[]');
+        if (Array.isArray(idx)) idx.forEach(merge);
+      } catch (e) {}
+      return all;
+    },
+    _scanCheckinKeys: function(ctx) {
+      var users = this._scanCheckinUsers(ctx);
       var result = [];
       for (var i = 0; i < users.length; i++) {
         var uid = users[i];
@@ -350,7 +393,14 @@ module.exports = {
 
   onEnable: function(ctx) {
     if (!ctx._checkinUsers) ctx._checkinUsers = [];
-    ctx.logger.info('签到系统已加载 v2.1.0');
+    // 恢复持久化索引：重启后排行/个人信息立即可用
+    try {
+      var _idx = JSON.parse(ctx.storage.get('checkin_users_index') || '[]');
+      if (Array.isArray(_idx)) {
+        _idx.forEach(function (u) { if (ctx._checkinUsers.indexOf(u) === -1) ctx._checkinUsers.push(u); });
+      }
+    } catch (e) {}
+    ctx.logger.info('签到系统已加载 v2.2.0');
     // ReplySpec：服务器 config 覆盖内置模板（后台「回复编辑器」保存后需重载插件生效）
     try {
       var raw = (ctx.engine && ctx.engine.getConfigValue) ? ctx.engine.getConfigValue('plugin.file-签到系统.reply') : null;

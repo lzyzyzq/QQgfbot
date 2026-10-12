@@ -1298,7 +1298,13 @@ export class PluginEngine {
   }
 
   async testMessage(name: string, userId: string, userName: string, groupId: string | null, groupName: string | null, message: string, mode?: string, botId?: string): Promise<{ status: string; replies: string[]; messages: any[]; error?: string }> {
-    const id = this.findPluginByName(name);
+    // 优先匹配已加载实例（与 ctx.callPlugin 同逻辑），避免 db 中同名历史实例（uuid 重复记录）导致误判 not loaded
+    let id: string | null = null;
+    for (const [pid, entry] of this.plugins) {
+      if (!entry.loaded) continue;
+      if (entry.plugin.manifest.name === name || entry.plugin.manifest.id === name) { id = pid; break; }
+    }
+    if (!id) id = this.findPluginByName(name);
     if (!id) {
       throw new Error(`Plugin "${name}" not found`);
     }
