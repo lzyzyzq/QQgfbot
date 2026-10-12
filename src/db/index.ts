@@ -379,6 +379,19 @@ export function addSystemLog(level: string, category: string, message: string, d
   } catch (e) { /* 写入失败不阻塞主流程 */ }
 }
 
+// 运行记录自动保留期清理（v1.0.39）：删除 retention_days 天前的记录，默认 14 天
+export function purgeOldSystemLogs(): number {
+  try {
+    let days = 14;
+    try {
+      const cfg = Number(getConfig('logs.retention_days'));
+      if (Number.isFinite(cfg) && cfg >= 1 && cfg <= 365) days = Math.trunc(cfg);
+    } catch { /* 默认 14 */ }
+    const r = getDb().prepare(`DELETE FROM system_logs WHERE created_at < datetime('now', '-' || ? || ' days')`).run(days);
+    return r.changes;
+  } catch { return 0; }
+}
+
 export function querySystemLogs(limit: number = 50, category?: string, level?: string, botIds?: string[]): any[] {
   let sql = 'SELECT * FROM system_logs WHERE 1=1';
   const params: any[] = [];

@@ -11,6 +11,7 @@ import { noteSelfSend } from './self-echo';
 import { isUnreachableGroupError, markGroupUnreachable } from './group-reach';
 import path from 'path';
 import https from 'https';
+import dns from 'dns';
 import { AsyncLocalStorage } from 'async_hooks';
 
 // msedge-tts 无内置类型声明，动态导入使用
@@ -168,7 +169,17 @@ export class BotCore {
     if (this.accessToken && Date.now() < this.tokenExpiresAt) return;
 
     const body = JSON.stringify({ appId, clientSecret: appSecret });
-    const result = await this.rawHttp(QQ_AUTH_BASE, 'POST', '/app/getAppAccessToken', body);
+    let result: string;
+    try {
+      result = await this.rawHttp(QQ_AUTH_BASE, 'POST', '/app/getAppAccessToken', body);
+    } catch (err: any) {
+      // 本地 DNS 故障兜底：公共 DNS 解析 IP 直连重试一次
+      if (/ENOTFOUND|EAI_AGAIN/i.test(String(err.message || err))) {
+        const ips = await this.resolveViaPublicDns(QQ_AUTH_BASE);
+        if (!ips.length) throw new Error('无法连接 QQ 认证服务器（bots.qq.com 域名解析失败）：请检查服务器网络/DNS 配置');
+        result = await this.rawHttp(ips[0], 'POST', '/app/getAppAccessToken', body, { 'Host': QQ_AUTH_BASE }, QQ_AUTH_BASE);
+      } else throw err;
+    }
     const data = JSON.parse(result);
 
     this.accessToken = data.access_token;
@@ -186,7 +197,8 @@ export class BotCore {
     method: string,
     path: string,
     body?: string,
-    extraHeaders?: Record<string, string>
+    extraHeaders?: Record<string, string>,
+    servername?: string
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const headers: Record<string, string> = {
@@ -195,7 +207,7 @@ export class BotCore {
       };
       if (body) headers['Content-Length'] = String(Buffer.byteLength(body));
 
-      const req = https.request({ hostname, port: 443, path, method, headers }, (res) => {
+      const req = https.request({ hostname, port: 443, path, method, headers, ...(servername ? { servername } : {}) } as any, (res) => {
         const chunks: Buffer[] = [];
         res.on('data', (chunk: Buffer) => { chunks.push(chunk); });
         res.on('end', () => {
@@ -214,25 +226,71 @@ export class BotCore {
     });
   }
 
+  // 网络类错误（DNS 解析失败/连接重置/超时等）：可自动重试
+  private isNetworkError(err: any): boolean {
+    const msg = String((err && (err.message || err)) || '');
+    return /ENOTFOUND|EAI_AGAIN|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|Request timeout|socket hang up/i.test(msg);
+  }
+
+  // 公共 DNS 备用解析（腾讯 119.29.29.29 / 阿里 223.5.5.5）：服务器本地 DNS 故障时兜底
+  private resolveViaPublicDns(hostname: string): Promise<string[]> {
+    return new Promise((resolve) => {
+      const resolver = new dns.Resolver({ timeout: 3000, tries: 2 });
+      resolver.setServers(['119.29.29.29', '223.5.5.5']);
+      resolver.resolve4(hostname, (err, addresses) => {
+        resolve(err || !addresses || !addresses.length ? [] : addresses);
+      });
+    });
+  }
+
   private isTokenInvalidError(err: any): boolean {
     const msg = String((err && (err.message || err)) || '');
     return msg.indexOf('11244') !== -1 || msg.indexOf('AccessToken') !== -1 || msg.indexOf('access_token') !== -1 || /HTTP 40[13]/.test(msg);
   }
 
-  private async apiCall(method: string, path: string, body?: string, retried = false): Promise<any> {
+  // dnsFallback=true 时用公共 DNS 解析出的 IP 直连（Host/SNI 仍为域名），绕过本地 DNS 故障
+  private async apiCall(method: string, path: string, body?: string, retried = false, dnsFallback = false): Promise<any> {
     const token = await this.ensureToken();
     try {
-      const result = await this.rawHttp(QQ_API_BASE, method, path, body, {
-        'Authorization': `QQBot ${token}`,
-      });
+      const headers: Record<string, string> = { 'Authorization': `QQBot ${token}` };
+      let host = QQ_API_BASE;
+      let servername: string | undefined;
+      if (dnsFallback) {
+        const ips = await this.resolveViaPublicDns(QQ_API_BASE);
+        if (!ips.length) {
+          throw new Error('无法连接 QQ 服务器（api.sgroup.qq.com）：本地 DNS 与公共 DNS（119.29.29.29/223.5.5.5）均解析失败，请检查服务器网络连接');
+        }
+        host = ips[0];
+        servername = QQ_API_BASE;
+        headers['Host'] = QQ_API_BASE;
+      }
+      const result = await this.rawHttp(QQ_API_BASE === host ? QQ_API_BASE : host, method, path, body, headers, servername);
       return JSON.parse(result);
     } catch (err: any) {
+      const emsg = String((err && (err.message || err)) || '');
       // AccessToken 无效/过期（可能被平台提前吊销或本地时钟偏差）：清空后重新获取，重试一次
       if (!retried && this.isTokenInvalidError(err)) {
         logger.warn(`AccessToken invalid/expired, refreshing and retrying: ${method} ${path}`);
         this.accessToken = null;
         this.tokenExpiresAt = 0;
         return this.apiCall(method, path, body, true);
+      }
+      // 网络类错误自动重试：ENOTFOUND 优先走公共 DNS 备用解析，其余 1.5s 后直接重试
+      if (this.isNetworkError(err)) {
+        if (!dnsFallback && /ENOTFOUND|EAI_AGAIN/i.test(emsg)) {
+          logger.warn(`DNS resolve failed for ${QQ_API_BASE}, retrying via public DNS: ${method} ${path}`);
+          await new Promise((r) => setTimeout(r, 1500));
+          return this.apiCall(method, path, body, retried, true);
+        }
+        if (!retried) {
+          logger.warn(`Network error calling ${method} ${path}, retrying once: ${emsg}`);
+          await new Promise((r) => setTimeout(r, 1500));
+          return this.apiCall(method, path, body, true, dnsFallback);
+        }
+        // 重试后仍是 DNS 解析失败：抛出友好错误
+        if (/ENOTFOUND/i.test(emsg)) {
+          throw new Error('无法连接 QQ 服务器（api.sgroup.qq.com 域名解析失败）：已自动重试并尝试公共 DNS 均失败，请检查服务器网络/DNS 配置');
+        }
       }
       throw err;
     }

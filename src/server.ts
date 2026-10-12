@@ -25,7 +25,7 @@ import type { AdminConfig } from './admin/config';
 import { ROLE_PERMISSIONS } from './admin/config';
 
 // ===== 业务 API imports =====
-import { initDb, closeDb, getConfig, setConfig, getDb, addSystemLog } from './db/index';
+import { initDb, closeDb, getConfig, setConfig, getDb, addSystemLog, purgeOldSystemLogs } from './db/index';
 import { seedExamplePlugins } from './db/seed';
 import { EventBus, initAssignmentCache, migratePhpPyAssignments } from './core/event-bus';
 import { initAiReply } from './core/ai-reply';
@@ -840,6 +840,18 @@ async function main() {
   const bot = createBot(eventBus);
   try { webhookManager = new WebhookManager(eventBus); }
   catch (err: any) { serverLogger.warn(`WebhookManager init failed (回调验签不可用): ${err.message} —— 请在面板配置机器人 AppID/Secret 后重启`); }
+  // 运行记录自动清理（v1.0.39）：默认保留 14 天（config logs.retention_days 可调 1~365），启动时清理一次后每 6 小时清理
+  try {
+    const purged = purgeOldSystemLogs();
+    if (purged > 0) addSystemLog('info', 'system', `运行记录自动清理：已删除 ${purged} 条超过保留期的记录`);
+  } catch { /* ignore */ }
+  setInterval(() => {
+    try {
+      const n = purgeOldSystemLogs();
+      if (n > 0) addSystemLog('info', 'system', `运行记录自动清理：已删除 ${n} 条超过保留期的记录`);
+    } catch { /* ignore */ }
+  }, 6 * 3600 * 1000);
+
   // 定时任务执行器：每分钟扫描 schedule_tasks，到点播报/切换开关（报时插件「定时报时」与网页后端定时任务共用）
   startScheduleRunner(() => pluginEngine);
 
