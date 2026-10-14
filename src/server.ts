@@ -13,7 +13,7 @@ import { authMiddleware } from './admin/middleware';
 import { createAuthRoutes } from './admin/routes/auth';
 import { createPluginRoutes } from './admin/routes/plugin';
 import { createFileRoutes } from './admin/routes/file';
-import { createSystemRoutes } from './admin/routes/system';
+import { createSystemRoutes, checkAutoUpdate, archiveTrendYesterday } from './admin/routes/system';
 import { createBotRoutes } from './admin/routes/bot';
 import { createNapcatRoutes } from './admin/routes/napcat';
 import { createOpenPlatformRoutes } from './admin/routes/open-platform';
@@ -861,6 +861,18 @@ async function main() {
     try {
       const n = purgeOldSystemLogs();
       if (n > 0) addSystemLog('info', 'system', `运行记录自动清理：已删除 ${n} 条超过保留期的记录`);
+    } catch { /* ignore */ }
+  }, 6 * 3600 * 1000);
+
+  // 消息趋势归档（v1.0.42）：启动时归档昨日数据 + 每 6 小时补归档（幂等），与日志清理解耦保证趋势图 14 天完整
+  try { archiveTrendYesterday(); } catch { /* ignore */ }
+  setInterval(() => { try { archiveTrendYesterday(); } catch { /* ignore */ } }, 6 * 3600 * 1000);
+
+  // 自动更新（v1.0.42）：config update.auto=1 时每 6 小时检查云端新版本并自动接收补丁包
+  setInterval(async () => {
+    try {
+      const r = await checkAutoUpdate();
+      if (r.checked) addSystemLog('info', 'system', `自动更新检查：${r.msg}`);
     } catch { /* ignore */ }
   }, 6 * 3600 * 1000);
 

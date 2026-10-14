@@ -1,11 +1,11 @@
 import { Router, type Request, type Response } from 'express';
 import type { Logger } from '../logger';
-import { requireSuperMaster, requirePerm } from '../middleware';
+import { requireSuperMaster, requireSuperOrMaster, requirePerm } from '../middleware';
 import { resolveMaxBots } from '../config';
 import type { AdminAuth } from '../auth';
 import type { BotRegistry } from '../registry';
 import { getBot, getBotInstance } from '../../core/bot';
-import { querySystemLogs, querySystemLogsCount, deleteSystemLogs, clearSystemLogs, getDb, getConfig, setConfig } from '../../db/index';
+import { querySystemLogs, querySystemLogsCount, deleteSystemLogs, clearSystemLogs, getDb, getConfig, setConfig, addSystemLog } from '../../db/index';
 import { getBlocklist, addBlocked, removeBlocked } from '../../core/blocklist';
 import { isUsingDefaultChannel } from '../email';
 import {
@@ -263,6 +263,20 @@ export async function receiveUpdatePackage(opts: {
     const restartCwd = opts.root || process.cwd();
     const rcmd = `cd ${JSON.stringify(restartCwd)} && pm2 restart qqbot`;
     const r = await runSh(restartCwd, rcmd, 15000);
+    // 7. 清理运行目录历史更新包 zip（按用户要求：更新完成后自动删除补丁，节省磁盘；保留最新 3 个以防回滚）
+    try {
+      const zips = fs.readdirSync(restartCwd)
+        .filter((f) => /^qqbot-card-editor.*\.zip$/i.test(f))
+        .map((f) => {
+          try { return { f, mt: fs.statSync(path.join(restartCwd, f)).mtimeMs }; } catch { return { f, mt: 0 }; }
+        })
+        .sort((a, b) => b.mt - a.mt);
+      const removed: string[] = [];
+      for (let i = 3; i < zips.length; i++) {
+        try { fs.unlinkSync(path.join(restartCwd, zips[i].f)); removed.push(zips[i].f); } catch { /* noop */ }
+      }
+      if (removed.length) addSystemLog('info', 'system', `已清理历史更新包 ${removed.length} 个（保留最新 3 个）`, removed.join(', '));
+    } catch { /* noop */ }
     return {
       ok: true,
       kind,
@@ -493,6 +507,7 @@ export function createSystemRoutes(
       footerAds: getConfig('bot.footer_ads') || '',
       qqLoginToken: getConfig('qqlogin.token') || '',
       updateVersion: getConfig('update.version') || '4.2.65',
+      updateAuto: String(getConfig('update.auto') || '') === '1',
       updatePatchUrl: getConfig('update.patch_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.65.zip',
       updateFullUrl: getConfig('update.full_url') || '',
       updateFrameworkPatchUrl: getConfig('update.framework_patch_url') || '',
@@ -525,6 +540,7 @@ export function createSystemRoutes(
       }
     }
     if (req.body.authCodePanelLogin !== undefined) setConfig('panel.auth_code_login', req.body.authCodePanelLogin ? '1' : '0');
+    if (req.body.updateAuto !== undefined) setConfig('update.auto', req.body.updateAuto ? '1' : '0');
     if (req.body.panelHost !== undefined) setConfig('panel.host', String(req.body.panelHost).trim());
     if (req.body.licenseAutoShutdown !== undefined) setConfig('license.auto_shutdown', req.body.licenseAutoShutdown ? '1' : '0');
     if (req.body.botName !== undefined) setConfig('bot.name', String(req.body.botName).trim());
@@ -856,7 +872,7 @@ export function createSystemRoutes(
     } catch { return 0; }
   }
 
-  // 近 14 天消息趋势（按北京时间归日，缺失日期补 0）
+  // 近 14 天消息趋势（按北京时间归日）：今日实时聚合，历史日优先读归档，归档缺失回退实时聚合（迁移兼容）
   function eventTrend14(): { label: string; in: number; out: number }[] {
     const out: { label: string; in: number; out: number }[] = [];
     const map = new Map<string, { in: number; out: number }>();
@@ -877,6 +893,18 @@ export function createSystemRoutes(
           if (r.category === 'message') b.in += Number(r.c) || 0;
           else b.out += Number(r.c) || 0;
         }
+      }
+      // 历史日用归档覆盖（实时聚合受日志清理影响会缺数据，归档是权威历史）
+      const todayKey = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+      for (const [key, bucket] of map) {
+        if (key === todayKey) continue;
+        try {
+          const arc = getConfig('stats.trend_' + key);
+          if (arc) {
+            const j = JSON.parse(arc);
+            if (j && typeof j.in === 'number' && typeof j.out === 'number') { bucket.in = j.in; bucket.out = j.out; }
+          }
+        } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
     let i = 0;
@@ -1385,7 +1413,7 @@ export function createSystemRoutes(
   });
 
   // 服务端接收端：接收端信息（部署根/当前版本/AI 端最新配置），供前端「服务端接收」区块展示
-  router.get('/update-receive/info', requireSuperMaster, async (_req: Request, res: Response) => {
+  router.get('/update-receive/info', requireSuperOrMaster, async (_req: Request, res: Response) => {
     try {
       const root = receiverRoot();
       const dir = updateRecDir();
@@ -1416,7 +1444,16 @@ export function createSystemRoutes(
   //  - body.kind=patch|full（无 url/file 时）：从云端 update-config 自动取全部候选源，
   //    GitHub Release 主源失败自动切换加速镜像/备用源，直到下载成功
   // 与群内「更新系统」插件串联：同一记录文件 + 当前版本 + 覆盖式解压 + pm2 restart qqbot
-  router.post('/update-receive', requireSuperMaster, receiverUpload.single('file'), async (req: Request, res: Response) => {
+  // 手动触发自动更新检查（v1.0.42）：主人及以上可立即执行一次云端版本比对（update.auto=1 才会真正自动接收）
+  router.post('/update-receive/auto', requireSuperOrMaster, async (_req: Request, res: Response) => {
+    try {
+      const r = await checkAutoUpdate();
+      res.json(r);
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+  router.post('/update-receive', requireSuperOrMaster, receiverUpload.single('file'), async (req: Request, res: Response) => {
     try {
       const file = (req as any).file as { buffer: Buffer; originalname: string } | undefined;
       const bodyUrl = String((req.body && req.body.url) || '').trim();
@@ -1536,4 +1573,88 @@ export function createSystemRoutes(
   });
 
   return router;
+}
+
+// 趋势归档（滑动窗口，v1.0.42）：每日把前一日 message/send 计数写入 config stats.trend_<date>，
+// 与 system_logs 的 14 天保留清理解耦——日志被清理后趋势图历史数据仍完整；
+// 归档超 15 天的键每日滚动删除一天（滑动窗口，不做全量清空重算）
+export function archiveTrendYesterday(): void {
+  try {
+    const yd = new Date(Date.now() + 8 * 3600000 - 86400000).toISOString().slice(0, 10);
+    const key = 'stats.trend_' + yd;
+    if (!getConfig(key)) {
+      const rows = getDb().prepare(
+        "SELECT category, COUNT(*) AS c FROM system_logs WHERE category IN ('message','send') AND date(created_at, '+8 hours') = ? GROUP BY category"
+      ).all(yd) as any[];
+      let tin = 0, tout = 0;
+      for (const r of rows) {
+        if (r.category === 'message') tin = Number(r.c) || 0;
+        else tout = Number(r.c) || 0;
+      }
+      setConfig(key, JSON.stringify({ in: tin, out: tout }));
+      addSystemLog('info', 'system', `消息趋势归档：${yd} 入站 ${tin} / 出站 ${tout}`);
+    }
+    // 滚动清理：删除 15 天前的归档键（每天最多删一天，窗口始终完整）
+    const cutoff = new Date(Date.now() + 8 * 3600000 - 15 * 86400000).toISOString().slice(0, 10);
+    const stale = getDb().prepare("SELECT key FROM config WHERE key LIKE 'stats.trend_%'").all() as any[];
+    for (const row of stale) {
+      const d = String(row.key).slice('stats.trend_'.length);
+      if (d && d < cutoff) {
+        try { getDb().prepare('DELETE FROM config WHERE key = ?').run(row.key); } catch { /* noop */ }
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+// ================= 自动更新（v1.0.42） =================
+// 开关：config update.auto（'1' 开启）。调度：server.ts 每 6 小时调用一次 checkAutoUpdate()。
+// 流程：多源拉取云端 update-config.json → 与本地 package.json 版本比较 → 有新版自动接收补丁包
+//（复用 receiveUpdatePackage：多源测速下载 → 解压覆盖 → 清理历史 zip → pm2 restart）。
+// 手动更新：面板「系统设置 → 服务端接收」（超主）+ 群内更新指令（超主/主人）。
+let autoUpdateRunning = false;
+export async function checkAutoUpdate(): Promise<{ ok: boolean; checked: boolean; updated?: boolean; msg: string }> {
+  if (autoUpdateRunning) return { ok: true, checked: false, msg: '上次检查仍在进行中，跳过' };
+  autoUpdateRunning = true;
+  try {
+    if (String(getConfig('update.auto') || '') !== '1') {
+      return { ok: true, checked: false, msg: '自动更新未开启（update.auto != 1）' };
+    }
+    let localVer = '';
+    try { localVer = String(JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')).version || ''); } catch { /* noop */ }
+    if (!localVer) localVer = String(getConfig('update.version') || '');
+    const ai = await fetchAiConfig();
+    if (!ai || !ai.ok || !ai.version || !ai.sources || !ai.sources.length) {
+      return { ok: false, checked: false, msg: '无法拉取云端更新配置' };
+    }
+    const remoteVer = String(ai.version);
+    const cmp = compareVersion(remoteVer, localVer);
+    if (cmp <= 0) {
+      return { ok: true, checked: true, updated: false, msg: `已是最新版本 v${localVer}（云端 v${remoteVer}）` };
+    }
+    const patchUrls = ai.sources.map((s: any) => s.patchUrl).filter(Boolean);
+    if (!patchUrls.length) return { ok: false, checked: true, msg: '云端配置缺少补丁包下载地址' };
+    addSystemLog('info', 'system', `自动更新：检测到新版本 v${remoteVer}（本地 v${localVer}），开始接收补丁包`);
+    const result = await receiveUpdatePackage({ zipUrls: patchUrls, zipName: '', changeLog: ai.changeLog || `自动更新 v${localVer} → v${remoteVer}` });
+    if (result && result.ok) {
+      setConfig('update.version', remoteVer);
+      addSystemLog('info', 'system', `自动更新完成：v${localVer} → v${remoteVer}`, result.fileName || '');
+      return { ok: true, checked: true, updated: true, msg: `已自动更新到 v${remoteVer}` };
+    }
+    addSystemLog('error', 'system', `自动更新失败：${(result && result.error) || '未知错误'}`);
+    return { ok: false, checked: true, msg: `自动更新失败：${(result && result.error) || '未知错误'}` };
+  } catch (e: any) {
+    return { ok: false, checked: false, msg: `自动更新异常：${e.message}` };
+  } finally {
+    autoUpdateRunning = false;
+  }
+}
+
+function compareVersion(a: string, b: string): number {
+  const pa = String(a || '').split('.').map((x) => parseInt(x, 10) || 0);
+  const pb = String(b || '').split('.').map((x) => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d;
+  }
+  return 0;
 }

@@ -1021,7 +1021,9 @@ input[type="file"]{color:var(--text2)}
     <div class="form-group"><label>QQ 登录 Token（心月互联，用于登录页「QQ 一键登录」扫码登录）</label><input id="cfgQQLoginToken" type="text" placeholder="在心月互联申请，默认 30 天有效期"><p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">申请地址 qq.wch666.com（心月互联），点「QQ 一键登录」会跳转 qq.php?token=该Token&display=pc/mobile 扫码；回调地址填面板根地址（如 https://armbian.tailaa2e36.ts.net:6655/）；扫码成功自动跳回完成登录</p></div>
     <div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="cfgAuthCodePanelLogin" style="width:16px;height:16px"> 允许机器人授权码登录面板（开启后输入有效授权码即可进入面板，关闭则不可见）</label></div>
     <div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="cfgLicenseAutoShutdown" style="width:16px;height:16px"> 激活码到期自动关机（到期自动停止归属机器人，续期后自动恢复）</label></div>
-    <div class="form-group" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:12px"><label style="font-weight:bold">更新系统配置（群内「更新」插件使用，仅超级主人可触发更新）</label></div>
+    <div class="form-group" style="border-top:1px dashed var(--border);padding-top:12px;margin-top:12px"><label style="font-weight:bold">更新系统配置（群内「更新」插件使用，超主/主人可触发更新）</label></div>
+    <div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="cfgUpdateAuto" style="width:16px;height:16px"> 自动更新（每 6 小时检查云端最新版本，发现新版自动接收补丁包并重启；重启后生效）</label><p class="hint" style="color:var(--text2);font-size:12px;margin:4px 0 0">开启后面板自动与云端 update-config.json 比对版本号，有新版自动下载补丁、解压覆盖、清理历史更新包并 pm2 restart；也可点「立即检查更新」手动触发一次</p></div>
+    <div class="form-group"><button class="btn btn-outline btn-sm" onclick="runAutoUpdateCheck()">立即检查更新（主人/超主）</button><span id="autoUpdateMsg" style="margin-left:10px;font-size:12px;color:var(--text2)"></span></div>
     <div class="form-group"><label>更新包版本号（如 4.2.59；群内「检查更新」以此对比当前版本，高于当前版本才提示有更新）</label><input id="cfgUpdateVersion" type="text" placeholder="4.2.59"></div>
     <div class="form-group"><label>补丁包下载地址</label><input id="cfgUpdatePatchUrl" type="text" placeholder="https://.../qqbot-card-editor-patch-4.2.59.zip"></div>
     <div class="form-group"><label>全量包下载地址</label><input id="cfgUpdateFullUrl" type="text" placeholder="https://.../qqbot-card-editor-4.2.59-full.zip"></div>
@@ -3940,18 +3942,18 @@ async function loadDashboard(){try{const stats=await api('/api/system/stats');
   const lex=stats.lexicons||{};
   const msg=stats.messages||{};
   docById('statsGrid').innerHTML=
-    dashStatCard('用户总数',(u.total||0),'今日新增 +'+(u.today_new||0),'blue')+
-    dashStatCard('机器人总数',(stats.bots?stats.bots.total:0),'运行中 '+(online||0),'green')+
-    dashStatCard('词库总数',(lex.total||0),'词条 '+(lex.entries||0),'yellow')+
-    dashStatCard('收到消息',(msg.in||0),'今日 +'+(msg.todayIn||0),'blue')+
-    dashStatCard('发出消息',(msg.out||0),'今日 +'+(msg.todayOut||0),'green')+
+    dashStatCard('用户总数',(u.total||0),'今日新增 +'+(u.today_new||0),'blue',"switchPage('users')")+
+    dashStatCard('机器人总数',(stats.bots?stats.bots.total:0),'运行中 '+(online||0),'green',"switchPage('bots')")+
+    dashStatCard('词库总数',(lex.total||0),'词条 '+(lex.entries||0),'yellow',"switchPage('dicts')")+
+    dashStatCard('收到消息',(msg.in||0),'今日 +'+(msg.todayIn||0),'blue',"openRealtime('')")+
+    dashStatCard('发出消息',(msg.out||0),'今日 +'+(msg.todayOut||0),'green',"openRealtime('')")+
     dashStatCard('今日异常',(stats.errorsToday||0),((stats.errorsToday||0)>0?'点击查看异常详情':'暂无异常'),((stats.errorsToday||0)>0?'yellow':''),(stats.errorsToday||0)>0?"switchPage('runlog');setTimeout(function(){const lv=docById('runLogLevel');if(lv){lv.value='error';try{lv.dispatchEvent(new Event('change'))}catch(e){loadRunLogs()}}},700)":"switchPage('logs')")+
-    dashMiniCard('24h 入站消息',totIn,'blue')+
-    dashMiniCard('24h 出站回复',totOut,'green')+
-    dashMiniCard('机器人在线',online+' / '+(stats.bots?stats.bots.total:0),'green')+
-    dashMiniCard('插件数量',stats.pluginCount||0,'yellow')+
-    dashMiniCard('系统版本',stats.frameworkVersion||'1.0.0','blue')+
-    dashMiniCard('插件版本',stats.pluginVersion||'-','blue')+
+    dashMiniCard('24h 入站消息',totIn,'blue',"openRealtime('')")+
+    dashMiniCard('24h 出站回复',totOut,'green',"openRealtime('')")+
+    dashMiniCard('机器人在线',online+' / '+(stats.bots?stats.bots.total:0),'green',"switchPage('bots')")+
+    dashMiniCard('插件数量',stats.pluginCount||0,'yellow',"switchPage('plugins')")+
+    dashMiniCard('系统版本',stats.version||'—','blue','showPanelVersionDetail()')+
+    dashMiniCard('插件版本',stats.pluginVersion||'-','blue','showPanelVersionDetail()')+
     dashMiniCard('进程已运行',fmtTime(stats.uptime||0),'green');
   renderDashTrend14(stats.trend14||[]);
   renderDashBotDist(stats.botStates||{});
@@ -4018,7 +4020,7 @@ function runLogLevelCN(v){const k=String(v||'').toLowerCase();return RUNLOG_LEVE
 function runLogCatCN(v){return RUNLOG_CAT_CN[String(v||'').toLowerCase()]||String(v||'')}
 const BOT_STATUS_CN={running:'运行中',stopped:'已停止',error:'错误',errored:'错误',starting:'启动中',stopping:'停止中',restarting:'重启中',pending:'待启动',offline:'离线',online:'在线'};
 function botStatusCN(v){const k=String(v||'').toLowerCase();return BOT_STATUS_CN[k]||String(v||'')}
-function dashMiniCard(label,val,cls){return '<div class="stat-card"><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(String(val))+'</div></div>'}
+function dashMiniCard(label,val,cls,onclick){return '<div class="stat-card"'+(onclick?' style="cursor:pointer" onclick="'+onclick+'" title="点击查看详情"':'')+'><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(String(val))+'</div></div>'}
 function fmtNum(v){const n=Number(v)||0;try{return n.toLocaleString('zh-CN')}catch(e){return String(n)}}
 function dashStatCard(label,val,sub,cls,onclick){return '<div class="stat-card"'+(onclick?' style="cursor:pointer" onclick="'+onclick+'" title="点击查看详情"':'')+'><div class="label">'+esc(label)+'</div><div class="value '+(cls||'')+'">'+esc(fmtNum(val))+'</div>'+(sub?('<div class="sub">'+esc(sub)+'</div>'):'')+'</div>'}
 // 近 14 天消息趋势：纯内联 SVG 折线图（无常量依赖，跟随主题变量）
@@ -5726,7 +5728,8 @@ async function smtpTest(){
     alert(r&&r.ok?'✅ '+r.message:'发送失败：'+((r&&r.error)||'未知错误'));
   }catch(e){alert('发送失败：'+e.message)}
 }
-async function loadSettings(){loadLinkMode();loadSmtpCard();try{const data=await api('/api/system/config');docById('cfgPort').value=data.serverPort||data.adminPort;docById('cfgPanelHost').value=data.panelHost||'';docById('cfgBotName').value=data.botName||'';docById('cfgChimeTexts').value=data.chimeTexts||'';docById('cfgChimeCity').value=data.chimeCity||'北京';docById('cfgChimeAd').value=data.chimeAd||'';docById('cfgWeatherTextApi').value=data.weatherTextApi||'';docById('cfgWeatherPngApi').value=data.weatherPngApi||'';docById('cfgFooterText').value=data.footerText||'';docById('cfgFooterAds').value=data.footerAds||'';docById('cfgQQLoginToken').value=data.qqLoginToken||'';docById('cfgAuthCodePanelLogin').checked=!!data.authCodePanelLogin;docById('cfgLicenseAutoShutdown').checked=data.licenseAutoShutdown!==false;docById('cfgUpdateVersion').value=data.updateVersion||'4.2.59';docById('cfgUpdatePatchUrl').value=data.updatePatchUrl||'';docById('cfgUpdateFullUrl').value=data.updateFullUrl||'';docById('cfgUpdateFrameworkPatchUrl').value=data.updateFrameworkPatchUrl||'';docById('cfgUpdatePluginPatchUrl').value=data.updatePluginPatchUrl||'';docById('cfgUpdateFrameworkFullUrl').value=data.updateFrameworkFullUrl||'';docById('cfgUpdatePluginFullUrl').value=data.updatePluginFullUrl||'';docById('cfgUpdateChangeLog').value=data.updateChangeLog||'';docById('cfgUpdateConfigUrl').value=data.updateConfigUrl||''}catch{};if(currentUser){const uname=currentUser.username||'';docById('personalUser').value=uname;try{const admins=await api('/api/auth/admins');const self=admins.find(a=>a.username===uname||(currentUser.role==='super_master'&&a.role==='super_master')||a.username===uname.replace('qq_',''));if(self){docById('personalQQ').value=self.qq||'';docById('personalQQ').placeholder='修改QQ号后点保存（超级主人可修改）';}}catch{}}if(currentUser?.role==='super_master'){try{
+async function runAutoUpdateCheck(){const el=docById('autoUpdateMsg');if(el)el.textContent='检查中…';try{const r=await api('/api/system/update-receive/auto',{method:'POST'});if(el)el.textContent=(r.updated?'✅ ':'ℹ️ ')+(r.msg||'完成');}catch(e){if(el)el.textContent='❌ '+(e.message||'失败')}}
+async function loadSettings(){loadLinkMode();loadSmtpCard();try{const data=await api('/api/system/config');docById('cfgPort').value=data.serverPort||data.adminPort;docById('cfgPanelHost').value=data.panelHost||'';docById('cfgBotName').value=data.botName||'';docById('cfgChimeTexts').value=data.chimeTexts||'';docById('cfgChimeCity').value=data.chimeCity||'北京';docById('cfgChimeAd').value=data.chimeAd||'';docById('cfgWeatherTextApi').value=data.weatherTextApi||'';docById('cfgWeatherPngApi').value=data.weatherPngApi||'';docById('cfgFooterText').value=data.footerText||'';docById('cfgFooterAds').value=data.footerAds||'';docById('cfgQQLoginToken').value=data.qqLoginToken||'';docById('cfgAuthCodePanelLogin').checked=!!data.authCodePanelLogin;docById('cfgLicenseAutoShutdown').checked=data.licenseAutoShutdown!==false;docById('cfgUpdateVersion').value=data.updateVersion||'4.2.59';docById('cfgUpdateAuto').checked=!!data.updateAuto;docById('cfgUpdatePatchUrl').value=data.updatePatchUrl||'';docById('cfgUpdateFullUrl').value=data.updateFullUrl||'';docById('cfgUpdateFrameworkPatchUrl').value=data.updateFrameworkPatchUrl||'';docById('cfgUpdatePluginPatchUrl').value=data.updatePluginPatchUrl||'';docById('cfgUpdateFrameworkFullUrl').value=data.updateFrameworkFullUrl||'';docById('cfgUpdatePluginFullUrl').value=data.updatePluginFullUrl||'';docById('cfgUpdateChangeLog').value=data.updateChangeLog||'';docById('cfgUpdateConfigUrl').value=data.updateConfigUrl||''}catch{};if(currentUser){const uname=currentUser.username||'';docById('personalUser').value=uname;try{const admins=await api('/api/auth/admins');const self=admins.find(a=>a.username===uname||(currentUser.role==='super_master'&&a.role==='super_master')||a.username===uname.replace('qq_',''));if(self){docById('personalQQ').value=self.qq||'';docById('personalQQ').placeholder='修改QQ号后点保存（超级主人可修改）';}}catch{}}if(currentUser?.role==='super_master'){try{
   // 机器人筛选下拉
   try{const bots=await getBotsCached();docById('adminBotFilter').innerHTML='<option value="">全部机器人</option>'+bots.map(b=>'<option value="'+esc(b.appId)+'">'+esc(b.name)+'（'+esc(b.appId)+'）</option>').join('')}catch(e){}
   const botFilter=docById('adminBotFilter').value;
@@ -6203,7 +6206,7 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
    const msg=docById('cfgMsg');
    msg.textContent='保存中...';msg.style.color='var(--text2)';
    try{
-      await api('/api/system/config',{method:'PUT',body:{authCodePanelLogin:docById('cfgAuthCodePanelLogin').checked,licenseAutoShutdown:docById('cfgLicenseAutoShutdown').checked,port:docById('cfgPort').value,panelHost:docById('cfgPanelHost').value.trim(),botName:docById('cfgBotName').value.trim(),chimeTexts:docById('cfgChimeTexts').value,chimeCity:docById('cfgChimeCity').value.trim()||'北京',chimeAd:docById('cfgChimeAd').value.trim(),weatherTextApi:docById('cfgWeatherTextApi').value.trim(),weatherPngApi:docById('cfgWeatherPngApi').value.trim(),footerText:docById('cfgFooterText').value.trim(),footerAds:docById('cfgFooterAds').value,qqLoginToken:docById('cfgQQLoginToken').value.trim(),updateVersion:docById('cfgUpdateVersion').value.trim(),updatePatchUrl:docById('cfgUpdatePatchUrl').value.trim(),updateFullUrl:docById('cfgUpdateFullUrl').value.trim(),updateFrameworkPatchUrl:docById('cfgUpdateFrameworkPatchUrl').value.trim(),updatePluginPatchUrl:docById('cfgUpdatePluginPatchUrl').value.trim(),updateFrameworkFullUrl:docById('cfgUpdateFrameworkFullUrl').value.trim(),updatePluginFullUrl:docById('cfgUpdatePluginFullUrl').value.trim(),updateChangeLog:docById('cfgUpdateChangeLog').value,updateConfigUrl:docById('cfgUpdateConfigUrl').value.trim()}});
+      await api('/api/system/config',{method:'PUT',body:{updateAuto:docById('cfgUpdateAuto').checked,authCodePanelLogin:docById('cfgAuthCodePanelLogin').checked,licenseAutoShutdown:docById('cfgLicenseAutoShutdown').checked,port:docById('cfgPort').value,panelHost:docById('cfgPanelHost').value.trim(),botName:docById('cfgBotName').value.trim(),chimeTexts:docById('cfgChimeTexts').value,chimeCity:docById('cfgChimeCity').value.trim()||'北京',chimeAd:docById('cfgChimeAd').value.trim(),weatherTextApi:docById('cfgWeatherTextApi').value.trim(),weatherPngApi:docById('cfgWeatherPngApi').value.trim(),footerText:docById('cfgFooterText').value.trim(),footerAds:docById('cfgFooterAds').value,qqLoginToken:docById('cfgQQLoginToken').value.trim(),updateVersion:docById('cfgUpdateVersion').value.trim(),updatePatchUrl:docById('cfgUpdatePatchUrl').value.trim(),updateFullUrl:docById('cfgUpdateFullUrl').value.trim(),updateFrameworkPatchUrl:docById('cfgUpdateFrameworkPatchUrl').value.trim(),updatePluginPatchUrl:docById('cfgUpdatePluginPatchUrl').value.trim(),updateFrameworkFullUrl:docById('cfgUpdateFrameworkFullUrl').value.trim(),updatePluginFullUrl:docById('cfgUpdatePluginFullUrl').value.trim(),updateChangeLog:docById('cfgUpdateChangeLog').value,updateConfigUrl:docById('cfgUpdateConfigUrl').value.trim()}});
      msg.textContent='✅ 已保存，重启后生效';
    }catch(e){msg.textContent='保存失败: '+e.message;msg.style.color='var(--danger)'}
  }
@@ -6212,7 +6215,7 @@ async function toggleLogin(username,enable){await api('/api/auth/admins/'+userna
     const msg=docById('updMsg');
     msg.textContent='保存中...';msg.style.color='var(--text2)';
     try{
-      await api('/api/system/config',{method:'PUT',body:{updateVersion:docById('cfgUpdateVersion').value.trim(),updatePatchUrl:docById('cfgUpdatePatchUrl').value.trim(),updateFullUrl:docById('cfgUpdateFullUrl').value.trim(),updateFrameworkPatchUrl:docById('cfgUpdateFrameworkPatchUrl').value.trim(),updatePluginPatchUrl:docById('cfgUpdatePluginPatchUrl').value.trim(),updateFrameworkFullUrl:docById('cfgUpdateFrameworkFullUrl').value.trim(),updatePluginFullUrl:docById('cfgUpdatePluginFullUrl').value.trim(),updateChangeLog:docById('cfgUpdateChangeLog').value,updateConfigUrl:docById('cfgUpdateConfigUrl').value.trim()}});
+      await api('/api/system/config',{method:'PUT',body:{updateAuto:docById('cfgUpdateAuto').checked,updateVersion:docById('cfgUpdateVersion').value.trim(),updatePatchUrl:docById('cfgUpdatePatchUrl').value.trim(),updateFullUrl:docById('cfgUpdateFullUrl').value.trim(),updateFrameworkPatchUrl:docById('cfgUpdateFrameworkPatchUrl').value.trim(),updatePluginPatchUrl:docById('cfgUpdatePluginPatchUrl').value.trim(),updateFrameworkFullUrl:docById('cfgUpdateFrameworkFullUrl').value.trim(),updatePluginFullUrl:docById('cfgUpdatePluginFullUrl').value.trim(),updateChangeLog:docById('cfgUpdateChangeLog').value,updateConfigUrl:docById('cfgUpdateConfigUrl').value.trim()}});
       msg.textContent='✅ 更新配置已保存（群内「检查更新」立即生效）';msg.style.color='var(--success)';
     }catch(e){msg.textContent='保存失败: '+e.message;msg.style.color='var(--danger)'}
   }

@@ -74,6 +74,16 @@ export function requireSuperMaster(req: Request, res: Response, next: NextFuncti
   next();
 }
 
+// 主人及以上（v1.0.42）：超主 / 主人（master）可执行面板手动更新（接收补丁包 / 触发自动更新检查）
+export function requireSuperOrMaster(req: Request, res: Response, next: NextFunction): void {
+  const r = req.adminUser?.role;
+  if (r !== 'super_master' && r !== 'master') {
+    res.status(403).json({ error: 'Super master or master only' });
+    return;
+  }
+  next();
+}
+
 // 权限点门槛（v1.0.29）：超主恒放行；其他角色按其 permissions 中对应权限点判定
 export function requirePerm(perm: keyof UserPermission) {
   return (req: Request, res: Response, next: NextFunction): void => {
