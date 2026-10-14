@@ -1,28 +1,28 @@
 {
   "ok": true,
-  "version": "1.0.41",
-  "frameworkVersion": "1.0.36",
-  "pluginVersion": "1.0.21",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.41.zip",
+  "version": "1.0.42",
+  "frameworkVersion": "1.0.37",
+  "pluginVersion": "1.0.22",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.42.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091（合并补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.41.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.42.zip"
     },
     {
-      "name": "8091（框架补丁 1.0.36）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.36.zip"
+      "name": "8091（框架补丁 1.0.37）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.37.zip"
     },
     {
-      "name": "8091（插件补丁 1.0.21）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.21.zip"
+      "name": "8091（插件补丁 1.0.22）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.22.zip"
     }
   ],
-  "changeLog": "面板版本号显示修复（update-config.json路由）；「打卡」别名生效；权限/授权中文显示（超级主人/主人）；个人信息卡OpenID附QQ+签到记录/积分排名统一显示；实用功能帮助菜单",
+  "changeLog": "版本显示统一（系统版本=面板版本）；仪表盘卡片点击跳转；14天趋势滑动归档（日志清理不断档）；补丁自动清理；自动更新开关+立即检查按钮；更新权限放宽主人",
   "changeType": "框架升级 + 插件升级",
-  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.36.zip",
-  "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.21.zip",
-  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.36.zip",
-  "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.21.zip"
+  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.37.zip",
+  "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.22.zip",
+  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.37.zip",
+  "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.22.zip"
 }
