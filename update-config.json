@@ -1,28 +1,28 @@
 {
   "ok": true,
-  "version": "1.0.42",
-  "frameworkVersion": "1.0.37",
+  "version": "1.0.43",
+  "frameworkVersion": "1.0.38",
   "pluginVersion": "1.0.22",
-  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.42.zip",
+  "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.43.zip",
   "fullUrl": "",
   "mirrors": [
     {
       "name": "8091（合并补丁）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.42.zip"
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-1.0.43.zip"
     },
     {
-      "name": "8091（框架补丁 1.0.37）",
-      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.37.zip"
+      "name": "8091（框架补丁 1.0.38）",
+      "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.38.zip"
     },
     {
       "name": "8091（插件补丁 1.0.22）",
       "patchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.22.zip"
     }
   ],
-  "changeLog": "版本显示统一（系统版本=面板版本）；仪表盘卡片点击跳转；14天趋势滑动归档（日志清理不断档）；补丁自动清理；自动更新开关+立即检查按钮；更新权限放宽主人",
-  "changeType": "框架升级 + 插件升级",
-  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.37.zip",
+  "changeLog": "自动更新开关移至「服务端接收」区顶部醒目位置（系统设置页往下找「服务端接收」即可见：自动更新勾选框+立即检查更新按钮）",
+  "changeType": "框架升级",
+  "frameworkPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-patch-1.0.38.zip",
   "pluginPatchUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-patch-1.0.22.zip",
-  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.37.zip",
+  "frameworkFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-framework-full-1.0.38.zip",
   "pluginFullUrl": "https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-plugin-full-1.0.22.zip"
 }
