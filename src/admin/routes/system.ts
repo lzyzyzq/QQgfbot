@@ -165,9 +165,12 @@ async function fetchBuffer(url: string, timeoutMs = 180000): Promise<Buffer | nu
   }
 }
 
-// 拉取云端更新配置：对候选源 HEAD 测速择优，再依次取第一份可用；解析主源 + mirrors 备用源列表
+// 拉取云端更新配置：用户显式配置的 update.config_url 固定最优先（按填写顺序，不参与测速重排），
+// 默认清单 HEAD 测速择优排其后，再依次取第一份可用；解析主源 + mirrors 备用源列表
 async function fetchAiConfig(): Promise<any> {
-  const urls = await speedRank(aiConfigUrls());
+  const explicit = cfgSafe('update.config_url').split(',').map((s: string) => s.trim()).filter(Boolean);
+  const rankedDefaults = await speedRank(DEFAULT_AI_CONFIG_URLS.filter((u) => explicit.indexOf(u) < 0));
+  const urls = Array.from(new Set([...explicit, ...rankedDefaults]));
   const errors: string[] = [];
   for (const u of urls) {
     const j = await fetchJson(u);
