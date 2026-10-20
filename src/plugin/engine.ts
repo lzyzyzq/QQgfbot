@@ -1989,6 +1989,24 @@ export class PluginEngine {
           logger.warn(`setLinkMode failed: ${e.message}`);
         }
       },
+      // ---- 自动更新开关（config update.auto，与面板设置页/每6h调度共用）：true=开启 ----
+      getAutoUpdate: () => {
+        try {
+          const row = getDb().prepare("SELECT value FROM config WHERE key = 'update.auto'").get() as any;
+          return !!(row && row.value && String(row.value) === '1');
+        } catch { return false; }
+      },
+      setAutoUpdate: (on: boolean) => {
+        const v = on ? '1' : '0';
+        try {
+          getDb().prepare(
+            "INSERT INTO config (key, value, updated_at) VALUES ('update.auto', ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"
+          ).run(v);
+          logger.info(`Auto update set to: ${v}`);
+        } catch (e: any) {
+          logger.warn(`setAutoUpdate failed: ${e.message}`);
+        }
+      },
       // 生成菜单链接 markdown：type='link' 直接跳转；否则 mqqapi inlinecmd 回填指令（enter=false 不自动发送，reply=false 不引用）
       menuLink: (label: string, item: { type?: string; value: string }) => {
         const type = (item && item.type) || 'cmd';

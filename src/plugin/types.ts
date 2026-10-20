@@ -177,6 +177,10 @@ export interface PluginEngineAPI {
   getLinkMode(): string;
   /** 写全局文字外显模式：on / off */
   setLinkMode(mode: string): void;
+  /** 自动更新开关状态（config update.auto）：true=已开启 */
+  getAutoUpdate(): boolean;
+  /** 写自动更新开关（config update.auto '1'/'0'），与面板设置页/每6h调度共用同一开关 */
+  setAutoUpdate(on: boolean): void;
   /** 生成菜单链接 markdown：item.type='link' 直接跳转，否则 mqqapi inlinecmd 回填指令（enter=false 不自动发送，reply=false 不引用） */
   menuLink(label: string, item: { type?: string; value: string }): string;
   /** 按全局文字外显模式渲染外显文字：on 返回 [text](mqqapi://aio/%69nlinecmd?command=cmd)，off 返回原 text */

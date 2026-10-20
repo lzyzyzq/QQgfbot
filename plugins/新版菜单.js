@@ -212,6 +212,7 @@ module.exports = (function () {
         [{ label: '🔇 禁言', action: '禁言' }, { label: '🔊 解禁', action: '解禁' }],
         [{ label: '👢 踢人', action: '踢人' }, { label: '🔇 禁言列表', action: '禁言列表' }],
         [{ label: '📊 群状态', action: '群状态' }, { label: '📈 群信息', action: '群信息' }],
+        [{ label: '🔄 自动更新', action: '自动更新' }, { label: '✅ 开启', action: '开启自动更新' }, { label: '⛔ 关闭', action: '关闭自动更新' }],
         [{ label: '💬 反馈菜单', action: '反馈菜单' }],
         [{ label: '🏠 返回主菜单', action: '主菜单' }]
       ]
@@ -555,11 +556,11 @@ module.exports = (function () {
         }
       }
     } catch (e) {}
-    // 3) 后台管理员角色兜底（getUserProfile.permission 来自 admin.json）
+    // 3) 后台管理员角色兜底（getUserProfile.permission 来自 admin.json，含 super_master）
     try {
       const profile = getUserProfile(ctx, userId);
       const role = profile.permission || '';
-      return role === 'owner' || role === 'admin' || role === 'super' || role === 'master';
+      return role === 'owner' || role === 'admin' || role === 'super' || role === 'master' || role === 'super_master';
     } catch (e) {}
     return false;
   }
@@ -641,6 +642,39 @@ module.exports = (function () {
       // 插件管理入口（keyboard 按钮回填配置）
       if (content === '插件管理') {
         await sendPluginManager(ctx, data);
+        return;
+      }
+
+      // 自动更新开关（v1.2.1）：超级主人/群主/群管理 可开启/关闭/查询
+      if (content === '开启自动更新' || content === '关闭自动更新' || content === '自动更新') {
+        const groupId = data.groupId;
+        const msgId = data.id;
+        const isAdmin = await isGroupAdmin(ctx, data);
+        if (!isAdmin) {
+          try { await ctx.bot.sendGroupMessage(groupId, '⛔ 权限不足：自动更新仅超级主人/群主/群管理可操作！', msgId); } catch (e) {}
+          return;
+        }
+        if (!ctx.engine || typeof ctx.engine.setAutoUpdate !== 'function') {
+          try { await ctx.bot.sendGroupMessage(groupId, '❌ 当前面板版本过低，请先升级面板后再使用自动更新指令。', msgId); } catch (e) {}
+          return;
+        }
+        if (content === '自动更新') {
+          const on = ctx.engine.getAutoUpdate();
+          try { await ctx.bot.sendGroupMessage(groupId,
+            '🔄 自动更新当前状态：' + (on ? '✅ 已开启' : '⛔ 已关闭') +
+            '\n（开启后每 6 小时自动检查云端新版本，发现新版自动接收补丁包并重启）\n发送「开启自动更新 / 关闭自动更新」切换', msgId); } catch (e) {}
+          return;
+        }
+        const wantOn = content === '开启自动更新';
+        ctx.engine.setAutoUpdate(wantOn);
+        const nowOn = ctx.engine.getAutoUpdate();
+        if (nowOn === wantOn) {
+          try { await ctx.bot.sendGroupMessage(groupId, wantOn
+            ? '✅ 已开启自动更新\n━━━━━━━━━━━━━━\n每 6 小时自动比对云端最新版本，发现新版自动接收补丁包 → 解压覆盖 → 清理历史更新包 → 重启生效。\n（面板「系统设置 → 服务端接收」也可查看/手动检查）'
+            : '⛔ 已关闭自动更新\n━━━━━━━━━━━━━━\n后续新版本需在面板「系统设置 → 服务端接收」手动接收补丁包。', msgId); } catch (e) {}
+        } else {
+          try { await ctx.bot.sendGroupMessage(groupId, '❌ 设置失败，请稍后重试或在面板设置页操作。', msgId); } catch (e) {}
+        }
         return;
       }
 
@@ -739,7 +773,7 @@ module.exports = (function () {
     manifest: {
       id: 'mod-new-menu',
       name: '新版菜单',
-      version: '1.2.0',
+      version: '1.2.1',
       description: 'mqqapi链接式外显文字菜单（文字按钮模式已移除，全局切换文字外显开关控制），作者/赞助跳转链接，头像内嵌菜单，插件按群开关，测试菜单入口',
       author: '511742399'
     },
