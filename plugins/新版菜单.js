@@ -645,8 +645,10 @@ module.exports = (function () {
         return;
       }
 
-      // 自动更新开关（v1.2.1）：超级主人/群主/群管理 可开启/关闭/查询
-      if (content === '开启自动更新' || content === '关闭自动更新' || content === '自动更新') {
+      // 自动更新开关（v1.2.1）：超级主人/群主/群管理 可开启/关闭/查询；v1.2.2 支持设置检查间隔与立即检查
+      if (content === '开启自动更新' || content === '关闭自动更新' || content === '自动更新' ||
+          content === '自动更新时间' || /^自动更新时间\s*\d{1,3}\s*(小时|时|h|H)?$/.test(content) ||
+          /^设置自动更新时间\s*\d{1,3}\s*(小时|时|h|H)?$/.test(content) || content === '检查更新') {
         const groupId = data.groupId;
         const msgId = data.id;
         const isAdmin = await isGroupAdmin(ctx, data);
@@ -658,19 +660,59 @@ module.exports = (function () {
           try { await ctx.bot.sendGroupMessage(groupId, '❌ 当前面板版本过低，请先升级面板后再使用自动更新指令。', msgId); } catch (e) {}
           return;
         }
+        // 查状态（附当前间隔）
         if (content === '自动更新') {
           const on = ctx.engine.getAutoUpdate();
+          const ih = (typeof ctx.engine.getAutoUpdateInterval === 'function') ? ctx.engine.getAutoUpdateInterval() : 6;
           try { await ctx.bot.sendGroupMessage(groupId,
             '🔄 自动更新当前状态：' + (on ? '✅ 已开启' : '⛔ 已关闭') +
-            '\n（开启后每 6 小时自动检查云端新版本，发现新版自动接收补丁包并重启）\n发送「开启自动更新 / 关闭自动更新」切换', msgId); } catch (e) {}
+            '\n检查间隔：每 ' + ih + ' 小时' +
+            '\n（开启后每 ' + ih + ' 小时自动检查云端新版本，发现新版自动接收补丁包并重启）\n发送「开启自动更新 / 关闭自动更新」切换；「自动更新时间 12」设间隔；「检查更新」立即检查', msgId); } catch (e) {}
           return;
         }
+        // 设置检查间隔：自动更新时间 12 / 设置自动更新时间 12小时（(?:设置)? 使「设」整体可选，避免误落到开/关分支）
+        const ivm = content.match(/^(?:设置)?自动更新时间\s*(\d{1,3})\s*(?:小时|时|h|H)?$/);
+        if (ivm) {
+          const h = parseInt(ivm[1], 10);
+          if (!(h >= 1 && h <= 168)) {
+            try { await ctx.bot.sendGroupMessage(groupId, '❌ 间隔需为 1~168 的小时数，例如：自动更新时间 12', msgId); } catch (e) {}
+            return;
+          }
+          ctx.engine.setAutoUpdateInterval(h);
+          const now = (typeof ctx.engine.getAutoUpdateInterval === 'function') ? ctx.engine.getAutoUpdateInterval() : h;
+          try { await ctx.bot.sendGroupMessage(groupId, '⏱ 已设置自动更新检查间隔：每 ' + now + ' 小时\n━━━━━━━━━━━━━━\n立即生效（开关状态：' + (ctx.engine.getAutoUpdate() ? '✅ 已开启' : '⛔ 已关闭，先发「开启自动更新」') + '）', msgId); } catch (e) {}
+          return;
+        }
+        // 查询间隔
+        if (content === '自动更新时间') {
+          const ih = (typeof ctx.engine.getAutoUpdateInterval === 'function') ? ctx.engine.getAutoUpdateInterval() : 6;
+          try { await ctx.bot.sendGroupMessage(groupId, '⏱ 自动更新检查间隔：每 ' + ih + ' 小时\n修改格式：自动更新时间 12（1~168 小时）', msgId); } catch (e) {}
+          return;
+        }
+        // 立即检查更新
+        if (content === '检查更新') {
+          if (!(ctx.engine && typeof ctx.engine.runUpdateCheck === 'function')) {
+            try { await ctx.bot.sendGroupMessage(groupId, '❌ 当前面板版本过低，请先升级面板后再使用「检查更新」。', msgId); } catch (e) {}
+            return;
+          }
+          try { await ctx.bot.sendGroupMessage(groupId, '🔍 正在检查云端最新版本，请稍候…', msgId); } catch (e) {}
+          try {
+            const r = await ctx.engine.runUpdateCheck();
+            try { await ctx.bot.sendGroupMessage(groupId, (r && r.updated ? '✅ ' : 'ℹ️ ') + ((r && r.msg) || '检查完成') + '\n━━━━━━━━━━━━━━\n（开关状态：' + (ctx.engine.getAutoUpdate() ? '✅ 自动更新已开启' : '⛔ 自动更新已关闭，本次仅检查' + (r && r.updated ? '，新版已自动接收' : '')) + '）', msgId); } catch (e) {}
+          } catch (e) {
+            try { await ctx.bot.sendGroupMessage(groupId, '❌ 检查失败：' + ((e && e.message) || '网络异常，请稍后重试'), msgId); } catch (e2) {}
+          }
+          return;
+        }
+        // 开/关（显式条件，未命中任何子分支时不执行任何操作）
+        if (content !== '开启自动更新' && content !== '关闭自动更新') return;
         const wantOn = content === '开启自动更新';
         ctx.engine.setAutoUpdate(wantOn);
         const nowOn = ctx.engine.getAutoUpdate();
         if (nowOn === wantOn) {
+          const ih = (typeof ctx.engine.getAutoUpdateInterval === 'function') ? ctx.engine.getAutoUpdateInterval() : 6;
           try { await ctx.bot.sendGroupMessage(groupId, wantOn
-            ? '✅ 已开启自动更新\n━━━━━━━━━━━━━━\n每 6 小时自动比对云端最新版本，发现新版自动接收补丁包 → 解压覆盖 → 清理历史更新包 → 重启生效。\n（面板「系统设置 → 服务端接收」也可查看/手动检查）'
+            ? '✅ 已开启自动更新\n━━━━━━━━━━━━━━\n每 ' + ih + ' 小时自动比对云端最新版本，发现新版自动接收补丁包 → 解压覆盖 → 清理历史更新包 → 重启生效。\n（「自动更新时间 12」可改间隔；「检查更新」立即检查）'
             : '⛔ 已关闭自动更新\n━━━━━━━━━━━━━━\n后续新版本需在面板「系统设置 → 服务端接收」手动接收补丁包。', msgId); } catch (e) {}
         } else {
           try { await ctx.bot.sendGroupMessage(groupId, '❌ 设置失败，请稍后重试或在面板设置页操作。', msgId); } catch (e) {}
@@ -773,7 +815,7 @@ module.exports = (function () {
     manifest: {
       id: 'mod-new-menu',
       name: '新版菜单',
-      version: '1.2.1',
+      version: '1.2.2',
       description: 'mqqapi链接式外显文字菜单（文字按钮模式已移除，全局切换文字外显开关控制），作者/赞助跳转链接，头像内嵌菜单，插件按群开关，测试菜单入口',
       author: '511742399'
     },

@@ -13,7 +13,7 @@ import { authMiddleware } from './admin/middleware';
 import { createAuthRoutes } from './admin/routes/auth';
 import { createPluginRoutes } from './admin/routes/plugin';
 import { createFileRoutes } from './admin/routes/file';
-import { createSystemRoutes, checkAutoUpdate, archiveTrendYesterday } from './admin/routes/system';
+import { createSystemRoutes, autoUpdateTick, archiveTrendYesterday } from './admin/routes/system';
 import { createBotRoutes } from './admin/routes/bot';
 import { createNapcatRoutes } from './admin/routes/napcat';
 import { createOpenPlatformRoutes } from './admin/routes/open-platform';
@@ -868,13 +868,10 @@ async function main() {
   try { archiveTrendYesterday(); } catch { /* ignore */ }
   setInterval(() => { try { archiveTrendYesterday(); } catch { /* ignore */ } }, 6 * 3600 * 1000);
 
-  // 自动更新（v1.0.42）：config update.auto=1 时每 6 小时检查云端新版本并自动接收补丁包
-  setInterval(async () => {
-    try {
-      const r = await checkAutoUpdate();
-      if (r.checked) addSystemLog('info', 'system', `自动更新检查：${r.msg}`);
-    } catch { /* ignore */ }
-  }, 6 * 3600 * 1000);
+  // 自动更新（v1.0.42/1.0.46）：config update.auto=1 时按 update.auto_interval 小时（默认 6，1~168 可设）检查云端新版本；
+  // 每 5 分钟 tick 读一次配置，间隔/开关改动即时生效无需重启；手动触发不受间隔限制
+  setInterval(() => { autoUpdateTick(); }, 5 * 60 * 1000);
+  setTimeout(() => { autoUpdateTick(); }, 60 * 1000);
 
   // 定时任务执行器：每分钟扫描 schedule_tasks，到点播报/切换开关（报时插件「定时报时」与网页后端定时任务共用）
   startScheduleRunner(() => pluginEngine);

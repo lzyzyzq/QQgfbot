@@ -179,8 +179,14 @@ export interface PluginEngineAPI {
   setLinkMode(mode: string): void;
   /** 自动更新开关状态（config update.auto）：true=已开启 */
   getAutoUpdate(): boolean;
-  /** 写自动更新开关（config update.auto '1'/'0'），与面板设置页/每6h调度共用同一开关 */
+  /** 写自动更新开关（config update.auto '1'/'0'），与面板设置页/定时调度共用同一开关 */
   setAutoUpdate(on: boolean): void;
+  /** 自动检查更新间隔（小时，config update.auto_interval，1~168，默认 6） */
+  getAutoUpdateInterval(): number;
+  /** 写自动检查更新间隔（小时，1~168 越界归一化），改动即时生效（调度每 5 分钟读配置） */
+  setAutoUpdateInterval(hours: number): void;
+  /** 立即执行一次云端版本比对与自动接收（等同面板「立即检查更新」），返回 { checked, updated, msg } */
+  runUpdateCheck(): Promise<{ ok: boolean; checked: boolean; updated?: boolean; msg: string }>;
   /** 生成菜单链接 markdown：item.type='link' 直接跳转，否则 mqqapi inlinecmd 回填指令（enter=false 不自动发送，reply=false 不引用） */
   menuLink(label: string, item: { type?: string; value: string }): string;
   /** 按全局文字外显模式渲染外显文字：on 返回 [text](mqqapi://aio/%69nlinecmd?command=cmd)，off 返回原 text */

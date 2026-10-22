@@ -4,6 +4,12 @@ import { PluginSandbox } from './sandbox';
 import { getDb, getConfig, setConfig, getQQByOpenid, getOpenidsByQQ, getMappingByOpenid, querySystemLogs } from '../db/index';
 // M3 引擎级统一渲染 API：复用 menu-config 的卡片配置读写与 block-render 纯渲染核心
 import { renderBlocksToMarkdown, type BlockRenderCtxLike, type BlockRenderData } from '../core/block-render';
+
+// 自动更新间隔归一化：1~168 小时，非法回退 6（与 admin/routes/system.ts 的 parseAutoUpdateInterval 同规则）
+function parseAutoUpdateIntervalSafe(v: unknown): number {
+  const n = parseInt(String(v == null ? '' : v), 10);
+  return Math.min(168, Math.max(1, isNaN(n) ? 6 : n));
+}
 import { findPluginIdFor as findMenuConfigPluginId, readAll as readMenuConfigAll, mergeConfig as mergeMenuConfig } from '../api/menu-config';
 import { createLogger } from '../utils/logger';
 import { signClickPayload } from '../utils/click-sign';
@@ -2006,6 +2012,27 @@ export class PluginEngine {
         } catch (e: any) {
           logger.warn(`setAutoUpdate failed: ${e.message}`);
         }
+      },
+      getAutoUpdateInterval: () => {
+        try {
+          const row = getDb().prepare("SELECT value FROM config WHERE key = 'update.auto_interval'").get() as any;
+          return parseAutoUpdateIntervalSafe(row && row.value);
+        } catch { return 6; }
+      },
+      setAutoUpdateInterval: (hours: number) => {
+        const n = parseAutoUpdateIntervalSafe(hours);
+        try {
+          getDb().prepare(
+            "INSERT INTO config (key, value, updated_at) VALUES ('update.auto_interval', ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"
+          ).run(String(n));
+          logger.info(`Auto update interval set to: ${n}h`);
+        } catch (e: any) {
+          logger.warn(`setAutoUpdateInterval failed: ${e.message}`);
+        }
+      },
+      runUpdateCheck: async () => {
+        const mod: any = await import('../admin/routes/system');
+        return mod.checkAutoUpdate();
       },
       // 生成菜单链接 markdown：type='link' 直接跳转；否则 mqqapi inlinecmd 回填指令（enter=false 不自动发送，reply=false 不引用）
       menuLink: (label: string, item: { type?: string; value: string }) => {

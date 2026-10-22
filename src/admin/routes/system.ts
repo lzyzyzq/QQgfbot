@@ -511,6 +511,7 @@ export function createSystemRoutes(
       qqLoginToken: getConfig('qqlogin.token') || '',
       updateVersion: getConfig('update.version') || '4.2.65',
       updateAuto: String(getConfig('update.auto') || '') === '1',
+      updateAutoInterval: parseAutoUpdateInterval(getConfig('update.auto_interval')),
       updatePatchUrl: getConfig('update.patch_url') || 'https://8091-6f61dc7363389b7a.monkeycode-ai.online/qqbot-card-editor-patch-4.2.65.zip',
       updateFullUrl: getConfig('update.full_url') || '',
       updateFrameworkPatchUrl: getConfig('update.framework_patch_url') || '',
@@ -544,6 +545,7 @@ export function createSystemRoutes(
     }
     if (req.body.authCodePanelLogin !== undefined) setConfig('panel.auth_code_login', req.body.authCodePanelLogin ? '1' : '0');
     if (req.body.updateAuto !== undefined) setConfig('update.auto', req.body.updateAuto ? '1' : '0');
+    if (req.body.updateAutoInterval !== undefined) setConfig('update.auto_interval', String(parseAutoUpdateInterval(req.body.updateAutoInterval)));
     if (req.body.panelHost !== undefined) setConfig('panel.host', String(req.body.panelHost).trim());
     if (req.body.licenseAutoShutdown !== undefined) setConfig('license.auto_shutdown', req.body.licenseAutoShutdown ? '1' : '0');
     if (req.body.botName !== undefined) setConfig('bot.name', String(req.body.botName).trim());
@@ -1610,7 +1612,25 @@ export function archiveTrendYesterday(): void {
 }
 
 // ================= 自动更新（v1.0.42） =================
-// 开关：config update.auto（'1' 开启）。调度：server.ts 每 6 小时调用一次 checkAutoUpdate()。
+// 开关：config update.auto（'1' 开启）。调度：server.ts 每 5 分钟调用 autoUpdateTick()，
+// 距上次自动检查超过 update.auto_interval 小时（默认 6，范围 1~168，面板/群内可设）才真正检查，改动即时生效无需重启
+// 手动触发（面板按钮/群内「检查更新」）不受间隔限制
+export async function autoUpdateTick(): Promise<void> {
+  try {
+    if (String(getConfig('update.auto') || '') !== '1') return;
+    const ih = Math.min(168, Math.max(1, parseInt(String(getConfig('update.auto_interval') || '6'), 10) || 6));
+    const last = parseInt(String(getConfig('update.last_check') || '0'), 10) || 0;
+    if (Date.now() - last < ih * 3600000) return;
+    setConfig('update.last_check', String(Date.now()));
+    const r = await checkAutoUpdate();
+    if (r.checked) addSystemLog('info', 'system', `自动更新检查：${r.msg}`);
+  } catch { /* ignore */ }
+}
+
+export function parseAutoUpdateInterval(v: unknown): number {
+  const n = parseInt(String(v == null ? '' : v), 10);
+  return Math.min(168, Math.max(1, isNaN(n) ? 6 : n));
+}
 // 流程：多源拉取云端 update-config.json → 与本地 package.json 版本比较 → 有新版自动接收补丁包
 //（复用 receiveUpdatePackage：多源测速下载 → 解压覆盖 → 清理历史 zip → pm2 restart）。
 // 手动更新：面板「系统设置 → 服务端接收」（超主）+ 群内更新指令（超主/主人）。
